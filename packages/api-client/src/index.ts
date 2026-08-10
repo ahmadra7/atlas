@@ -28,6 +28,7 @@ export function createAtlasClient(options: AtlasClientOptions = {}) {
     searchIngredients: mock.searchIngredients,
     getInventory: mock.getInventory,
     addInventoryItem: mock.addInventoryItem,
+    addIngredientByName: mock.addIngredientByName,
     removeInventoryItem: mock.removeInventoryItem,
     getRecommendations: (filters?: RecommendationFilters) =>
       mock.getRecommendations(filters),

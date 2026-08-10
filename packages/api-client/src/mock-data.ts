@@ -142,7 +142,8 @@ const omeletteSteps = [
     instruction: "تخم‌مرغ‌ها را در کاسه بشکنید و با نمک و فلفل هم بزنید.",
     tip: "هم زدن زیاد باعث پف بیشتر املت می‌شود.",
     timerSeconds: null,
-    imageUrl: "/images/recipes/omelette.svg",
+    imageUrl:
+      "https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=1000&q=80",
   },
   {
     id: "step-om-2",
@@ -150,7 +151,8 @@ const omeletteSteps = [
     instruction: "پیاز خردشده را در کمی روغن تفت دهید تا طلایی شود.",
     tip: "حرارت متوسط نگه دارید تا پیاز نسوزد.",
     timerSeconds: 180,
-    imageUrl: "/images/recipes/omelette.svg",
+    imageUrl:
+      "https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=1000&q=80",
   },
   {
     id: "step-om-3",
@@ -158,7 +160,8 @@ const omeletteSteps = [
     instruction: "مخلوط تخم‌مرغ را اضافه کنید و تا بسته شدن سطح، بپزید.",
     tip: "در صورت تمایل گوجه حلقه‌ای روی املت بگذارید.",
     timerSeconds: 240,
-    imageUrl: "/images/recipes/omelette.svg",
+    imageUrl:
+      "https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=1000&q=80",
   },
 ];
 
@@ -177,7 +180,8 @@ export const MOCK_RECIPES: Recipe[] = [
     cookMinutes: 10,
     totalMinutes: 15,
     servings: 2,
-    imageUrl: "/images/recipes/omelette.svg",
+    imageUrl:
+      "https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=1000&q=80",
     dietaryTags: ["گیاهی-اختیاری"],
     budgetFriendly: true,
     versionId: "rv-omelette-1",
@@ -204,7 +208,8 @@ export const MOCK_RECIPES: Recipe[] = [
     cookMinutes: 20,
     totalMinutes: 30,
     servings: 2,
-    imageUrl: "/images/recipes/potato-egg.svg",
+    imageUrl:
+      "https://images.unsplash.com/photo-1506084868230-bb9d95c24759?auto=format&fit=crop&w=1000&q=80",
     dietaryTags: [],
     budgetFriendly: true,
     versionId: "rv-potato-1",
@@ -222,7 +227,8 @@ export const MOCK_RECIPES: Recipe[] = [
         instruction: "سیب‌زمینی‌ها را خلالی خرد کنید و کمی نمک بزنید.",
         tip: "خلال‌ها را یکدست کنید تا همزمان بپزند.",
         timerSeconds: null,
-        imageUrl: "/images/recipes/potato-egg.svg",
+        imageUrl:
+          "https://images.unsplash.com/photo-1506084868230-bb9d95c24759?auto=format&fit=crop&w=1000&q=80",
       },
       {
         id: "step-pe-2",
@@ -230,7 +236,8 @@ export const MOCK_RECIPES: Recipe[] = [
         instruction: "در تابه با روغن تفت دهید تا طلایی و نرم شوند.",
         tip: "در صورت نیاز کمی آب اضافه کنید و در تابه را بگذارید.",
         timerSeconds: 720,
-        imageUrl: "/images/recipes/potato-egg.svg",
+        imageUrl:
+          "https://images.unsplash.com/photo-1506084868230-bb9d95c24759?auto=format&fit=crop&w=1000&q=80",
       },
       {
         id: "step-pe-3",
@@ -238,7 +245,8 @@ export const MOCK_RECIPES: Recipe[] = [
         instruction: "تخم‌مرغ‌ها را روی سیب‌زمینی بشکنید و تا پخت کامل صبر کنید.",
         tip: "زرده را نیم‌پز یا کامل بپزید؛ هر دو قابل قبول است.",
         timerSeconds: 300,
-        imageUrl: "/images/recipes/potato-egg.svg",
+        imageUrl:
+          "https://images.unsplash.com/photo-1506084868230-bb9d95c24759?auto=format&fit=crop&w=1000&q=80",
       },
     ],
   },
@@ -255,7 +263,8 @@ export const MOCK_RECIPES: Recipe[] = [
     cookMinutes: 35,
     totalMinutes: 45,
     servings: 3,
-    imageUrl: "/images/recipes/adasi.svg",
+    imageUrl:
+      "https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&w=1000&q=80",
     dietaryTags: ["گیاهی"],
     budgetFriendly: true,
     versionId: "rv-adasi-1",
@@ -274,7 +283,8 @@ export const MOCK_RECIPES: Recipe[] = [
         instruction: "عدس را بشویید و با آب روی حرارت ملایم بپزید.",
         tip: "کف روی عدس را در ابتدا بگیرید.",
         timerSeconds: 1200,
-        imageUrl: "/images/recipes/adasi.svg",
+        imageUrl:
+          "https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&w=1000&q=80",
       },
       {
         id: "step-ad-2",
@@ -282,7 +292,8 @@ export const MOCK_RECIPES: Recipe[] = [
         instruction: "پیاز و سیب‌زمینی خردشده را اضافه کنید.",
         tip: "نمک را نزدیک پایان پخت بریزید.",
         timerSeconds: 900,
-        imageUrl: "/images/recipes/adasi.svg",
+        imageUrl:
+          "https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&w=1000&q=80",
       },
       {
         id: "step-ad-3",
@@ -290,7 +301,8 @@ export const MOCK_RECIPES: Recipe[] = [
         instruction: "با نان تازه سرو کنید.",
         tip: "در صورت تمایل کمی کره روی عدسی داغ بگذارید.",
         timerSeconds: null,
-        imageUrl: "/images/recipes/adasi.svg",
+        imageUrl:
+          "https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&w=1000&q=80",
       },
     ],
   },
@@ -307,7 +319,8 @@ export const MOCK_RECIPES: Recipe[] = [
     cookMinutes: 45,
     totalMinutes: 60,
     servings: 4,
-    imageUrl: "/images/recipes/chicken-rice.svg",
+    imageUrl:
+      "https://images.unsplash.com/photo-1598103442097-8b74394b95c6?auto=format&fit=crop&w=1000&q=80",
     dietaryTags: [],
     budgetFriendly: false,
     versionId: "rv-chicken-1",
@@ -327,7 +340,8 @@ export const MOCK_RECIPES: Recipe[] = [
         instruction: "مرغ را با پیاز، سیر، نمک و کمی روغن تفت دهید.",
         tip: "تا تغییر رنگ سطح مرغ ادامه دهید.",
         timerSeconds: 600,
-        imageUrl: "/images/recipes/chicken-rice.svg",
+        imageUrl:
+          "https://images.unsplash.com/photo-1598103442097-8b74394b95c6?auto=format&fit=crop&w=1000&q=80",
       },
       {
         id: "step-cr-2",
@@ -335,7 +349,8 @@ export const MOCK_RECIPES: Recipe[] = [
         instruction: "برنج را آبکش کنید و برای دم‌کردن آماده کنید.",
         tip: "آب برنج باید کمی شور باشد.",
         timerSeconds: 600,
-        imageUrl: "/images/recipes/chicken-rice.svg",
+        imageUrl:
+          "https://images.unsplash.com/photo-1516684669134-de6f7c473a2a?auto=format&fit=crop&w=1000&q=80",
       },
       {
         id: "step-cr-3",
@@ -343,7 +358,8 @@ export const MOCK_RECIPES: Recipe[] = [
         instruction: "مرغ را کنار برنج بچینید و با حرارت ملایم دم کنید.",
         tip: "در پایان ۱۰ دقیقه حرارت را خیلی کم کنید.",
         timerSeconds: 1200,
-        imageUrl: "/images/recipes/chicken-rice.svg",
+        imageUrl:
+          "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?auto=format&fit=crop&w=1000&q=80",
       },
     ],
   },
@@ -404,25 +420,27 @@ let favorites: FavoriteItem[] = [];
 let history: HistoryItem[] = [];
 const sessions = new Map<string, CookingSession>();
 let recommendationSeq = 1;
+const customIngredients: Ingredient[] = [];
 
 function delay(ms = 280): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export async function searchIngredients(q: string): Promise<Ingredient[]> {
-  await delay();
+  await delay(120);
   const query = normalizePersian(q);
+  const pool = [...MOCK_INGREDIENTS, ...customIngredients];
   if (!query) {
-    return [...MOCK_INGREDIENTS]
-      .sort((a, b) => b.popularity - a.popularity)
-      .slice(0, 8);
+    return [...pool].sort((a, b) => b.popularity - a.popularity).slice(0, 8);
   }
-  return MOCK_INGREDIENTS.filter((item) => {
-    const haystack = normalizePersian(
-      [item.name, item.normalizedName, ...item.aliases].join(" "),
-    );
-    return haystack.includes(query);
-  }).slice(0, 10);
+  return pool
+    .filter((item) => {
+      const haystack = normalizePersian(
+        [item.name, item.normalizedName, ...item.aliases].join(" "),
+      );
+      return haystack.includes(query);
+    })
+    .slice(0, 10);
 }
 
 export async function getInventory(): Promise<InventoryItem[]> {
@@ -436,7 +454,9 @@ export async function addInventoryItem(
   await delay(180);
   const existing = inventory.find((i) => i.ingredientId === ingredientId);
   if (existing) return existing;
-  const ingredient = MOCK_INGREDIENTS.find((i) => i.id === ingredientId);
+  const ingredient =
+    MOCK_INGREDIENTS.find((i) => i.id === ingredientId) ??
+    customIngredients.find((i) => i.id === ingredientId);
   if (!ingredient) {
     throw new Error("INGREDIENT_NOT_FOUND");
   }
@@ -450,6 +470,42 @@ export async function addInventoryItem(
   };
   inventory = [item, ...inventory];
   return item;
+}
+
+/** Add by free-text name: reuse catalog match or create custom ingredient. */
+export async function addIngredientByName(name: string): Promise<InventoryItem> {
+  await delay(160);
+  const query = normalizePersian(name);
+  if (!query) throw new Error("EMPTY_NAME");
+
+  const catalogMatch = [...MOCK_INGREDIENTS, ...customIngredients].find(
+    (item) => {
+      const haystack = normalizePersian(
+        [item.name, item.normalizedName, ...item.aliases].join(" "),
+      );
+      return haystack === query || item.normalizedName === query;
+    },
+  );
+
+  if (catalogMatch) {
+    return addInventoryItem(catalogMatch.id);
+  }
+
+  const byNameInInventory = inventory.find(
+    (i) => normalizePersian(i.ingredient.name) === query,
+  );
+  if (byNameInInventory) return byNameInInventory;
+
+  const custom: Ingredient = {
+    id: `ing-custom-${Date.now()}`,
+    name: name.trim(),
+    normalizedName: query,
+    aliases: [name.trim()],
+    category: "سفارشی",
+    popularity: 1,
+  };
+  customIngredients.push(custom);
+  return addInventoryItem(custom.id);
 }
 
 export async function removeInventoryItem(id: string): Promise<void> {
@@ -477,7 +533,10 @@ function buildCard(
     title: recipe.title,
     imageUrl: recipe.imageUrl,
     totalMinutes: recipe.totalMinutes,
+    servings: recipe.servings,
     difficulty: recipe.difficulty,
+    meal: recipe.meal,
+    cuisine: recipe.cuisine,
     matchTier,
     matchScore,
     missingCount,

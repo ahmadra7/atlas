@@ -8,18 +8,14 @@ interface ChipProps {
 export function Chip({ label, onRemove, active, onClick }: ChipProps) {
   return (
     <span
-      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition ${
+      className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-caption transition ${
         active
-          ? "border-atlas-primary bg-atlas-primary text-white"
+          ? "border-atlas-chip-active bg-atlas-chip-active text-white"
           : "border-atlas-border bg-atlas-surface text-atlas-ink"
       }`}
     >
       {onClick ? (
-        <button
-          type="button"
-          onClick={onClick}
-          className="hover:opacity-90"
-        >
+        <button type="button" onClick={onClick} className="hover:opacity-90">
           {label}
         </button>
       ) : (
@@ -30,10 +26,8 @@ export function Chip({ label, onRemove, active, onClick }: ChipProps) {
           type="button"
           aria-label={`حذف ${label}`}
           onClick={onRemove}
-          className={`rounded-full px-1 text-xs ${
-            active
-              ? "text-white/90 hover:bg-white/10"
-              : "text-atlas-ink-muted hover:bg-atlas-surface-muted"
+          className={`rounded-full px-1 text-body ${
+            active ? "text-white/90" : "text-atlas-ink-muted"
           }`}
         >
           ×

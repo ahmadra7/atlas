@@ -5,7 +5,7 @@ interface StateViewProps {
   description?: string;
   actionLabel?: string;
   onAction?: () => void;
-  tone?: "neutral" | "warning" | "danger";
+  tone?: "neutral" | "warning" | "danger" | "empty";
 }
 
 export function StateView({
@@ -17,16 +17,21 @@ export function StateView({
 }: StateViewProps) {
   const toneClass =
     tone === "danger"
-      ? "border-atlas-danger/30 bg-atlas-danger-soft"
+      ? "border-atlas-danger/20 bg-atlas-danger-soft"
       : tone === "warning"
-        ? "border-atlas-warning/30 bg-atlas-warning-soft"
+        ? "border-atlas-warning/20 bg-atlas-warning-soft"
         : "border-atlas-border bg-atlas-surface";
 
   return (
-    <div className={`atlas-surface rounded-atlas-lg border p-8 text-center ${toneClass}`}>
-      <h2 className="text-lg font-semibold text-atlas-ink">{title}</h2>
+    <div className={`rounded-atlas-lg border p-6 text-center ${toneClass}`}>
+      <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-atlas-primary-soft text-atlas-primary">
+        {tone === "empty" ? "∅" : tone === "danger" ? "!" : "…"}
+      </div>
+      <h2 className="text-h3 text-atlas-ink">{title}</h2>
       {description ? (
-        <p className="mt-2 text-sm leading-7 text-atlas-ink-muted">{description}</p>
+        <p className="mt-2 text-body leading-7 text-atlas-ink-muted">
+          {description}
+        </p>
       ) : null}
       {actionLabel && onAction ? (
         <div className="mt-5">
@@ -39,11 +44,9 @@ export function StateView({
 
 export function LoadingBlock({ label = "در حال بارگذاری…" }: { label?: string }) {
   return (
-    <div className="atlas-surface flex min-h-40 items-center justify-center p-8">
-      <div className="flex items-center gap-3 text-atlas-ink-muted">
-        <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-atlas-border border-t-atlas-primary" />
-        <span className="text-sm">{label}</span>
-      </div>
+    <div className="flex min-h-40 flex-col items-center justify-center gap-3 rounded-atlas-lg border border-atlas-border bg-atlas-surface p-6">
+      <span className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-atlas-border border-t-atlas-primary" />
+      <span className="text-caption text-atlas-ink-muted">{label}</span>
     </div>
   );
 }

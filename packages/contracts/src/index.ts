@@ -96,7 +96,10 @@ export interface RecommendationCard {
   title: string;
   imageUrl: string;
   totalMinutes: number;
+  servings: number;
   difficulty: Difficulty;
+  meal: MealType;
+  cuisine: string;
   matchTier: MatchTier;
   matchScore: number;
   missingCount: number;

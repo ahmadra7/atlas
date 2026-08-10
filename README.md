@@ -6,20 +6,20 @@
 
 ```
 apps/web                 Next.js + React + TypeScript (RTL فارسی)
+apps/mobile              React Native + Expo (RTL فارسی)
 packages/contracts       قراردادهای API مشترک
 packages/api-client      کلاینت API (فعلاً mock)
 packages/design-tokens   توکن‌های طراحی
 packages/shared          نرمال‌سازی فارسی و برچسب‌ها
 ```
 
-## اجرای وب
+## اجرا
 
 ```bash
 npm install
-npm run dev:web
+npm run dev:web      # http://localhost:3000
+npm run dev:mobile   # Expo Dev Tools / Expo Go
 ```
-
-آدرس پیش‌فرض: [http://localhost:3000](http://localhost:3000)
 
 ## مسیر پذیرش MVP
 

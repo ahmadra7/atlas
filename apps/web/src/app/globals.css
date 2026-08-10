@@ -11,8 +11,27 @@
 
   body {
     @apply bg-atlas-background text-atlas-ink antialiased;
-    font-family: var(--font-vazirmatn), Vazirmatn, Tahoma, sans-serif;
+    font-family: IRANSans, Vazirmatn, Tahoma, sans-serif;
+    font-size: var(--atlas-body);
     min-height: 100vh;
+  }
+
+  h1 {
+    font-size: var(--atlas-h1);
+    font-weight: 700;
+    line-height: 1.35;
+  }
+
+  h2 {
+    font-size: var(--atlas-h2);
+    font-weight: 700;
+    line-height: 1.4;
+  }
+
+  h3 {
+    font-size: var(--atlas-h3);
+    font-weight: 600;
+    line-height: 1.4;
   }
 
   ::selection {
@@ -27,11 +46,16 @@
 }
 
 @layer utilities {
-  .atlas-container {
-    @apply mx-auto w-full max-w-6xl px-4 sm:px-6;
+  .atlas-phone {
+    @apply mx-auto min-h-screen w-full max-w-md bg-atlas-background;
   }
 
   .atlas-surface {
     @apply rounded-atlas-lg border border-atlas-border bg-atlas-surface shadow-atlas;
+  }
+
+  .atlas-caption {
+    font-size: var(--atlas-caption);
+    color: var(--atlas-ink-muted);
   }
 }

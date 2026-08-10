@@ -1,80 +1,90 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
-import type { UserProfile } from "@atlas/contracts";
+import type { HistoryItem, UserProfile } from "@atlas/contracts";
 import { toPersianDigits } from "@atlas/shared";
 import { AppShell } from "@/components/layout/AppShell";
-import { LoadingBlock, StateView } from "@/components/ui/StateView";
+import { LoadingBlock } from "@/components/ui/StateView";
 import { atlasClient } from "@/lib/client";
+
+const statusFa: Record<HistoryItem["status"], string> = {
+  active: "در حال پخت",
+  completed: "تمام‌شده",
+  abandoned: "نیمه‌کاره",
+  paused: "متوقف",
+};
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let cancelled = false;
-    async function load() {
+    void (async () => {
       try {
-        const data = await atlasClient.getProfile();
-        if (!cancelled) setProfile(data);
-      } catch {
-        if (!cancelled) setError("پروفایل بارگذاری نشد.");
+        const [p, h] = await Promise.all([
+          atlasClient.getProfile(),
+          atlasClient.getHistory(),
+        ]);
+        setProfile(p);
+        setHistory(h.slice(0, 5));
       } finally {
-        if (!cancelled) setLoading(false);
+        setLoading(false);
       }
-    }
-    void load();
-    return () => {
-      cancelled = true;
-    };
+    })();
   }, []);
 
   return (
-    <AppShell>
-      <div className="atlas-container space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-atlas-ink">پروفایل</h1>
-          <p className="mt-2 text-sm text-atlas-ink-muted">
-            پروفایل سبک MVP؛ ترجیحات غذایی و زمان پیش‌فرض.
-          </p>
-        </div>
-
+    <AppShell title="پروفایل">
+      <div className="space-y-4">
         {loading ? <LoadingBlock /> : null}
-        {error ? (
-          <StateView tone="danger" title="خطا" description={error} />
-        ) : null}
-
         {profile ? (
-          <section className="atlas-surface space-y-4 p-5">
-            <div>
-              <p className="text-xs text-atlas-ink-faint">نام نمایشی</p>
-              <p className="text-lg font-semibold text-atlas-ink">
-                {profile.displayName}
-              </p>
+          <section className="atlas-surface space-y-3 p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-atlas-primary text-h3 text-white">
+                {profile.displayName.slice(0, 1)}
+              </div>
+              <div>
+                <h2 className="text-h3 text-atlas-ink">{profile.displayName}</h2>
+                <p className="text-caption text-atlas-ink-muted">
+                  مهمان · فارسی
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-xs text-atlas-ink-faint">زبان</p>
-              <p className="text-sm text-atlas-ink">فارسی (fa)</p>
-            </div>
-            <div>
-              <p className="text-xs text-atlas-ink-faint">حداکثر زمان پیش‌فرض</p>
-              <p className="text-sm text-atlas-ink">
-                {profile.defaultMaxMinutes
-                  ? `${toPersianDigits(profile.defaultMaxMinutes)} دقیقه`
-                  : "تعیین نشده"}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-atlas-ink-faint">ترجیحات غذایی</p>
-              <p className="text-sm text-atlas-ink-muted">
-                {profile.dietaryPreferences.length
-                  ? profile.dietaryPreferences.join("، ")
-                  : "هنوز ترجیحی ثبت نشده (P1)"}
-              </p>
-            </div>
+            <p className="text-body text-atlas-ink-muted">
+              حداکثر زمان پیش‌فرض:{" "}
+              {profile.defaultMaxMinutes
+                ? `${toPersianDigits(profile.defaultMaxMinutes)} دقیقه`
+                : "—"}
+            </p>
           </section>
         ) : null}
+
+        <section className="space-y-3">
+          <h3 className="text-h3 text-atlas-ink">تاریخچه اخیر</h3>
+          {history.length === 0 ? (
+            <p className="text-caption text-atlas-ink-muted">هنوز تاریخی نیست.</p>
+          ) : (
+            history.map((item) => (
+              <Link
+                key={item.sessionId}
+                href={`/recipes/${item.slug}`}
+                className="atlas-surface block p-4"
+              >
+                <p className="text-body font-semibold text-atlas-ink">
+                  {item.title}
+                </p>
+                <p className="text-caption text-atlas-ink-muted">
+                  {statusFa[item.status]}
+                </p>
+              </Link>
+            ))
+          )}
+          <Link href="/history" className="text-caption text-atlas-primary">
+            مشاهده همه تاریخچه
+          </Link>
+        </section>
       </div>
     </AppShell>
   );
