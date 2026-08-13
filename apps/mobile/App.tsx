@@ -1,164 +1,186 @@
-import { useEffect } from "react";
-import { I18nManager, Text, View } from "react-native";
-import { StatusBar } from "expo-status-bar";
-import { NavigationContainer, DefaultTheme } from "@react-navigation/native";
-import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { SafeAreaProvider } from "react-native-safe-area-context";
-import { HomeScreen, IngredientsScreen } from "./src/screens/HomeIngredients";
-import { RecommendationsScreen } from "./src/screens/RecommendationsScreen";
-import { RecipeScreen } from "./src/screens/RecipeScreen";
-import { CookScreen } from "./src/screens/CookScreen";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  FavoritesScreen,
-  HistoryScreen,
-  ProfileScreen,
-} from "./src/screens/MoreScreens";
-import type { RootStackParamList, TabParamList } from "./src/navigation/types";
-import { theme } from "./src/theme";
+  ActivityIndicator,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { StatusBar } from "expo-status-bar";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import { WebView } from "react-native-webview";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { ErrorBoundary } from "./src/components/ErrorBoundary";
+import {
+  createVoiceBridge,
+  voiceBridgeBootstrap,
+} from "./src/voiceBridge";
+import { WEB_APP_URL } from "./src/webUrl";
 
-const Stack = createNativeStackNavigator<RootStackParamList>();
-const Tabs = createBottomTabNavigator<TabParamList>();
-
-const navTheme = {
-  ...DefaultTheme,
-  colors: {
-    ...DefaultTheme.colors,
-    background: theme.colors.background,
-    card: theme.colors.surface,
-    text: theme.colors.ink,
-    border: theme.colors.border,
-    primary: theme.colors.primary,
-  },
-};
-
-function TabIcon({ label, focused }: { label: string; focused: boolean }) {
-  return (
-    <View
-      style={{
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 999,
-        backgroundColor: focused ? theme.colors.primarySoft : "transparent",
-      }}
-    >
-      <Text
-        style={{
-          fontSize: 11,
-          color: focused ? theme.colors.primary : theme.colors.inkFaint,
-          fontWeight: focused ? "700" : "500",
-        }}
-      >
-        {label}
-      </Text>
-    </View>
-  );
-}
-
-function MainTabs() {
-  return (
-    <Tabs.Navigator
-      screenOptions={{
-        headerShown: false,
-        tabBarStyle: {
-          backgroundColor: theme.colors.surface,
-          borderTopColor: theme.colors.border,
-          height: 64,
-          paddingBottom: 8,
-          paddingTop: 8,
-        },
-        tabBarShowLabel: false,
-      }}
-    >
-      <Tabs.Screen
-        name="Home"
-        component={HomeScreen}
-        options={{
-          tabBarIcon: ({ focused }) => <TabIcon label="خانه" focused={focused} />,
-        }}
-      />
-      <Tabs.Screen
-        name="Ingredients"
-        component={IngredientsScreen}
-        options={{
-          tabBarIcon: ({ focused }) => <TabIcon label="مواد" focused={focused} />,
-        }}
-      />
-      <Tabs.Screen
-        name="Favorites"
-        component={FavoritesScreen}
-        options={{
-          tabBarIcon: ({ focused }) => (
-            <TabIcon label="علاقه" focused={focused} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="History"
-        component={HistoryScreen}
-        options={{
-          tabBarIcon: ({ focused }) => (
-            <TabIcon label="تاریخچه" focused={focused} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="Profile"
-        component={ProfileScreen}
-        options={{
-          tabBarIcon: ({ focused }) => (
-            <TabIcon label="پروفایل" focused={focused} />
-          ),
-        }}
-      />
-    </Tabs.Navigator>
-  );
-}
+const RETRY_MS = 3500;
 
 export default function App() {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [key, setKey] = useState(0);
+  const [url, setUrl] = useState(WEB_APP_URL);
+  const autoRetries = useRef(0);
+  const webRef = useRef<WebView>(null);
+  const voiceBridgeRef = useRef<ReturnType<typeof createVoiceBridge> | null>(
+    null,
+  );
+
   useEffect(() => {
-    if (!I18nManager.isRTL) {
-      I18nManager.allowRTL(true);
-      I18nManager.forceRTL(true);
-    }
+    voiceBridgeRef.current = createVoiceBridge(webRef);
+    return () => {
+      voiceBridgeRef.current?.dispose();
+      voiceBridgeRef.current = null;
+    };
   }, []);
 
+  // Pick up HMR updates when keep-web-tunnel rewrites webUrl.ts
+  useEffect(() => {
+    setUrl(WEB_APP_URL);
+    setError(null);
+    setLoading(true);
+    setKey((k) => k + 1);
+    autoRetries.current = 0;
+  }, [WEB_APP_URL]);
+
+  useEffect(() => {
+    if (!error) return;
+    const timer = setInterval(() => {
+      autoRetries.current += 1;
+      setError(null);
+      setLoading(true);
+      setKey((k) => k + 1);
+    }, RETRY_MS);
+    return () => clearInterval(timer);
+  }, [error]);
+
+  const source = useMemo(() => ({ uri: url }), [url]);
+
   return (
-    <SafeAreaProvider>
-      <NavigationContainer theme={navTheme}>
-        <StatusBar style="dark" />
-        <Stack.Navigator>
-          <Stack.Screen
-            name="Tabs"
-            component={MainTabs}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="Recommendations"
-            component={RecommendationsScreen}
-            options={{
-              title: "پیشنهادها",
-              headerTitleAlign: "center",
-            }}
-          />
-          <Stack.Screen
-            name="Recipe"
-            component={RecipeScreen}
-            options={{
-              title: "دستور",
-              headerTitleAlign: "center",
-            }}
-          />
-          <Stack.Screen
-            name="Cook"
-            component={CookScreen}
-            options={{
-              headerShown: false,
-              presentation: "fullScreenModal",
-            }}
-          />
-        </Stack.Navigator>
-      </NavigationContainer>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={styles.flex}>
+      <SafeAreaProvider>
+        <ErrorBoundary>
+          <SafeAreaView style={styles.flex} edges={["top", "left", "right"]}>
+            <StatusBar style="dark" />
+            {error ? (
+              <View style={styles.errorBox}>
+                <Text style={styles.errorTitle}>در حال وصل شدن دوباره…</Text>
+                <Text style={styles.errorBody}>{error}</Text>
+                <Text style={styles.errorHint}>
+                  تونل اینترنت به‌صورت خودکار دوباره وصل می‌شود. کمی صبر کن یا
+                  «تلاش دوباره» را بزن.
+                </Text>
+                <Pressable
+                  style={styles.retry}
+                  onPress={() => {
+                    setError(null);
+                    setLoading(true);
+                    setKey((k) => k + 1);
+                  }}
+                >
+                  <Text style={styles.retryText}>تلاش دوباره</Text>
+                </Pressable>
+              </View>
+            ) : (
+              <View style={styles.flex}>
+                <WebView
+                  ref={webRef}
+                  key={key}
+                  source={source}
+                  style={styles.flex}
+                  onLoadStart={() => setLoading(true)}
+                  onLoadEnd={() => {
+                    setLoading(false);
+                    autoRetries.current = 0;
+                    voiceBridgeRef.current?.announceReady();
+                  }}
+                  onError={(e) => {
+                    setLoading(false);
+                    setError(e.nativeEvent.description || "خطای شبکه");
+                  }}
+                  onHttpError={(e) => {
+                    if (e.nativeEvent.statusCode >= 400) {
+                      setLoading(false);
+                      setError(`خطای HTTP ${e.nativeEvent.statusCode}`);
+                    }
+                  }}
+                  onMessage={(e) => {
+                    void voiceBridgeRef.current?.handleMessage(
+                      e.nativeEvent.data,
+                    );
+                  }}
+                  injectedJavaScriptBeforeContentLoaded={voiceBridgeBootstrap}
+                  allowsBackForwardNavigationGestures
+                  startInLoadingState
+                  javaScriptEnabled
+                  domStorageEnabled
+                  sharedCookiesEnabled
+                  mediaPlaybackRequiresUserAction={false}
+                  mediaCapturePermissionGrantType="grant"
+                  setSupportMultipleWindows={false}
+                  originWhitelist={["*"]}
+                  applicationNameForUserAgent={`AtlasMobile/${Platform.OS}`}
+                />
+                {loading ? (
+                  <View style={styles.loader}>
+                    <ActivityIndicator size="large" color="#FF3737" />
+                    <Text style={styles.loaderText}>در حال همگام‌سازی با IDE…</Text>
+                  </View>
+                ) : null}
+              </View>
+            )}
+          </SafeAreaView>
+        </ErrorBoundary>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
+
+const styles = StyleSheet.create({
+  flex: { flex: 1, backgroundColor: "#FAFAFA" },
+  loader: {
+    ...StyleSheet.absoluteFill,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(250,250,250,0.92)",
+    gap: 12,
+  },
+  loaderText: { color: "#52525B", fontSize: 14 },
+  errorBox: {
+    flex: 1,
+    padding: 24,
+    justifyContent: "center",
+    gap: 10,
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#B91C1C",
+    textAlign: "right",
+  },
+  errorBody: {
+    fontSize: 14,
+    color: "#7F1D1D",
+    textAlign: "right",
+  },
+  errorHint: {
+    fontSize: 13,
+    lineHeight: 22,
+    color: "#52525B",
+    textAlign: "right",
+  },
+  retry: {
+    marginTop: 8,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: "#FF3737",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  retryText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+});

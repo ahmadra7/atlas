@@ -14,6 +14,7 @@
     font-family: IRANSans, Vazirmatn, Tahoma, sans-serif;
     font-size: var(--atlas-body);
     min-height: 100vh;
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
 
   h1 {
@@ -39,9 +40,87 @@
     color: var(--atlas-ink);
   }
 
+  input::placeholder,
+  textarea::placeholder {
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--atlas-ink-faint);
+    opacity: 1;
+  }
+
   :focus-visible {
     outline: 2px solid var(--atlas-focus);
     outline-offset: 2px;
+  }
+}
+
+@keyframes starPop {
+  0% {
+    transform: scale(0.6);
+  }
+  60% {
+    transform: scale(1.25);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes splashPop {
+  0% {
+    opacity: 0;
+    transform: scale(0.72);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes splashUp {
+  0% {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes splashBar {
+  0% {
+    transform: translateX(120%);
+  }
+  100% {
+    transform: translateX(-220%);
+  }
+}
+
+@keyframes skeletonShine {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes micRing {
+  0% {
+    transform: scale(0.92);
+    opacity: 0.55;
+  }
+  100% {
+    transform: scale(1.45);
+    opacity: 0;
+  }
+}
+
+@keyframes micBar {
+  0%,
+  100% {
+    transform: scaleY(0.35);
+  }
+  50% {
+    transform: scaleY(1);
   }
 }
 
@@ -57,5 +136,36 @@
   .atlas-caption {
     font-size: var(--atlas-caption);
     color: var(--atlas-ink-muted);
+  }
+
+  /* Scrollbar on the visual right; content stays RTL */
+  .atlas-scroll-y {
+    direction: ltr;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(161, 161, 170, 0.55) transparent;
+  }
+
+  .atlas-scroll-y > * {
+    direction: rtl;
+  }
+
+  .atlas-scroll-y::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .atlas-scroll-y::-webkit-scrollbar-track {
+    background: transparent;
+    margin-block: 6px;
+  }
+
+  .atlas-scroll-y::-webkit-scrollbar-thumb {
+    background: rgba(161, 161, 170, 0.45);
+    border-radius: 999px;
+  }
+
+  .atlas-scroll-y::-webkit-scrollbar-thumb:hover {
+    background: rgba(161, 161, 170, 0.7);
   }
 }

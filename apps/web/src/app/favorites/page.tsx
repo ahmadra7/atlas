@@ -1,45 +1,51 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { FavoriteItem } from "@atlas/contracts";
 import { difficultyLabelFa, formatMinutesFa } from "@atlas/shared";
 import { AppShell } from "@/components/layout/AppShell";
 import { RecipeImage } from "@/components/recipe/RecipeImage";
 import { Button } from "@/components/ui/Button";
-import { LoadingBlock, StateView } from "@/components/ui/StateView";
+import { FavoritesSkeleton } from "@/components/ui/Skeleton";
+import { StateView } from "@/components/ui/StateView";
 import { atlasClient } from "@/lib/client";
+import { pageCache } from "@/lib/page-cache";
 
 export default function FavoritesPage() {
-  const [items, setItems] = useState<FavoriteItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+  const [items, setItems] = useState<FavoriteItem[]>(
+    () => pageCache.favorites ?? [],
+  );
+  const [loading, setLoading] = useState(() => pageCache.favorites === null);
 
-  async function load() {
-    setLoading(true);
+  async function load(showSkeleton = pageCache.favorites === null) {
+    if (showSkeleton) setLoading(true);
     try {
-      setItems(await atlasClient.getFavorites());
+      const next = await atlasClient.getFavorites();
+      pageCache.favorites = next;
+      setItems(next);
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
-    void load();
+    void load(false);
   }, []);
 
   return (
     <AppShell title="علاقه‌مندی‌ها">
       <div className="space-y-4">
-        {loading ? <LoadingBlock /> : null}
+        {loading ? <FavoritesSkeleton /> : null}
         {!loading && items.length === 0 ? (
           <StateView
             tone="empty"
             title="هنوز چیزی ذخیره نشده"
-            description="از صفحه دستور، ذخیره در علاقه‌مندی را بزنید."
+            description="از صفحه دستور، روی قلب بالای صفحه بزنید."
             actionLabel="رفتن به خانه"
-            onAction={() => {
-              window.location.href = "/home";
-            }}
+            onAction={() => router.push("/home")}
           />
         ) : null}
         {items.map((item) => (
@@ -59,7 +65,7 @@ export default function FavoritesPage() {
                 {difficultyLabelFa[item.difficulty]}
               </p>
               <div className="mt-3 flex gap-2">
-                <Link href={`/recipes/${item.slug}`}>
+                <Link href={`/recipes/${item.slug}`} prefetch>
                   <Button size="sm">مشاهده</Button>
                 </Link>
                 <Button
@@ -67,7 +73,7 @@ export default function FavoritesPage() {
                   variant="tertiary"
                   onClick={async () => {
                     await atlasClient.toggleFavorite(item.recipeId);
-                    await load();
+                    await load(false);
                   }}
                 >
                   حذف

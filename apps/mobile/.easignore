@@ -1,0 +1,8 @@
+# Keep mobile EAS uploads small
+**/node_modules/**
+**/.git/**
+**/android/build/**
+**/ios/build/**
+**/.expo/**
+**/expo-qr.png
+**/web-public-url.txt

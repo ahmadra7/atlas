@@ -1,4 +1,10 @@
-import type { Difficulty, MatchTier, MealType } from "@atlas/contracts";
+import type {
+  DietMode,
+  Difficulty,
+  DishType,
+  MatchTier,
+  MealType,
+} from "@atlas/contracts";
 
 /** Persian ingredient normalization per content spec. */
 export function normalizePersian(input: string): string {
@@ -22,6 +28,16 @@ export function formatMinutesFa(minutes: number): string {
   return `${toPersianDigits(minutes)} دقیقه`;
 }
 
+/** Local-time greeting bands for home header. */
+export function greetingFa(date = new Date()): string {
+  const minutes = date.getHours() * 60 + date.getMinutes();
+  // 03:00–11:00 صبح | 11:00–15:00 ظهر | 15:00–19:00 عصر | 19:00–03:00 شب
+  if (minutes >= 3 * 60 && minutes < 11 * 60) return "صبح بخیر";
+  if (minutes >= 11 * 60 && minutes < 15 * 60) return "ظهر بخیر";
+  if (minutes >= 15 * 60 && minutes < 19 * 60) return "عصر بخیر";
+  return "شب بخیر";
+}
+
 export const difficultyLabelFa: Record<Difficulty, string> = {
   easy: "آسان",
   medium: "متوسط",
@@ -34,6 +50,25 @@ export const mealLabelFa: Record<MealType, string> = {
   dinner: "شام",
   snack: "میان‌وعده",
   any: "همه",
+};
+
+export const dietModeLabelFa: Record<DietMode, string> = {
+  any: "همه",
+  diet: "رژیمی",
+  regular: "غیر رژیمی",
+};
+
+export const dishTypeLabelFa: Record<DishType, string> = {
+  any: "همه",
+  main: "غذای اصلی",
+  appetizer: "پیش‌غذا",
+  soup: "سوپ و آش",
+  salad: "سالاد",
+  dessert: "دسر",
+  sweet: "شیرینی",
+  drink: "نوشیدنی",
+  side: "مخلفات",
+  fast: "فست‌فود",
 };
 
 export const matchTierLabelFa: Record<MatchTier, string> = {

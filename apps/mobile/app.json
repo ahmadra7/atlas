@@ -9,7 +9,11 @@
     "scheme": "atlas",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.atlas.mobile"
+      "bundleIdentifier": "com.atlas.mobile",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "برای افزودن مواد اولیه با صدا",
+        "NSSpeechRecognitionUsageDescription": "برای تشخیص مواد اولیه از صدای شما"
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -19,10 +23,25 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "package": "com.atlas.mobile",
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "RECORD_AUDIO",
+        "MODIFY_AUDIO_SETTINGS"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-status-bar",
+      "expo-dev-client",
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "برای افزودن مواد اولیه با صدا به میکروفون نیاز داریم",
+          "speechRecognitionPermission": "برای تشخیص مواد اولیه از صدای شما"
+        }
+      ]
+    ]
   }
 }

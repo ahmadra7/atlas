@@ -82,7 +82,11 @@ export function FavoritesScreen({ navigation }: TabProps<"Favorites">) {
   );
 }
 
-export function HistoryScreen({ navigation }: TabProps<"History">) {
+export function HistoryScreen({
+  navigation,
+}: {
+  navigation: TabProps<"Favorites">["navigation"];
+}) {
   const [items, setItems] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
 

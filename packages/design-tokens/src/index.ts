@@ -48,11 +48,11 @@ export const typography = {
   fontFamily: "IRANSans, Vazirmatn, Tahoma, sans-serif",
   fontFamilyLatin: "Inter, IRANSans, sans-serif",
   sizes: {
-    h1: "28px",
-    h2: "22px",
-    h3: "18px",
-    body: "14px",
-    caption: "12px",
+    h1: "30px",
+    h2: "24px",
+    h3: "19px",
+    body: "16px",
+    caption: "14px",
   },
   weights: {
     regular: 400,

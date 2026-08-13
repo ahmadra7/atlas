@@ -3,20 +3,18 @@
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { Recipe } from "@atlas/contracts";
-import {
-  difficultyLabelFa,
-  formatMinutesFa,
-  mealLabelFa,
-  toPersianDigits,
-} from "@atlas/shared";
+import { formatMinutesFa, toPersianDigits } from "@atlas/shared";
 import { AppShell } from "@/components/layout/AppShell";
 import { BottomBar } from "@/components/ui/BottomBar";
 import { Button } from "@/components/ui/Button";
-import { LoadingBlock, StateView } from "@/components/ui/StateView";
+import { FavoriteHeartButton } from "@/components/ui/FavoriteHeartButton";
+import { RecipeSkeleton } from "@/components/ui/Skeleton";
+import { StateView } from "@/components/ui/StateView";
 import { SoftTag, TagRow } from "@/components/ui/SoftTag";
+import { PotIcon } from "@/components/ui/PotIcon";
 import { RecipeImage } from "@/components/recipe/RecipeImage";
 import { atlasClient } from "@/lib/client";
-import { Heart, HeartAdd, Profile2User, Timer1 } from "iconsax-react";
+import { Profile2User, Timer1 } from "iconsax-react";
 
 export default function RecipeDetailPage() {
   const params = useParams<{ slug: string }>();
@@ -26,6 +24,7 @@ export default function RecipeDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [favorited, setFavorited] = useState(false);
   const [starting, setStarting] = useState(false);
+  const [toggling, setToggling] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -54,110 +53,102 @@ export default function RecipeDetailPage() {
   }, [params.slug]);
 
   return (
-    <AppShell hideNav showBack title="دستور">
-      <div className="space-y-4">
-        {loading ? <LoadingBlock /> : null}
-        {error && !recipe ? (
-          <StateView tone="danger" title="خطا" description={error} />
-        ) : null}
+    <AppShell hideNav showBack title="دستور" lockScroll>
+      {loading ? <RecipeSkeleton /> : null}
+      {error && !recipe && !loading ? (
+        <StateView tone="danger" title="خطا" description={error} />
+      ) : null}
 
-        {recipe ? (
-          <>
+      {recipe && !loading ? (
+        <div className="flex min-h-0 flex-1 flex-col gap-3 pb-[5.75rem]">
+          <div className="shrink-0 space-y-3">
             <RecipeImage
               src={recipe.imageUrl}
               alt={recipe.title}
-              className="h-52 w-full rounded-atlas-xl"
+              className="h-40 w-full rounded-atlas-xl"
               priority
+              width={480}
             />
 
-            <div className="space-y-3">
-              <TagRow>
-                <SoftTag label={mealLabelFa[recipe.meal]} tone="red" />
-                <SoftTag label={recipe.cuisine} tone="amber" />
-                <SoftTag label={difficultyLabelFa[recipe.difficulty]} tone="gray" />
-                {recipe.budgetFriendly ? (
-                  <SoftTag label="اقتصادی" tone="green" />
-                ) : null}
-              </TagRow>
-              <h1 className="text-h1 text-atlas-ink">{recipe.title}</h1>
-              <p className="text-body text-atlas-ink-muted">
-                {recipe.description}
-              </p>
-              <TagRow>
-                <SoftTag
-                  label={formatMinutesFa(recipe.totalMinutes)}
-                  tone="soft"
-                  icon={<Timer1 size={14} color="currentColor" />}
-                />
-                <SoftTag
-                  label={`${toPersianDigits(recipe.servings)} نفر`}
-                  tone="soft"
-                  icon={<Profile2User size={14} color="currentColor" />}
-                />
-              </TagRow>
+            <div className="flex items-start gap-2">
+              <h1 className="min-w-0 flex-1 text-h2 text-atlas-ink">
+                {recipe.title}
+              </h1>
+              <FavoriteHeartButton
+                active={favorited}
+                busy={toggling}
+                onToggle={async () => {
+                  setToggling(true);
+                  try {
+                    setFavorited(await atlasClient.toggleFavorite(recipe.id));
+                  } finally {
+                    setToggling(false);
+                  }
+                }}
+              />
             </div>
 
-            <section className="atlas-surface mb-28 p-4">
+            <TagRow>
+              <SoftTag
+                label={formatMinutesFa(recipe.totalMinutes)}
+                tone="soft"
+                size="sm"
+                iconEnd
+                icon={<Timer1 size={12} color="currentColor" />}
+              />
+              <SoftTag
+                label={`${toPersianDigits(recipe.servings)} نفر`}
+                tone="soft"
+                size="sm"
+                iconEnd
+                icon={<Profile2User size={12} color="currentColor" />}
+              />
+            </TagRow>
+          </div>
+
+          <section className="atlas-surface flex min-h-0 flex-1 flex-col overflow-hidden p-4">
+            <div className="flex shrink-0 items-center justify-between gap-2">
               <h2 className="text-h3 text-atlas-ink">مواد لازم</h2>
-              <ul className="mt-3 space-y-2">
+              <span className="inline-flex items-center rounded-full bg-atlas-surface-muted px-2.5 py-1 text-caption font-medium text-atlas-ink-muted ring-1 ring-inset ring-atlas-border">
+                {toPersianDigits(recipe.ingredients.length)} مورد
+              </span>
+            </div>
+            <div className="atlas-scroll-y mt-3 min-h-0 flex-1 pe-1">
+              <ul className="space-y-2">
                 {recipe.ingredients.map((ing) => (
                   <li
                     key={`${ing.ingredientId}-${ing.name}`}
-                    className="flex items-center justify-between border-b border-atlas-border py-2 text-body last:border-none"
+                    className="flex items-center justify-between gap-3 border-b border-atlas-border py-2.5 text-body last:border-none"
                   >
-                    <span>
+                    <span className="min-w-0 font-medium">
                       {ing.name}
                       {ing.optional ? " (اختیاری)" : ""}
                     </span>
-                    <span className="text-caption text-atlas-ink-faint">
+                    <span className="shrink-0 text-caption text-atlas-ink-muted">
                       {[ing.quantity, ing.unit].filter(Boolean).join(" ")}
                     </span>
                   </li>
                 ))}
               </ul>
-            </section>
+            </div>
+          </section>
 
-            <BottomBar>
-              <Button
-                size="lg"
-                className="w-full"
-                disabled={starting}
-                icon={<Timer1 size={20} color="currentColor" />}
-                onClick={async () => {
-                  setStarting(true);
-                  try {
-                    const session = await atlasClient.startCookingSession(
-                      recipe.id,
-                    );
-                    router.push(`/cook/${session.id}`);
-                  } catch {
-                    setError("شروع پخت ممکن نشد.");
-                    setStarting(false);
-                  }
-                }}
-              >
-                {starting ? "در حال شروع…" : "بزن بریم برای پخت"}
-              </Button>
-              <Button
-                variant="secondary"
-                className="w-full"
-                icon={
-                  favorited ? (
-                    <Heart size={18} color="currentColor" variant="Bold" />
-                  ) : (
-                    <HeartAdd size={18} color="currentColor" />
-                  )
-                }
-                onClick={async () => {
-                  setFavorited(await atlasClient.toggleFavorite(recipe.id));
-                }}
-              >
-                {favorited ? "حذف از علاقه‌مندی" : "ذخیره در علاقه‌مندی"}
-              </Button>
-            </BottomBar>
-          </>
-        ) : null}
-      </div>
+          <BottomBar>
+            <Button
+              size="lg"
+              className="w-full"
+              disabled={starting}
+              icon={<PotIcon size={20} color="currentColor" />}
+              onClick={() => {
+                setStarting(true);
+                router.push(`/cook/start?recipeId=${encodeURIComponent(recipe.id)}`);
+              }}
+            >
+              {starting ? "در حال شروع…" : "بزن بریم برای پخت"}
+            </Button>
+          </BottomBar>
+        </div>
+      ) : null}
     </AppShell>
   );
 }

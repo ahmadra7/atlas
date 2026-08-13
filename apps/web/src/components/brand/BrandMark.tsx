@@ -1,9 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
 
-/** Official app mark — 3D chef hat asset */
+/** Cute 3D chef avatar for app bar / profile entry */
 export function BrandMark({
-  size = 36,
+  size = 40,
   className = "",
 }: {
   size?: number;
@@ -11,12 +11,13 @@ export function BrandMark({
 }) {
   return (
     <Image
-      src="/brand-chef.png"
+      src="/avatars/chef-cute-3d.png"
       alt="سرآشپز هوشمند"
       width={size}
       height={size}
-      className={`object-contain ${className}`}
+      className={`rounded-full object-cover object-top ${className}`}
       priority
+      unoptimized
     />
   );
 }

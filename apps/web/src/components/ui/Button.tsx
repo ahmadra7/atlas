@@ -34,14 +34,17 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
   size?: Size;
   icon?: ReactNode;
+  /** When true, icon sits on the visual right of the label. */
+  iconEnd?: boolean;
   children: ReactNode;
 }
 
-/** Icon always renders on the visual left of the label. */
+/** Default: icon on visual left. Use iconEnd for icon on visual right. */
 export function Button({
   variant = "primary",
   size = "md",
   icon,
+  iconEnd = false,
   className = "",
   children,
   ...props
@@ -52,8 +55,13 @@ export function Button({
       className={`inline-flex items-center justify-center gap-2 rounded-atlas font-semibold transition disabled:cursor-not-allowed ${variants[variant]} ${sizes[size]} ${className}`}
       {...props}
     >
-      {icon ? <span className="inline-flex shrink-0">{icon}</span> : null}
+      {!iconEnd && icon ? (
+        <span className="inline-flex shrink-0">{icon}</span>
+      ) : null}
       <span dir="rtl">{children}</span>
+      {iconEnd && icon ? (
+        <span className="inline-flex shrink-0">{icon}</span>
+      ) : null}
     </button>
   );
 }

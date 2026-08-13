@@ -37,9 +37,39 @@
   --atlas-space-5: 24px;
   --atlas-space-6: 32px;
   --atlas-space-7: 48px;
-  --atlas-h1: 28px;
-  --atlas-h2: 22px;
-  --atlas-h3: 18px;
-  --atlas-body: 14px;
-  --atlas-caption: 12px;
+  --atlas-h1: 30px;
+  --atlas-h2: 24px;
+  --atlas-h3: 19px;
+  --atlas-body: 16px;
+  --atlas-caption: 14px;
+}
+
+/* Dark theme — charcoal + brand red */
+.dark {
+  --atlas-primary: #ff4d4d;
+  --atlas-primary-hover: #ff6b6b;
+  --atlas-primary-soft: #3a1518;
+  --atlas-secondary: #f4f4f5;
+  --atlas-secondary-soft: #232328;
+  --atlas-accent: #a1a1aa;
+  --atlas-accent-soft: #232328;
+  --atlas-danger: #fb7185;
+  --atlas-danger-soft: #3f151c;
+  --atlas-success: #4ade80;
+  --atlas-success-soft: #143523;
+  --atlas-warning: #fbbf24;
+  --atlas-warning-soft: #3a2a10;
+  --atlas-info: #94a3b8;
+  --atlas-ink: #f4f4f5;
+  --atlas-ink-muted: #a1a1aa;
+  --atlas-ink-faint: #71717a;
+  --atlas-border: #2c2c33;
+  --atlas-border-strong: #52525b;
+  --atlas-surface: #17171c;
+  --atlas-surface-muted: #222228;
+  --atlas-background: #0c0c10;
+  --atlas-focus: #ff4d4d;
+  --atlas-chip-active: #f4f4f5;
+  --atlas-chip-active-text: #111111;
+  --atlas-shadow: 0 8px 28px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 77, 77, 0.04);
 }

@@ -1,5 +1,6 @@
 export type RootStackParamList = {
   Tabs: undefined;
+  Ingredients: undefined;
   Recommendations: undefined;
   Recipe: { slug: string };
   Cook: { sessionId: string };
@@ -7,8 +8,7 @@ export type RootStackParamList = {
 
 export type TabParamList = {
   Home: undefined;
-  Ingredients: undefined;
+  Search: undefined;
   Favorites: undefined;
-  History: undefined;
   Profile: undefined;
 };

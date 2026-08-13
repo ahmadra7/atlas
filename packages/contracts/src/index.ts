@@ -2,6 +2,18 @@
 
 export type Difficulty = "easy" | "medium" | "hard";
 export type MealType = "breakfast" | "lunch" | "dinner" | "snack" | "any";
+export type DietMode = "any" | "diet" | "regular";
+export type DishType =
+  | "any"
+  | "main"
+  | "appetizer"
+  | "soup"
+  | "salad"
+  | "dessert"
+  | "sweet"
+  | "drink"
+  | "side"
+  | "fast";
 export type CookingSessionStatus =
   | "active"
   | "completed"
@@ -86,6 +98,8 @@ export interface RecommendationFilters {
   dietaryTags?: string[];
   budgetFriendly?: boolean;
   cuisine?: string;
+  dietMode?: DietMode;
+  dishType?: DishType;
 }
 
 export type MatchTier = "exact" | "near" | "discovery";

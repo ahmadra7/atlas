@@ -17,7 +17,7 @@ export const MOCK_INGREDIENTS: Ingredient[] = [
     id: "ing-egg",
     name: "تخم‌مرغ",
     normalizedName: "تخم مرغ",
-    aliases: ["تخم مرغ", "تخم‌مرغ", "egg"],
+    aliases: ["تخم مرغ", "تخم‌مرغ", "تخممرغ", "egg"],
     category: "لبنیات و پروتئین",
     popularity: 98,
   },
@@ -33,7 +33,7 @@ export const MOCK_INGREDIENTS: Ingredient[] = [
     id: "ing-tomato",
     name: "گوجه‌فرنگی",
     normalizedName: "گوجه فرنگی",
-    aliases: ["گوجه", "گوجه فرنگی", "گوجه‌فرنگی"],
+    aliases: ["گوجه", "گوجه فرنگی", "گوجه‌فرنگی", "گوجهفرنگي", "گوجهفرنگى"],
     category: "سبزیجات",
     popularity: 94,
   },
@@ -41,7 +41,7 @@ export const MOCK_INGREDIENTS: Ingredient[] = [
     id: "ing-potato",
     name: "سیب‌زمینی",
     normalizedName: "سیب زمینی",
-    aliases: ["سیب زمینی", "سیب‌زمینی"],
+    aliases: ["سیب زمینی", "سیب‌زمینی", "سیبزمینی", "سیب زمينى"],
     category: "سبزیجات",
     popularity: 92,
   },
@@ -143,7 +143,7 @@ const omeletteSteps = [
     tip: "هم زدن زیاد باعث پف بیشتر املت می‌شود.",
     timerSeconds: null,
     imageUrl:
-      "https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=1000&q=80",
+      "https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=480&q=40&fm=webp",
   },
   {
     id: "step-om-2",
@@ -152,7 +152,7 @@ const omeletteSteps = [
     tip: "حرارت متوسط نگه دارید تا پیاز نسوزد.",
     timerSeconds: 180,
     imageUrl:
-      "https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=1000&q=80",
+      "https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=480&q=40&fm=webp",
   },
   {
     id: "step-om-3",
@@ -161,7 +161,7 @@ const omeletteSteps = [
     tip: "در صورت تمایل گوجه حلقه‌ای روی املت بگذارید.",
     timerSeconds: 240,
     imageUrl:
-      "https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=1000&q=80",
+      "https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=480&q=40&fm=webp",
   },
 ];
 
@@ -181,7 +181,7 @@ export const MOCK_RECIPES: Recipe[] = [
     totalMinutes: 15,
     servings: 2,
     imageUrl:
-      "https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=1000&q=80",
+      "https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=480&q=40&fm=webp",
     dietaryTags: ["گیاهی-اختیاری"],
     budgetFriendly: true,
     versionId: "rv-omelette-1",
@@ -209,7 +209,7 @@ export const MOCK_RECIPES: Recipe[] = [
     totalMinutes: 30,
     servings: 2,
     imageUrl:
-      "https://images.unsplash.com/photo-1506084868230-bb9d95c24759?auto=format&fit=crop&w=1000&q=80",
+      "https://images.unsplash.com/photo-1506084868230-bb9d95c24759?auto=format&fit=crop&w=480&q=40&fm=webp",
     dietaryTags: [],
     budgetFriendly: true,
     versionId: "rv-potato-1",
@@ -228,7 +228,7 @@ export const MOCK_RECIPES: Recipe[] = [
         tip: "خلال‌ها را یکدست کنید تا همزمان بپزند.",
         timerSeconds: null,
         imageUrl:
-          "https://images.unsplash.com/photo-1506084868230-bb9d95c24759?auto=format&fit=crop&w=1000&q=80",
+          "https://images.unsplash.com/photo-1506084868230-bb9d95c24759?auto=format&fit=crop&w=480&q=40&fm=webp",
       },
       {
         id: "step-pe-2",
@@ -237,7 +237,7 @@ export const MOCK_RECIPES: Recipe[] = [
         tip: "در صورت نیاز کمی آب اضافه کنید و در تابه را بگذارید.",
         timerSeconds: 720,
         imageUrl:
-          "https://images.unsplash.com/photo-1506084868230-bb9d95c24759?auto=format&fit=crop&w=1000&q=80",
+          "https://images.unsplash.com/photo-1506084868230-bb9d95c24759?auto=format&fit=crop&w=480&q=40&fm=webp",
       },
       {
         id: "step-pe-3",
@@ -246,7 +246,7 @@ export const MOCK_RECIPES: Recipe[] = [
         tip: "زرده را نیم‌پز یا کامل بپزید؛ هر دو قابل قبول است.",
         timerSeconds: 300,
         imageUrl:
-          "https://images.unsplash.com/photo-1506084868230-bb9d95c24759?auto=format&fit=crop&w=1000&q=80",
+          "https://images.unsplash.com/photo-1506084868230-bb9d95c24759?auto=format&fit=crop&w=480&q=40&fm=webp",
       },
     ],
   },
@@ -264,8 +264,8 @@ export const MOCK_RECIPES: Recipe[] = [
     totalMinutes: 45,
     servings: 3,
     imageUrl:
-      "https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&w=1000&q=80",
-    dietaryTags: ["گیاهی"],
+      "https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&w=480&q=40&fm=webp",
+    dietaryTags: ["گیاهی", "رژیمی", "کم‌کالری"],
     budgetFriendly: true,
     versionId: "rv-adasi-1",
     ingredients: [
@@ -284,7 +284,7 @@ export const MOCK_RECIPES: Recipe[] = [
         tip: "کف روی عدس را در ابتدا بگیرید.",
         timerSeconds: 1200,
         imageUrl:
-          "https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&w=1000&q=80",
+          "https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&w=480&q=40&fm=webp",
       },
       {
         id: "step-ad-2",
@@ -293,7 +293,7 @@ export const MOCK_RECIPES: Recipe[] = [
         tip: "نمک را نزدیک پایان پخت بریزید.",
         timerSeconds: 900,
         imageUrl:
-          "https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&w=1000&q=80",
+          "https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&w=480&q=40&fm=webp",
       },
       {
         id: "step-ad-3",
@@ -302,7 +302,7 @@ export const MOCK_RECIPES: Recipe[] = [
         tip: "در صورت تمایل کمی کره روی عدسی داغ بگذارید.",
         timerSeconds: null,
         imageUrl:
-          "https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&w=1000&q=80",
+          "https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&w=480&q=40&fm=webp",
       },
     ],
   },
@@ -320,7 +320,7 @@ export const MOCK_RECIPES: Recipe[] = [
     totalMinutes: 60,
     servings: 4,
     imageUrl:
-      "https://images.unsplash.com/photo-1598103442097-8b74394b95c6?auto=format&fit=crop&w=1000&q=80",
+      "https://images.unsplash.com/photo-1598103442097-8b74394b95c6?auto=format&fit=crop&w=480&q=40&fm=webp",
     dietaryTags: [],
     budgetFriendly: false,
     versionId: "rv-chicken-1",
@@ -341,7 +341,7 @@ export const MOCK_RECIPES: Recipe[] = [
         tip: "تا تغییر رنگ سطح مرغ ادامه دهید.",
         timerSeconds: 600,
         imageUrl:
-          "https://images.unsplash.com/photo-1598103442097-8b74394b95c6?auto=format&fit=crop&w=1000&q=80",
+          "https://images.unsplash.com/photo-1598103442097-8b74394b95c6?auto=format&fit=crop&w=480&q=40&fm=webp",
       },
       {
         id: "step-cr-2",
@@ -350,7 +350,7 @@ export const MOCK_RECIPES: Recipe[] = [
         tip: "آب برنج باید کمی شور باشد.",
         timerSeconds: 600,
         imageUrl:
-          "https://images.unsplash.com/photo-1516684669134-de6f7c473a2a?auto=format&fit=crop&w=1000&q=80",
+          "https://images.unsplash.com/photo-1516684669134-de6f7c473a2a?auto=format&fit=crop&w=480&q=40&fm=webp",
       },
       {
         id: "step-cr-3",
@@ -359,7 +359,7 @@ export const MOCK_RECIPES: Recipe[] = [
         tip: "در پایان ۱۰ دقیقه حرارت را خیلی کم کنید.",
         timerSeconds: 1200,
         imageUrl:
-          "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?auto=format&fit=crop&w=1000&q=80",
+          "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?auto=format&fit=crop&w=480&q=40&fm=webp",
       },
     ],
   },
@@ -373,48 +373,7 @@ export const MOCK_PROFILE: UserProfile = {
   locale: "fa",
 };
 
-let inventory: InventoryItem[] = [
-  {
-    id: "inv-1",
-    ingredientId: "ing-egg",
-    ingredient: MOCK_INGREDIENTS[0],
-    quantity: 4,
-    unit: "عدد",
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: "inv-2",
-    ingredientId: "ing-onion",
-    ingredient: MOCK_INGREDIENTS[1],
-    quantity: 2,
-    unit: "عدد",
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: "inv-3",
-    ingredientId: "ing-tomato",
-    ingredient: MOCK_INGREDIENTS[2],
-    quantity: 3,
-    unit: "عدد",
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: "inv-4",
-    ingredientId: "ing-oil",
-    ingredient: MOCK_INGREDIENTS[6],
-    quantity: 1,
-    unit: "بطری",
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: "inv-5",
-    ingredientId: "ing-salt",
-    ingredient: MOCK_INGREDIENTS[7],
-    quantity: 1,
-    unit: null,
-    createdAt: new Date().toISOString(),
-  },
-];
+let inventory: InventoryItem[] = [];
 
 let favorites: FavoriteItem[] = [];
 let history: HistoryItem[] = [];
@@ -422,12 +381,12 @@ const sessions = new Map<string, CookingSession>();
 let recommendationSeq = 1;
 const customIngredients: Ingredient[] = [];
 
-function delay(ms = 280): Promise<void> {
+function delay(ms = 0): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export async function searchIngredients(q: string): Promise<Ingredient[]> {
-  await delay(120);
+  await delay(0);
   const query = normalizePersian(q);
   const pool = [...MOCK_INGREDIENTS, ...customIngredients];
   if (!query) {
@@ -444,14 +403,14 @@ export async function searchIngredients(q: string): Promise<Ingredient[]> {
 }
 
 export async function getInventory(): Promise<InventoryItem[]> {
-  await delay(180);
+  await delay(0);
   return [...inventory];
 }
 
 export async function addInventoryItem(
   ingredientId: string,
 ): Promise<InventoryItem> {
-  await delay(180);
+  await delay(0);
   const existing = inventory.find((i) => i.ingredientId === ingredientId);
   if (existing) return existing;
   const ingredient =
@@ -472,9 +431,153 @@ export async function addInventoryItem(
   return item;
 }
 
+const SPEECH_STOPWORDS = new Set(
+  [
+    "من",
+    "مواد",
+    "ماده",
+    "اولیه",
+    "یخچال",
+    "دارم",
+    "هست",
+    "هستم",
+    "هستش",
+    "هستن",
+    "هستند",
+    "هم",
+    "یک",
+    "یه",
+    "دو",
+    "سه",
+    "چهار",
+    "پنج",
+    "چند",
+    "عدد",
+    "کیلو",
+    "گرم",
+    "لیوان",
+    "قاشق",
+    "و",
+    "با",
+    "از",
+    "تا",
+    "رو",
+    "را",
+    "که",
+    "برای",
+    "بزن",
+    "اضافه",
+    "کن",
+    "کنید",
+    "میخوام",
+    "میخواهم",
+    "تو",
+    "داخل",
+    "لطفا",
+    "خواهش",
+    "میکنم",
+    "اینا",
+    "اینها",
+    "چی",
+    "چیز",
+    "چیزی",
+    "دارای",
+    "موجود",
+    "لیست",
+    "بگو",
+    "بگم",
+  ].map((w) => normalizePersian(w)),
+);
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** Extract ingredient names from a spoken Persian phrase (catalog-first). */
+export function resolveSpokenIngredients(transcript: string): string[] {
+  const raw = normalizePersian(transcript)
+    .replace(/[?!.;:…]/g, " ")
+    .replace(/[،,]/g, " ")
+    .replace(/\s+و\s+/g, " | ")
+    .replace(/\s+با\s+/g, " | ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!raw) return [];
+
+  const pool = [...MOCK_INGREDIENTS, ...customIngredients];
+  const terms = pool
+    .flatMap((ingredient) => {
+      const labels = [
+        ingredient.name,
+        ingredient.normalizedName,
+        ...ingredient.aliases,
+      ];
+      return labels.map((label) => ({
+        term: normalizePersian(label),
+        ingredient,
+      }));
+    })
+    .filter((row) => row.term.length >= 2)
+    .sort(
+      (a, b) =>
+        b.term.length - a.term.length ||
+        b.ingredient.popularity - a.ingredient.popularity,
+    );
+
+  let haystack = ` ${raw.replace(/\|/g, " | ")} `;
+  const found: Ingredient[] = [];
+  const seenIds = new Set<string>();
+
+  for (const { term, ingredient } of terms) {
+    const re = new RegExp(
+      `(^|[\\s|])${escapeRegExp(term)}(?=$|[\\s|])`,
+      "g",
+    );
+    if (!re.test(haystack)) continue;
+    if (!seenIds.has(ingredient.id)) {
+      seenIds.add(ingredient.id);
+      found.push(ingredient);
+    }
+    haystack = haystack.replace(re, " | ");
+  }
+
+  const leftovers = haystack
+    .split(/[\s|]+/)
+    .map((t) => t.trim())
+    .filter(Boolean)
+    .filter((t) => !SPEECH_STOPWORDS.has(t))
+    .filter((t) => !/^\d+$/.test(t))
+    .filter((t) => t.length >= 2);
+
+  const names: string[] = found.map((i) => i.name);
+  const seenNames = new Set(found.map((i) => normalizePersian(i.name)));
+
+  for (const token of leftovers) {
+    if (seenNames.has(token)) continue;
+    seenNames.add(token);
+    names.push(token);
+  }
+
+  return names;
+}
+
+/** Add many ingredients from speech; skips duplicates already in inventory. */
+export async function addIngredientsFromSpeech(
+  transcript: string,
+): Promise<InventoryItem[]> {
+  await delay(0);
+  const names = resolveSpokenIngredients(transcript);
+  const added: InventoryItem[] = [];
+  for (const name of names) {
+    const item = await addIngredientByName(name);
+    added.push(item);
+  }
+  return added;
+}
+
 /** Add by free-text name: reuse catalog match or create custom ingredient. */
 export async function addIngredientByName(name: string): Promise<InventoryItem> {
-  await delay(160);
+  await delay(0);
   const query = normalizePersian(name);
   if (!query) throw new Error("EMPTY_NAME");
 
@@ -509,7 +612,7 @@ export async function addIngredientByName(name: string): Promise<InventoryItem> 
 }
 
 export async function removeInventoryItem(id: string): Promise<void> {
-  await delay(120);
+  await delay(0);
   inventory = inventory.filter((item) => item.id !== id);
 }
 
@@ -558,7 +661,7 @@ function buildCard(
 export async function getRecommendations(
   filters: RecommendationFilters = {},
 ): Promise<RecommendationResult> {
-  await delay(420);
+  await delay(0);
   const ownedIds = new Set(inventory.map((i) => i.ingredientId));
   let cards = MOCK_RECIPES.map((recipe) => buildCard(recipe, ownedIds));
 
@@ -578,6 +681,54 @@ export async function getRecommendations(
     cards = cards.filter((card) => {
       const recipe = MOCK_RECIPES.find((r) => r.id === card.recipeId);
       return recipe?.budgetFriendly;
+    });
+  }
+  if (filters.cuisine && filters.cuisine !== "any") {
+    cards = cards.filter((card) => {
+      const recipe = MOCK_RECIPES.find((r) => r.id === card.recipeId);
+      return recipe?.cuisine === filters.cuisine;
+    });
+  }
+  if (filters.dietMode && filters.dietMode !== "any") {
+    const dietHints = ["رژیمی", "کم‌کالری", "گیاهی", "وگان", "بدون گلوتن"];
+    cards = cards.filter((card) => {
+      const recipe = MOCK_RECIPES.find((r) => r.id === card.recipeId);
+      const tags = recipe?.dietaryTags ?? [];
+      const isDiet = tags.some((tag) =>
+        dietHints.some((hint) => tag.includes(hint)),
+      );
+      return filters.dietMode === "diet" ? isDiet : !isDiet;
+    });
+  }
+  if (filters.dishType && filters.dishType !== "any") {
+    const dishMap: Record<string, string[]> = {
+      main: ["غذای اصلی"],
+      appetizer: ["پیش‌غذا"],
+      soup: ["سوپ و آش", "آش و عدسی"],
+      salad: ["سالاد"],
+      dessert: ["دسر"],
+      sweet: ["شیرینی"],
+      drink: ["نوشیدنی"],
+      side: ["مخلفات", "صبحانه"],
+      fast: ["فست‌فود", "غذای سریع"],
+    };
+    const allowed = dishMap[filters.dishType] ?? [];
+    cards = cards.filter((card) => {
+      const recipe = MOCK_RECIPES.find((r) => r.id === card.recipeId);
+      if (!recipe) return false;
+      return allowed.some(
+        (label) =>
+          recipe.category === label || recipe.category.includes(label),
+      );
+    });
+  }
+  if (filters.dietaryTags && filters.dietaryTags.length > 0) {
+    cards = cards.filter((card) => {
+      const recipe = MOCK_RECIPES.find((r) => r.id === card.recipeId);
+      const tags = recipe?.dietaryTags ?? [];
+      return filters.dietaryTags!.every((wanted) =>
+        tags.some((tag) => tag.includes(wanted)),
+      );
     });
   }
 
@@ -601,14 +752,14 @@ export async function getRecommendations(
 }
 
 export async function getRecipeBySlug(slug: string): Promise<Recipe | null> {
-  await delay(220);
+  await delay(0);
   return MOCK_RECIPES.find((r) => r.slug === slug) ?? null;
 }
 
 export async function startCookingSession(
   recipeId: string,
 ): Promise<CookingSession> {
-  await delay(250);
+  await delay(0);
   const recipe = MOCK_RECIPES.find((r) => r.id === recipeId);
   if (!recipe) throw new Error("RECIPE_NOT_FOUND");
   const session: CookingSession = {
@@ -642,7 +793,7 @@ export async function startCookingSession(
 export async function getCookingSession(
   sessionId: string,
 ): Promise<CookingSession | null> {
-  await delay(160);
+  await delay(0);
   return sessions.get(sessionId) ?? null;
 }
 
@@ -650,7 +801,7 @@ export async function completeStep(
   sessionId: string,
   stepId: string,
 ): Promise<CookingSession> {
-  await delay(120);
+  await delay(0);
   const session = sessions.get(sessionId);
   if (!session) throw new Error("SESSION_NOT_FOUND");
   const step = session.steps.find((s) => s.id === stepId);
@@ -667,7 +818,7 @@ export async function completeStep(
 export async function completeSession(
   sessionId: string,
 ): Promise<CookingSession> {
-  await delay(160);
+  await delay(0);
   const session = sessions.get(sessionId);
   if (!session) throw new Error("SESSION_NOT_FOUND");
   const updated: CookingSession = {
@@ -688,7 +839,7 @@ export async function abandonSession(
   sessionId: string,
   _reason?: string,
 ): Promise<CookingSession> {
-  await delay(160);
+  await delay(0);
   const session = sessions.get(sessionId);
   if (!session) throw new Error("SESSION_NOT_FOUND");
   const updated: CookingSession = {
@@ -709,7 +860,7 @@ export async function askAssistant(
   _sessionId: string,
   message: string,
 ): Promise<{ reply: string; suggestions: string[] }> {
-  await delay(350);
+  await delay(0);
   return {
     reply: `راهنمایی کوتاه: روی همین مرحله تمرکز کنید. «${message}» را با حرارت ملایم‌تر و صبر بیشتر امتحان کنید. اگر نتیجه مطلوب نبود، از دکمه کمک فوری استفاده کنید.`,
     suggestions: ["حرارت را کم کنم؟", "چقدر صبر کنم؟", "جایگزین ماده چیست؟"],
@@ -720,7 +871,7 @@ export async function sendSos(
   _sessionId: string,
   issueCode: string,
 ): Promise<{ reply: string; issueCode: string }> {
-  await delay(300);
+  await delay(0);
   const answers: Record<string, string> = {
     burning: "حرارت را کم کنید، کمی آب یا روغن اضافه کنید و هم بزنید.",
     too_salty: "کمی ماده اصلی بدون نمک یا آب جوشیده اضافه کنید تا تعادل برقرار شود.",
@@ -735,12 +886,12 @@ export async function sendSos(
 }
 
 export async function getFavorites(): Promise<FavoriteItem[]> {
-  await delay(160);
+  await delay(0);
   return [...favorites];
 }
 
 export async function toggleFavorite(recipeId: string): Promise<boolean> {
-  await delay(140);
+  await delay(0);
   const exists = favorites.some((f) => f.recipeId === recipeId);
   if (exists) {
     favorites = favorites.filter((f) => f.recipeId !== recipeId);
@@ -764,11 +915,11 @@ export async function toggleFavorite(recipeId: string): Promise<boolean> {
 }
 
 export async function getHistory(): Promise<HistoryItem[]> {
-  await delay(160);
+  await delay(0);
   return [...history];
 }
 
 export async function getProfile(): Promise<UserProfile> {
-  await delay(120);
+  await delay(0);
   return MOCK_PROFILE;
 }

@@ -1,0 +1,417 @@
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  isAtlasNativeApp,
+  postToNative,
+  subscribeNativeVoice,
+  type NativeVoiceMode,
+} from "@/lib/voiceBridgeClient";
+
+type SpeechRecognitionLike = {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  maxAlternatives: number;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+  onerror: ((event: { error: string }) => void) | null;
+  onend: (() => void) | null;
+};
+
+type SpeechRecognitionEventLike = {
+  resultIndex: number;
+  results: ArrayLike<{
+    isFinal: boolean;
+    length: number;
+    [index: number]: { transcript: string; confidence: number };
+  }>;
+};
+
+type SpeechRecognitionCtor = new () => SpeechRecognitionLike;
+
+function getSpeechRecognitionCtor(): SpeechRecognitionCtor | null {
+  if (typeof window === "undefined") return null;
+  const w = window as Window & {
+    SpeechRecognition?: SpeechRecognitionCtor;
+    webkitSpeechRecognition?: SpeechRecognitionCtor;
+  };
+  return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
+}
+
+export type VoicePhase = "idle" | "listening" | "processing" | "error";
+
+const DEFAULT_CONTEXT = [
+  "گوجه",
+  "گوجه فرنگی",
+  "پیاز",
+  "تخم مرغ",
+  "سیب زمینی",
+  "برنج",
+  "مرغ",
+  "عدس",
+  "نان",
+  "ماست",
+  "سیر",
+  "خیار",
+  "روغن",
+  "نمک",
+  "فلفل",
+  "کره",
+];
+
+function composeTranscript(text: string, alts: string[] = []): string {
+  const unique = [
+    ...new Set([text, ...alts].map((t) => t.trim()).filter(Boolean)),
+  ];
+  if (unique.length === 0) return "";
+  if (unique.length === 1) return unique[0]!;
+  return `${unique[0]} | ${unique.slice(1).join(" | ")}`;
+}
+
+/**
+ * Voice capture for ingredients — auto-adds on user confirmation / final result.
+ * Mobile: native bridge. Desktop: Web Speech API.
+ */
+export function useIngredientVoiceInput(options: {
+  onTranscript: (transcript: string) => void | Promise<void>;
+  contextualStrings?: string[];
+}) {
+  const onTranscriptRef = useRef(options.onTranscript);
+  onTranscriptRef.current = options.onTranscript;
+  const contextualStrings = options.contextualStrings ?? DEFAULT_CONTEXT;
+
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const finalsRef = useRef<string[]>([]);
+  const alternativesRef = useRef<string[]>([]);
+  const interimRef = useRef("");
+  const requestIdRef = useRef<string | null>(null);
+  const engineRef = useRef<"native" | "web" | null>(null);
+  const nativeModeRef = useRef<NativeVoiceMode | null>(null);
+  const submittingRef = useRef(false);
+
+  const [phase, setPhase] = useState<VoicePhase>("idle");
+  const [interim, setInterim] = useState("");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [volume, setVolume] = useState(0);
+  const [engineMode, setEngineMode] = useState<NativeVoiceMode | "web" | null>(
+    null,
+  );
+
+  const cleanupWebRecognition = useCallback(() => {
+    const rec = recognitionRef.current;
+    if (!rec) return;
+    rec.onresult = null;
+    rec.onerror = null;
+    rec.onend = null;
+    recognitionRef.current = null;
+  }, []);
+
+  const submitTranscript = useCallback(async (text: string, alts: string[] = []) => {
+    const composed = composeTranscript(text, alts);
+    if (!composed) {
+      setPhase("idle");
+      setVolume(0);
+      setInterim("");
+      return;
+    }
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    setPhase("processing");
+    setErrorMessage(null);
+    setInterim("");
+    interimRef.current = "";
+    try {
+      await Promise.resolve(onTranscriptRef.current(composed));
+    } catch {
+      /* silent */
+    } finally {
+      setPhase("idle");
+      setVolume(0);
+      submittingRef.current = false;
+      requestIdRef.current = null;
+      engineRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isAtlasNativeApp()) return;
+    const unsub = subscribeNativeVoice((msg) => {
+      if (msg.type === "atlas-voice/ready") {
+        nativeModeRef.current = msg.mode;
+        setEngineMode(msg.mode);
+        return;
+      }
+
+      const active = requestIdRef.current;
+      if ("requestId" in msg && active && msg.requestId !== active) return;
+
+      if (msg.type === "atlas-voice/started") {
+        setEngineMode(msg.mode);
+        setPhase("listening");
+        setErrorMessage(null);
+        setVolume(0.25);
+        return;
+      }
+
+      if (msg.type === "atlas-voice/volume") {
+        setVolume(msg.value);
+        return;
+      }
+
+      if (msg.type === "atlas-voice/partial") {
+        setInterim(msg.transcript);
+        interimRef.current = msg.transcript;
+        setPhase("listening");
+        return;
+      }
+
+      if (msg.type === "atlas-voice/final") {
+        finalsRef.current = [msg.transcript];
+        alternativesRef.current = msg.alternatives ?? [];
+        void submitTranscript(msg.transcript, msg.alternatives ?? []);
+        return;
+      }
+
+      if (msg.type === "atlas-voice/error") {
+        setPhase("idle");
+        setVolume(0);
+        setInterim("");
+        setErrorMessage(null);
+        requestIdRef.current = null;
+        engineRef.current = null;
+        return;
+      }
+
+      if (msg.type === "atlas-voice/ended") {
+        if (submittingRef.current) return;
+        setPhase((prev) => {
+          if (prev === "processing") return prev;
+          const text =
+            finalsRef.current.join(" ").trim() || interimRef.current.trim();
+          if (text) {
+            void submitTranscript(text, alternativesRef.current);
+            return "processing";
+          }
+          setVolume(0);
+          setInterim("");
+          return "idle";
+        });
+        requestIdRef.current = null;
+        engineRef.current = null;
+      }
+    });
+
+    postToNative({ type: "atlas-voice/ping" });
+    return unsub;
+  }, [submitTranscript]);
+
+  const startWeb = useCallback(() => {
+    const Ctor = getSpeechRecognitionCtor();
+    if (!Ctor) {
+      setPhase("idle");
+      return;
+    }
+
+    try {
+      recognitionRef.current?.abort();
+    } catch {
+      /* ignore */
+    }
+    cleanupWebRecognition();
+
+    finalsRef.current = [];
+    alternativesRef.current = [];
+    interimRef.current = "";
+    setInterim("");
+    setErrorMessage(null);
+    setPhase("listening");
+    setEngineMode("web");
+    setVolume(0.35);
+    engineRef.current = "web";
+
+    const recognition = new Ctor();
+    recognition.lang = "fa-IR";
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.maxAlternatives = 5;
+
+    recognition.onresult = (event) => {
+      let interimChunk = "";
+      for (let i = event.resultIndex; i < event.results.length; i += 1) {
+        const result = event.results[i];
+        if (!result) continue;
+        const best = result[0]?.transcript?.trim() ?? "";
+        if (result.isFinal) {
+          if (best) finalsRef.current.push(best);
+          for (let a = 0; a < result.length; a += 1) {
+            const alt = result[a]?.transcript?.trim();
+            if (alt) alternativesRef.current.push(alt);
+          }
+        } else if (best) {
+          interimChunk += (interimChunk ? " " : "") + best;
+        }
+      }
+      interimRef.current = interimChunk;
+      setInterim(interimChunk);
+      // Web Speech has no volume meter — pulse UI while words arrive.
+      setVolume(interimChunk || finalsRef.current.length ? 0.7 : 0.3);
+    };
+
+    recognition.onerror = (event) => {
+      if (event.error === "aborted" || event.error === "no-speech") return;
+      setPhase("idle");
+      setVolume(0);
+      setErrorMessage(null);
+      engineRef.current = null;
+    };
+
+    recognition.onend = () => {
+      cleanupWebRecognition();
+      if (engineRef.current !== "web") return;
+      engineRef.current = null;
+      if (submittingRef.current) return;
+      const primary = finalsRef.current.join(" ").trim();
+      const trailing = interimRef.current.trim();
+      void submitTranscript(primary || trailing, alternativesRef.current);
+    };
+
+    recognitionRef.current = recognition;
+    try {
+      recognition.start();
+    } catch {
+      setPhase("idle");
+      setVolume(0);
+      cleanupWebRecognition();
+      engineRef.current = null;
+    }
+  }, [cleanupWebRecognition, submitTranscript]);
+
+  const start = useCallback(() => {
+    if (phase === "listening" || phase === "processing") return;
+
+    finalsRef.current = [];
+    alternativesRef.current = [];
+    interimRef.current = "";
+    setInterim("");
+    setErrorMessage(null);
+
+    if (isAtlasNativeApp()) {
+      const requestId = `v-${Date.now()}`;
+      requestIdRef.current = requestId;
+      engineRef.current = "native";
+      setPhase("listening");
+      const ok = postToNative({
+        type: "atlas-voice/start",
+        requestId,
+        lang: "fa-IR",
+        contextualStrings,
+      });
+      if (!ok) startWeb();
+      return;
+    }
+
+    startWeb();
+  }, [contextualStrings, phase, startWeb]);
+
+  const cancel = useCallback(() => {
+    if (engineRef.current === "native") {
+      postToNative({
+        type: "atlas-voice/abort",
+        requestId: requestIdRef.current ?? "",
+      });
+    }
+    if (engineRef.current === "web") {
+      try {
+        recognitionRef.current?.abort();
+      } catch {
+        /* ignore */
+      }
+      cleanupWebRecognition();
+    }
+    requestIdRef.current = null;
+    engineRef.current = null;
+    finalsRef.current = [];
+    alternativesRef.current = [];
+    interimRef.current = "";
+    setInterim("");
+    setVolume(0);
+    setErrorMessage(null);
+    setPhase("idle");
+  }, [cleanupWebRecognition]);
+
+  /** Finish listening and add ingredients from what was heard. */
+  const stop = useCallback(() => {
+    if (phase !== "listening") return;
+    if (engineRef.current === "native") {
+      postToNative({
+        type: "atlas-voice/stop",
+        requestId: requestIdRef.current ?? "",
+      });
+      return;
+    }
+    if (engineRef.current === "web") {
+      try {
+        recognitionRef.current?.stop();
+      } catch {
+        /* ignore */
+      }
+      return;
+    }
+    const text =
+      finalsRef.current.join(" ").trim() || interimRef.current.trim();
+    if (text) void submitTranscript(text, alternativesRef.current);
+    else cancel();
+  }, [cancel, phase, submitTranscript]);
+
+  useEffect(() => {
+    return () => {
+      try {
+        recognitionRef.current?.abort();
+      } catch {
+        /* ignore */
+      }
+      cleanupWebRecognition();
+      if (engineRef.current === "native") {
+        postToNative({
+          type: "atlas-voice/abort",
+          requestId: requestIdRef.current ?? "",
+        });
+      }
+    };
+  }, [cleanupWebRecognition]);
+
+  // Soft idle pulse when listening without volume events (intent / silence).
+  useEffect(() => {
+    if (phase !== "listening") return;
+    if (engineMode === "native") return;
+    const id = window.setInterval(() => {
+      setVolume((v) => {
+        const next = 0.25 + Math.random() * 0.55;
+        return Math.abs(next - v) < 0.08 ? next + 0.15 : next;
+      });
+    }, 140);
+    return () => window.clearInterval(id);
+  }, [engineMode, phase]);
+
+  return {
+    phase,
+    interim,
+    volume,
+    engineMode,
+    errorMessage,
+    listening: phase === "listening",
+    processing: phase === "processing",
+    /** True when recognition stays inside our UI (no Google popup). */
+    inAppRecording: engineMode === "native" || engineMode === "web",
+    start,
+    stop,
+    cancel,
+    clearError: () => {
+      setErrorMessage(null);
+      setPhase("idle");
+    },
+  };
+}

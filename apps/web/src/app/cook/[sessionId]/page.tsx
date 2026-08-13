@@ -10,14 +10,18 @@ import {
   ArrowRight2,
   CloseCircle,
   Danger,
+  LampOn,
   LogoutCurve,
   Send2,
   TickCircle,
+  Home2,
 } from "iconsax-react";
+import { BrandMark } from "@/components/brand/BrandMark";
 import { AppShell } from "@/components/layout/AppShell";
 import { BottomBar } from "@/components/ui/BottomBar";
 import { Button } from "@/components/ui/Button";
-import { LoadingBlock, StateView } from "@/components/ui/StateView";
+import { CookSkeleton } from "@/components/ui/Skeleton";
+import { StateView } from "@/components/ui/StateView";
 import { RecipeImage } from "@/components/recipe/RecipeImage";
 import { atlasClient } from "@/lib/client";
 
@@ -43,8 +47,8 @@ export default function CookingPage() {
   const [askText, setAskText] = useState("");
   const [helpReply, setHelpReply] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
-  const [rating, setRating] = useState(0);
-  const [saveFavorite, setSaveFavorite] = useState(true);
+  const [filledStars, setFilledStars] = useState(0);
+  const [ratingLocked, setRatingLocked] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -130,7 +134,7 @@ export default function CookingPage() {
   if (loading) {
     return (
       <AppShell hideNav showBack backHref="/home" title="پخت">
-        <LoadingBlock label="آماده‌سازی حالت پخت…" />
+        <CookSkeleton />
       </AppShell>
     );
   }
@@ -150,62 +154,95 @@ export default function CookingPage() {
   }
 
   if (session.status === "completed") {
+    function finishAndGoHome() {
+      router.push("/home");
+    }
+
+    function handleRate(n: number) {
+      if (ratingLocked) return;
+      setRatingLocked(true);
+      setFilledStars(0);
+      for (let i = 1; i <= n; i += 1) {
+        window.setTimeout(() => setFilledStars(i), i * 140);
+      }
+      window.setTimeout(() => {
+        finishAndGoHome();
+      }, n * 140 + 2200);
+    }
+
     return (
       <AppShell hideNav showBack backHref="/home" title="اتمام پخت">
-        <div className="space-y-5 pb-36 pt-4 text-center">
-          <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-atlas-secondary-soft text-4xl">
+        <div className="flex min-h-[70vh] flex-col items-center px-2 pb-8 pt-8 text-center">
+          <div className="mx-auto flex h-28 w-28 items-center justify-center rounded-full bg-gradient-to-b from-amber-50 to-orange-50 text-5xl shadow-[0_8px_24px_rgba(245,158,11,0.18)] ring-1 ring-amber-100">
             🎉
           </div>
-          <h1 className="text-h1 text-atlas-ink">پخت تمام شد!</h1>
-          <p className="text-body text-atlas-ink-muted">
-            «{session.recipeTitle}» آماده است. چطور بود؟
+          <h1 className="mt-6 text-h1 text-atlas-ink">پخت تمام شد!</h1>
+          <p className="mt-2 max-w-xs text-body leading-7 text-atlas-ink-muted">
+            «{session.recipeTitle}» آماده است.
+            <br />
+            به نظرت چطور از آب دراومد؟
           </p>
-          <div className="flex justify-center gap-2">
-            {[1, 2, 3, 4, 5].map((n) => (
-              <button
-                key={n}
-                type="button"
-                onClick={() => setRating(n)}
-                className={`text-2xl ${rating >= n ? "text-atlas-accent" : "text-atlas-border-strong"}`}
-              >
-                ★
-              </button>
-            ))}
-          </div>
-          <label className="flex items-center justify-center gap-2 text-body text-atlas-ink">
-            <input
-              type="checkbox"
-              checked={saveFavorite}
-              onChange={(e) => setSaveFavorite(e.target.checked)}
-            />
-            ذخیره در علاقه‌مندی‌ها
-          </label>
-        </div>
 
-        <BottomBar>
-          <Button
-            size="lg"
-            className="w-full"
-            icon={<TickCircle size={20} color="currentColor" />}
-            onClick={async () => {
-              if (saveFavorite) {
-                await atlasClient.toggleFavorite(session.recipeId);
-              }
-              router.push("/home");
-            }}
-          >
-            ذخیره و ادامه
-          </Button>
-          <Button
-            variant="tertiary"
-            size="lg"
-            className="w-full"
-            icon={<LogoutCurve size={18} color="currentColor" />}
-            onClick={() => router.push("/home")}
-          >
-            پایان
-          </Button>
-        </BottomBar>
+          <div className="mt-8 flex items-center justify-center gap-3">
+            {[1, 2, 3, 4, 5].map((n) => {
+              const on = filledStars >= n;
+              return (
+                <button
+                  key={n}
+                  type="button"
+                  disabled={ratingLocked}
+                  onClick={() => handleRate(n)}
+                  aria-label={`${toPersianDigits(n)} ستاره`}
+                  className={`transition-all duration-300 ease-out disabled:cursor-default ${
+                    on
+                      ? "scale-125 opacity-100 drop-shadow-[0_6px_10px_rgba(245,158,11,0.45)]"
+                      : ratingLocked
+                        ? "scale-95 opacity-25"
+                        : "scale-100 opacity-40 hover:scale-105 hover:opacity-70"
+                  }`}
+                >
+                  <svg
+                    width="42"
+                    height="42"
+                    viewBox="0 0 24 24"
+                    aria-hidden
+                    className={`transition-[fill,stroke,transform] duration-300 ease-out ${
+                      on ? "animate-[starPop_0.35s_ease-out]" : ""
+                    }`}
+                  >
+                    <path
+                      d="M12 3.1c.28 0 .52.16.63.42l1.72 4.1c.2.48.64.82 1.16.9l4.4.5c.66.07.93.9.43 1.34l-3.35 2.95c-.4.35-.58.9-.45 1.4l1.02 4.3c.15.64-.54 1.14-1.1.8l-3.72-2.3a1.35 1.35 0 0 0-1.48 0l-3.72 2.3c-.56.34-1.25-.16-1.1-.8l1.02-4.3c.13-.5-.05-1.05-.45-1.4L3.66 10.36c-.5-.44-.23-1.27.43-1.34l4.4-.5c.52-.08.96-.42 1.16-.9l1.72-4.1A.7.7 0 0 1 12 3.1Z"
+                      fill={on ? "#FBBF24" : "#E4E4E7"}
+                      stroke={on ? "#F59E0B" : "#D4D4D8"}
+                      strokeWidth="1.2"
+                      strokeLinejoin="round"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </button>
+              );
+            })}
+          </div>
+
+          {ratingLocked ? (
+            <p className="mt-4 text-caption font-medium text-amber-700">
+              ممنون از امتیازت!
+            </p>
+          ) : null}
+
+          <div className="mt-auto w-full pt-10">
+            <Button
+              variant="tertiary"
+              className="mx-auto w-full max-w-xs font-medium"
+              disabled={ratingLocked}
+              iconEnd
+              icon={<Home2 size={18} color="currentColor" />}
+              onClick={finishAndGoHome}
+            >
+              بازگشت به خانه
+            </Button>
+          </div>
+        </div>
       </AppShell>
     );
   }
@@ -215,52 +252,73 @@ export default function CookingPage() {
   return (
     <AppShell hideNav showBack title="پخت">
       <div className="relative flex min-h-[70vh] flex-col pb-28">
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-caption font-semibold text-atlas-ink-muted">
-            مرحله {toPersianDigits(step.order)} از{" "}
-            {toPersianDigits(session.totalSteps)}
-          </p>
+        <div className="flex items-center justify-end">
           <button
             type="button"
-            aria-label="خروج از پخت"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full hover:bg-atlas-surface-muted"
             onClick={() => setPanel("abandon")}
+            className="inline-flex items-center gap-1.5 rounded-full px-2 py-1.5 text-caption font-semibold text-atlas-ink hover:bg-atlas-surface-muted"
           >
-            <LogoutCurve size={20} color="#111111" />
+            <LogoutCurve size={18} color="#111111" />
+            <span>خروج از پخت</span>
           </button>
         </div>
 
-        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-atlas-border">
-          <div
-            className="h-full rounded-full bg-atlas-primary transition-all"
-            style={{
-              width: `${(step.order / session.totalSteps) * 100}%`,
-            }}
-          />
+        <div className="mt-4 flex flex-col items-center gap-3">
+          <div className="relative w-full overflow-hidden rounded-atlas-xl">
+            <RecipeImage
+              src={step.imageUrl}
+              alt={session.recipeTitle}
+              className="h-44 w-full"
+            />
+            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/55 via-black/20 to-transparent px-3 pb-3 pt-10">
+              <div className="flex items-center justify-between gap-3 text-white">
+                <p className="text-caption font-medium tracking-wide">
+                  مرحله {toPersianDigits(step.order)} از{" "}
+                  {toPersianDigits(session.totalSteps)}
+                </p>
+                <p className="text-caption font-semibold tabular-nums">
+                  {toPersianDigits(
+                    Math.round((step.order / session.totalSteps) * 100),
+                  )}
+                  ٪
+                </p>
+              </div>
+              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/30">
+                <div
+                  className="h-full rounded-full bg-white shadow-[0_0_12px_rgba(255,255,255,0.55)] transition-all duration-500 ease-out"
+                  style={{
+                    width: `${Math.max(
+                      8,
+                      (step.order / session.totalSteps) * 100,
+                    )}%`,
+                  }}
+                />
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div className="relative mt-4 overflow-hidden rounded-atlas-xl">
-          <RecipeImage
-            src={step.imageUrl}
-            alt={session.recipeTitle}
-            className="h-36 w-full scale-105 blur-[2px]"
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-white/10 via-white/55 to-white" />
-        </div>
-
-        <div className="relative z-10 -mt-10 flex flex-1 flex-col items-center justify-center px-2 text-center">
-          <p className="max-w-[22rem] text-[1.75rem] font-extrabold leading-[2.35rem] tracking-tight text-atlas-ink sm:text-[2rem] sm:leading-[2.6rem]">
+        <div className="relative z-10 mt-10 flex flex-1 flex-col items-center justify-end px-2 pb-2 text-center">
+          <p className="max-w-[22rem] text-[1.75rem] font-extrabold leading-[2.35rem] tracking-tight text-black sm:text-[2rem] sm:leading-[2.6rem]">
             {step.instruction}
           </p>
           {step.tip ? (
-            <p className="mt-4 max-w-sm text-caption leading-6 text-atlas-ink-muted">
-              نکته: {step.tip}
-            </p>
+            <div className="mt-4 inline-flex max-w-sm items-center gap-2 rounded-full bg-amber-50 px-3.5 py-2 text-right ring-1 ring-inset ring-amber-200/80">
+              <LampOn
+                size={16}
+                color="#D97706"
+                variant="Bold"
+                className="shrink-0"
+              />
+              <p className="text-caption font-medium leading-5 text-amber-800">
+                {step.tip}
+              </p>
+            </div>
           ) : null}
         </div>
 
         {displaySeconds !== null ? (
-          <div className="mt-6 flex flex-col items-center gap-1.5">
+          <div className="mt-4 flex flex-col items-center gap-1.5">
             <button
               type="button"
               onClick={() => {
@@ -269,20 +327,20 @@ export default function CookingPage() {
                 }
                 setTimerRunning((v) => !v);
               }}
-              className="group flex flex-col items-center gap-1 rounded-atlas-xl px-4 py-2 transition active:scale-95"
+              className="group flex flex-col items-center gap-2.5 rounded-atlas-xl px-4 py-2 transition active:scale-95"
               aria-label={timerRunning ? "توقف تایمر" : "شروع تایمر"}
             >
               <span
-                className={`relative inline-flex h-20 w-20 items-center justify-center transition ${
+                className={`relative inline-flex h-14 w-14 items-center justify-center transition ${
                   timerRunning ? "scale-105 drop-shadow-lg" : "drop-shadow-md"
                 }`}
               >
                 <img
-                  src="/icons/clock-3d.svg"
+                  src="/icons/alarm-clock-3d.png"
                   alt=""
-                  width={80}
-                  height={80}
-                  className="pointer-events-none select-none"
+                  width={56}
+                  height={56}
+                  className="pointer-events-none select-none object-contain"
                 />
                 {timerRunning ? (
                   <span className="absolute inset-0 animate-ping rounded-full bg-atlas-primary/15" />
@@ -290,13 +348,13 @@ export default function CookingPage() {
               </span>
               <span
                 dir="ltr"
-                className={`font-mono text-2xl font-bold tabular-nums tracking-wide ${
+                className={`mt-0.5 text-xl font-bold tracking-[0.08em] ${
                   timerRunning ? "text-atlas-primary" : "text-atlas-ink"
                 }`}
               >
                 {formatDurationClock(timerLeft ?? displaySeconds)}
               </span>
-              <span className="text-[11px] text-atlas-ink-faint">
+              <span className="text-caption text-atlas-ink-faint">
                 {timerRunning ? "برای توقف بزنید" : "برای شروع بزنید"}
               </span>
             </button>
@@ -308,24 +366,16 @@ export default function CookingPage() {
         type="button"
         aria-label="دستیار هوشمند"
         onClick={() => setPanel("ask")}
-        className="fixed bottom-28 left-5 z-40 flex h-14 w-14 items-center justify-center rounded-full shadow-[0_12px_28px_rgba(255,55,55,0.4)] transition hover:scale-105 active:scale-95"
+        className="fixed bottom-28 left-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-[0_12px_28px_rgba(17,17,17,0.18)] ring-1 ring-zinc-200 transition hover:scale-105 active:scale-95"
       >
-        <img src="/icons/ai-fab.svg" alt="" width={56} height={56} />
+        <BrandMark size={40} />
       </button>
 
       <BottomBar>
         <div className="grid grid-cols-2 gap-2">
           <Button
-            variant="secondary"
             size="lg"
-            disabled={step.order <= 1}
-            icon={<ArrowRight2 size={18} color="currentColor" />}
-            onClick={() => void goPrev()}
-          >
-            قبلی
-          </Button>
-          <Button
-            size="lg"
+            iconEnd
             icon={
               step.order >= session.totalSteps ? (
                 <TickCircle size={18} color="currentColor" />
@@ -336,6 +386,15 @@ export default function CookingPage() {
             onClick={() => void goNext()}
           >
             {step.order >= session.totalSteps ? "اتمام پخت" : "مرحله بعد"}
+          </Button>
+          <Button
+            variant="secondary"
+            size="lg"
+            disabled={step.order <= 1}
+            icon={<ArrowRight2 size={18} color="currentColor" />}
+            onClick={() => void goPrev()}
+          >
+            مرحله قبل
           </Button>
         </div>
       </BottomBar>
@@ -433,22 +492,49 @@ function Modal({
   children: ReactNode;
   onClose: () => void;
 }) {
+  const [entered, setEntered] = useState(false);
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => {
+      requestAnimationFrame(() => setEntered(true));
+    });
+    return () => cancelAnimationFrame(id);
+  }, []);
+
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4">
+    <div className="fixed inset-0 z-50 flex items-end justify-center">
       <button
         type="button"
         aria-label="بستن"
-        className="absolute inset-0 bg-black/40 backdrop-blur-[1px]"
+        className={`absolute inset-0 bg-black/40 backdrop-blur-[1px] transition-opacity duration-300 ease-out ${
+          entered ? "opacity-100" : "opacity-0"
+        }`}
         onClick={onClose}
       />
-      <div className="relative z-10 w-full max-w-md rounded-t-atlas-xl border border-atlas-border bg-atlas-surface p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-atlas sm:rounded-atlas-xl">
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <h2 className="text-h3 text-atlas-ink">{title}</h2>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        className={`relative z-10 w-full max-w-md rounded-t-atlas-xl border border-atlas-border bg-atlas-surface p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-atlas transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+          entered ? "translate-y-0" : "translate-y-full"
+        }`}
+      >
+        <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-zinc-300" />
+        <div className="relative mb-4 flex items-center justify-center">
+          <h2 className="text-center text-h3 text-atlas-ink">{title}</h2>
           <button
             type="button"
             onClick={onClose}
             aria-label="بستن"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-atlas-ink-muted hover:bg-atlas-surface-muted"
+            className="absolute left-0 inline-flex h-9 w-9 items-center justify-center rounded-full text-atlas-ink-muted hover:bg-atlas-surface-muted"
           >
             <CloseCircle size={24} color="currentColor" />
           </button>

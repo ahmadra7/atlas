@@ -1,29 +1,81 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 import type {
+  DietMode,
+  Difficulty,
+  DishType,
   MealType,
   RecommendationFilters,
   RecommendationResult,
 } from "@atlas/contracts";
 import { Edit2 } from "iconsax-react";
-import { mealLabelFa } from "@atlas/shared";
 import { AppShell } from "@/components/layout/AppShell";
 import { RecipeCard } from "@/components/recipe/RecipeCard";
 import { Button } from "@/components/ui/Button";
-import { Chip } from "@/components/ui/Chip";
-import { LoadingBlock, StateView } from "@/components/ui/StateView";
+import { RecommendationsSkeleton } from "@/components/ui/Skeleton";
+import { StateView } from "@/components/ui/StateView";
 import { atlasClient } from "@/lib/client";
 
 const meals: MealType[] = ["any", "breakfast", "lunch", "dinner", "snack"];
+const dietModes: DietMode[] = ["any", "diet", "regular"];
+const dishTypes: DishType[] = [
+  "any",
+  "main",
+  "appetizer",
+  "soup",
+  "salad",
+  "dessert",
+  "sweet",
+  "drink",
+  "side",
+  "fast",
+];
+const difficulties: Array<Difficulty | "any"> = ["any", "easy", "medium", "hard"];
 
-export default function RecommendationsPage() {
-  const [filters, setFilters] = useState<RecommendationFilters>({
-    meal: "any",
-    maxMinutes: 60,
-    difficulty: "any",
-  });
+function parseFilters(searchParams: URLSearchParams): RecommendationFilters {
+  const mealParam = searchParams.get("meal") as MealType | null;
+  const maxParam = Number(searchParams.get("maxMinutes") || 60);
+  const dietModeParam = searchParams.get("dietMode") as DietMode | null;
+  const dishTypeParam = searchParams.get("dishType") as DishType | null;
+  const difficultyParam = searchParams.get("difficulty") as
+    | Difficulty
+    | "any"
+    | null;
+  const cuisineParam = searchParams.get("cuisine");
+  const tagsParam = searchParams.get("tags");
+  const budgetParam = searchParams.get("budgetFriendly");
+
+  return {
+    meal: mealParam && meals.includes(mealParam) ? mealParam : "any",
+    maxMinutes: Number.isFinite(maxParam) && maxParam > 0 ? maxParam : 60,
+    dietMode:
+      dietModeParam && dietModes.includes(dietModeParam)
+        ? dietModeParam
+        : "any",
+    dishType:
+      dishTypeParam && dishTypes.includes(dishTypeParam)
+        ? dishTypeParam
+        : "any",
+    difficulty:
+      difficultyParam && difficulties.includes(difficultyParam)
+        ? difficultyParam
+        : "any",
+    cuisine: cuisineParam || undefined,
+    budgetFriendly: budgetParam === "1",
+    dietaryTags: tagsParam
+      ? tagsParam.split(",").map((t) => t.trim()).filter(Boolean)
+      : undefined,
+  };
+}
+
+function RecommendationsContent() {
+  const searchParams = useSearchParams();
+  const [filters, setFilters] = useState<RecommendationFilters>(() =>
+    parseFilters(searchParams),
+  );
   const [result, setResult] = useState<RecommendationResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -41,9 +93,11 @@ export default function RecommendationsPage() {
   }
 
   useEffect(() => {
-    void load();
+    const next = parseFilters(searchParams);
+    setFilters(next);
+    void load(next);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [searchParams]);
 
   const cards = [
     ...(result?.exact ?? []),
@@ -52,73 +106,63 @@ export default function RecommendationsPage() {
   ];
 
   return (
-    <AppShell hideNav showBack backHref="/ingredients" title="پیشنهادها">
+    <AppShell hideNav showBack backHref="/home" title="لیست غذاها">
       <div className="space-y-4">
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-body text-atlas-ink-muted">
-            بهترین تطبیق‌ها برای مواد شما
-          </p>
-          <Link href="/ingredients">
-            <Button
-              variant="tertiary"
-              size="sm"
-              icon={<Edit2 size={16} color="currentColor" />}
-            >
-              ویرایش مواد
-            </Button>
-          </Link>
-        </div>
+        {loading ? (
+          <RecommendationsSkeleton />
+        ) : (
+          <>
+            <div className="flex justify-end">
+              <Link href="/home">
+                <Button
+                  variant="tertiary"
+                  size="sm"
+                  icon={<Edit2 size={16} color="currentColor" />}
+                >
+                  ویرایش مواد
+                </Button>
+              </Link>
+            </div>
 
-        <div className="flex gap-2 overflow-x-auto pb-1">
-          {meals.map((meal) => (
-            <Chip
-              key={meal}
-              label={mealLabelFa[meal]}
-              active={filters.meal === meal}
-              onClick={() => setFilters((f) => ({ ...f, meal }))}
-            />
-          ))}
-        </div>
-        <Button
-          variant="secondary"
-          className="w-full"
-          onClick={() => void load(filters)}
-        >
-          اعمال فیلتر
-        </Button>
+            {error ? (
+              <StateView
+                tone="danger"
+                title="خطا"
+                description={error}
+                actionLabel="تلاش دوباره"
+                onAction={() => void load()}
+              />
+            ) : null}
+            {cards.length === 0 ? (
+              <StateView
+                tone="empty"
+                title="نتیجه‌ای پیدا نشد"
+                description="مواد را بیشتر کنید یا فیلتر را بازتر بگیرید."
+              />
+            ) : null}
 
-        {error ? (
-          <StateView
-            tone="danger"
-            title="خطا"
-            description={error}
-            actionLabel="تلاش دوباره"
-            onAction={() => void load()}
-          />
-        ) : null}
-        {loading ? <LoadingBlock label="در حال پیدا کردن بهترین‌ها…" /> : null}
-        {!loading && cards.length === 0 ? (
-          <StateView
-            tone="empty"
-            title="نتیجه‌ای پیدا نشد"
-            description="مواد را بیشتر کنید یا فیلتر را بازتر بگیرید."
-          />
-        ) : null}
-
-        {!loading && (result?.exact.length ?? 0) === 0 && cards.length > 0 ? (
-          <StateView
-            tone="warning"
-            title="تطبیق دقیق نیست"
-            description="پیشنهادهای نزدیک را ببینید."
-          />
-        ) : null}
-
-        <div className="space-y-3">
-          {cards.map((card) => (
-            <RecipeCard key={card.recipeId} card={card} />
-          ))}
-        </div>
+            <div className="space-y-3">
+              {cards.map((card) => (
+                <RecipeCard key={card.recipeId} card={card} />
+              ))}
+            </div>
+          </>
+        )}
       </div>
     </AppShell>
+  );
+}
+
+export default function RecommendationsPage() {
+  return (
+    <Suspense
+      fallback={
+        <AppShell hideNav showBack backHref="/home" title="لیست غذاها">
+          <RecommendationsSkeleton />
+        </AppShell>
+      }
+    >
+      <RecommendationsContent />
+    </Suspense>
   );
 }

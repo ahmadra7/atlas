@@ -1,6 +1,7 @@
 import type { Config } from "tailwindcss";
 
 export default {
+  darkMode: "class",
   content: [
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -34,6 +35,7 @@ export default {
           background: "var(--atlas-background)",
           focus: "var(--atlas-focus)",
           "chip-active": "var(--atlas-chip-active)",
+          "chip-active-text": "var(--atlas-chip-active-text)",
         },
       },
       borderRadius: {
@@ -54,11 +56,11 @@ export default {
         7: "48px",
       },
       fontSize: {
-        h1: ["28px", { lineHeight: "1.35", fontWeight: "700" }],
-        h2: ["22px", { lineHeight: "1.4", fontWeight: "700" }],
-        h3: ["18px", { lineHeight: "1.4", fontWeight: "600" }],
-        body: ["14px", { lineHeight: "1.7", fontWeight: "400" }],
-        caption: ["12px", { lineHeight: "1.5", fontWeight: "400" }],
+        h1: ["30px", { lineHeight: "1.35", fontWeight: "700" }],
+        h2: ["24px", { lineHeight: "1.4", fontWeight: "700" }],
+        h3: ["19px", { lineHeight: "1.45", fontWeight: "600" }],
+        body: ["16px", { lineHeight: "1.7", fontWeight: "400" }],
+        caption: ["14px", { lineHeight: "1.55", fontWeight: "400" }],
       },
       fontFamily: {
         sans: ["IRANSans", "Vazirmatn", "Tahoma", "sans-serif"],

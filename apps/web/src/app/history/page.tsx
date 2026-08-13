@@ -5,7 +5,8 @@ import { useEffect, useState } from "react";
 import type { HistoryItem } from "@atlas/contracts";
 import { toPersianDigits } from "@atlas/shared";
 import { AppShell } from "@/components/layout/AppShell";
-import { LoadingBlock, StateView } from "@/components/ui/StateView";
+import { HistorySkeleton } from "@/components/ui/Skeleton";
+import { StateView } from "@/components/ui/StateView";
 import { atlasClient } from "@/lib/client";
 
 const statusFa: Record<HistoryItem["status"], string> = {
@@ -35,7 +36,7 @@ export default function HistoryPage() {
   return (
     <AppShell title="تاریخچه پخت">
       <div className="space-y-3">
-        {loading ? <LoadingBlock /> : null}
+        {loading ? <HistorySkeleton /> : null}
         {error ? <StateView tone="danger" title="خطا" description={error} /> : null}
         {!loading && !error && items.length === 0 ? (
           <StateView

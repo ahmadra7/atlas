@@ -11,6 +11,12 @@ config.resolver.nodeModulesPaths = [
   path.resolve(projectRoot, "node_modules"),
   path.resolve(workspaceRoot, "node_modules"),
 ];
-config.resolver.disableHierarchicalLookup = true;
+// Keep hierarchical lookup so React resolves from the mobile app,
+// not a duplicate copy from the monorepo root.
+config.resolver.disableHierarchicalLookup = false;
+config.resolver.extraNodeModules = {
+  react: path.resolve(workspaceRoot, "node_modules/react"),
+  "react-native": path.resolve(workspaceRoot, "node_modules/react-native"),
+};
 
 module.exports = config;

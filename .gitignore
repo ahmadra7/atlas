@@ -26,3 +26,9 @@ yarn-error.log*
 # misc
 coverage
 *.pem
+
+# local tunnel / ephemeral expo artifacts
+apps/mobile/web-public-url.txt
+apps/mobile/expo-qr.png
+apps/mobile/expo-go-install-qr.png
+apps/web/public/icons/fridge-mascot-raw.png
