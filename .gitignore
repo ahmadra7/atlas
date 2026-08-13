@@ -29,6 +29,16 @@ coverage
 
 # local tunnel / ephemeral expo artifacts
 apps/mobile/web-public-url.txt
+apps/mobile/expo-tunnel-host.txt
 apps/mobile/expo-qr.png
 apps/mobile/expo-go-install-qr.png
 apps/web/public/icons/fridge-mascot-raw.png
+
+# EAS / Expo local credentials
+apps/mobile/.expo
+*.jks
+*.p8
+*.p12
+*.mobileprovision
+*.orig.*
+credentials.json

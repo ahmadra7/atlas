@@ -1,33 +1,60 @@
-# ATLAS
+# سرآشپز هوشمند (Smart Chef)
 
-آشپزی هوشمند مبتنی بر مواد موجود — مونورپو مطابق مستندات ATLAS.
+آشپزی هوشمند مبتنی بر مواد موجود — مونورپوی TypeScript با وب Next.js و موبایل Expo (RTL فارسی).
+
+**ریپو:** [github.com/ahmadra7/atlas](https://github.com/ahmadra7/atlas)
 
 ## ساختار
 
 ```
-apps/web                 Next.js + React + TypeScript (RTL فارسی)
-apps/mobile              React Native + Expo (RTL فارسی)
+apps/web                 Next.js + React + TypeScript (UI اصلی)
+apps/mobile              Expo WebView + native voice bridge
 packages/contracts       قراردادهای API مشترک
 packages/api-client      کلاینت API (فعلاً mock)
 packages/design-tokens   توکن‌های طراحی
 packages/shared          نرمال‌سازی فارسی و برچسب‌ها
 ```
 
-## اجرا
+## پیش‌نیاز
+
+- Node.js ≥ 20
+- برای اندروید محلی: Android SDK / دستگاه یا شبیه‌ساز
+- برای APK ابری: حساب Expo + `eas-cli`
+
+## نصب و اجرا
 
 ```bash
 npm install
 npm run dev:web      # http://localhost:3000
-npm run dev:mobile   # Expo Dev Tools / Expo Go
+npm run dev:mobile   # Expo Dev Client / Expo Go
 ```
 
-## مسیر پذیرش MVP
+### تونل (گوشی خارج از Wi‑Fi محلی)
 
-مواد → پیشنهادها → دستور → پخت مرحله‌ای → اتمام/خروج
+```bash
+npm run tunnel:web   # تونل پایدار به :3000 و به‌روزرسانی WEB_APP_URL
+# سپس Cloudflare به Metro :8081 + اسکریپت:
+# npx cloudflared tunnel --url http://127.0.0.1:8081
+# node apps/mobile/scripts/start-expo-tunnel.mjs
+```
 
-## منبع حقیقت
+### بیلد اندروید (EAS)
 
-- `../ATLAS-COMPLETE-DOCUMENTATION-v1`
-- `../ATLAS-Agent-Complete-Implementation-Pack-v1`
+```bash
+npm run build:apk        # APK پیش‌نمایش
+npm run build:dev-apk    # development client
+```
 
-وب فعلاً با `mode: "mock"` کار می‌کند تا Nest API آماده شود. رتبه‌بندی در پروداکشن سمت سرور می‌ماند.
+## مسیر محصول (MVP)
+
+مواد → پیشنهادها → دستور → پخت مرحله‌ای → اتمام
+
+## کیفیت
+
+```bash
+npm run lint
+npm run typecheck
+npm run build
+```
+
+وب فعلاً با `mode: "mock"` کار می‌کند تا Nest API آماده شود.
