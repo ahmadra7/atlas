@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { ArrowLeft2 } from "iconsax-react";
+import { appNavigateSoftOrHard } from "@/lib/navigate";
 
 export function BackButton({
   href,
@@ -17,7 +18,7 @@ export function BackButton({
       type="button"
       aria-label="بازگشت"
       onClick={() => {
-        if (href) router.push(href);
+        if (href) appNavigateSoftOrHard(href, (h) => router.push(h));
         else router.back();
       }}
       className={`inline-flex h-10 w-10 items-center justify-center rounded-full text-atlas-ink transition hover:bg-atlas-surface-muted ${className}`}

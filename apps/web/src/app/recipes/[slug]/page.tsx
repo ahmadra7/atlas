@@ -14,6 +14,7 @@ import { SoftTag, TagRow } from "@/components/ui/SoftTag";
 import { PotIcon } from "@/components/ui/PotIcon";
 import { RecipeImage } from "@/components/recipe/RecipeImage";
 import { atlasClient } from "@/lib/client";
+import { appNavigateSoftOrHard } from "@/lib/navigate";
 import { Profile2User, Timer1 } from "iconsax-react";
 
 export default function RecipeDetailPage() {
@@ -27,11 +28,15 @@ export default function RecipeDetailPage() {
   const [toggling, setToggling] = useState(false);
 
   useEffect(() => {
+    const raw = params?.slug;
+    const slug = Array.isArray(raw) ? raw[0] : raw;
+    if (!slug) return;
     let cancelled = false;
     async function load() {
       setLoading(true);
+      setError(null);
       try {
-        const data = await atlasClient.getRecipeBySlug(params.slug);
+        const data = await atlasClient.getRecipeBySlug(slug);
         if (!cancelled) {
           setRecipe(data);
           if (!data) setError("دستور پیدا نشد.");
@@ -50,7 +55,7 @@ export default function RecipeDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [params.slug]);
+  }, [params?.slug]);
 
   return (
     <AppShell hideNav showBack title="دستور" lockScroll>
@@ -141,7 +146,10 @@ export default function RecipeDetailPage() {
               icon={<PotIcon size={20} color="currentColor" />}
               onClick={() => {
                 setStarting(true);
-                router.push(`/cook/start?recipeId=${encodeURIComponent(recipe.id)}`);
+                appNavigateSoftOrHard(
+                  `/cook/start?recipeId=${encodeURIComponent(recipe.id)}`,
+                  (h) => router.push(h),
+                );
               }}
             >
               {starting ? "در حال شروع…" : "بزن بریم برای پخت"}

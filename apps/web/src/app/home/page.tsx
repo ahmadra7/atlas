@@ -44,6 +44,7 @@ import { SoftTag } from "@/components/ui/SoftTag";
 import { HomeSkeleton } from "@/components/ui/Skeleton";
 import { useIngredientVoiceInput } from "@/hooks/useIngredientVoiceInput";
 import { atlasClient } from "@/lib/client";
+import { appNavigate, isAtlasMobileWebView } from "@/lib/navigate";
 import { pageCache } from "@/lib/page-cache";
 
 const mealOptions: MealType[] = ["any", "breakfast", "lunch", "dinner", "snack"];
@@ -330,7 +331,9 @@ export default function HomePage() {
     if (cuisine !== "any") params.set("cuisine", cuisine);
     if (budgetFriendly) params.set("budgetFriendly", "1");
     if (preferences.length > 0) params.set("tags", preferences.join(","));
-    router.push(`/recommendations?${params.toString()}`);
+    const href = `/recommendations?${params.toString()}`;
+    if (isAtlasMobileWebView()) appNavigate(href);
+    else router.push(href);
   }
 
   return (

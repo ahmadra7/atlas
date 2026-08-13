@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { MobileHardNav } from "@/components/navigation/MobileHardNav";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 
 export const metadata: Metadata = {
@@ -49,7 +50,10 @@ export default function RootLayout({
         />
       </head>
       <body className="bg-atlas-background font-sans text-atlas-ink transition-colors duration-300">
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <MobileHardNav />
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );
