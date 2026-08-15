@@ -1,4 +1,4 @@
-/** Full-page navigation is more reliable inside the mobile WebView + tunnels. */
+/** Soft navigation preferred — hard reloads over tunnels feel stuck loading. */
 export function isAtlasMobileWebView(): boolean {
   if (typeof window === "undefined") return false;
   const w = window as Window & { ReactNativeWebView?: unknown };
@@ -10,14 +10,14 @@ export function appNavigate(href: string) {
   window.location.assign(href);
 }
 
-/** Prefer hard nav on mobile WebView; otherwise use the provided soft nav. */
+/** Always prefer soft Next.js navigation when available. */
 export function appNavigateSoftOrHard(
   href: string,
   softNavigate?: (href: string) => void,
 ) {
-  if (isAtlasMobileWebView() || !softNavigate) {
-    appNavigate(href);
+  if (softNavigate) {
+    softNavigate(href);
     return;
   }
-  softNavigate(href);
+  appNavigate(href);
 }

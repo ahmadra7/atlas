@@ -26,10 +26,11 @@ import {
   Add,
   ArrowLeft,
   ArrowLeft2,
+  CloseCircle,
   Microphone2,
   People,
-  Stop,
   SearchNormal1,
+  Send2,
   Setting4,
   TickCircle,
   Timer1,
@@ -43,12 +44,11 @@ import { Chip } from "@/components/ui/Chip";
 import { SoftTag } from "@/components/ui/SoftTag";
 import { HomeSkeleton } from "@/components/ui/Skeleton";
 import { useIngredientVoiceInput } from "@/hooks/useIngredientVoiceInput";
-import { atlasClient } from "@/lib/client";
-import { appNavigate, isAtlasMobileWebView } from "@/lib/navigate";
+import { atlasClient, withApiSession } from "@/lib/client";
 import { pageCache } from "@/lib/page-cache";
 
 const mealOptions: MealType[] = ["any", "breakfast", "lunch", "dinner", "snack"];
-const timeOptions = [15, 30, 45, 60, 90];
+const timeOptions = [15, 30, 45, 60, 90, 120, 180];
 const dietModes: DietMode[] = ["any", "diet", "regular"];
 const dishTypes: DishType[] = [
   "any",
@@ -133,8 +133,9 @@ export default function HomePage() {
   );
   const [adding, setAdding] = useState(false);
   const [searching, setSearching] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
   const [meal, setMeal] = useState<MealType>("any");
-  const [maxMinutes, setMaxMinutes] = useState(45);
+  const [maxMinutes, setMaxMinutes] = useState(180);
   const [moreOpen, setMoreOpen] = useState(false);
   const [dietMode, setDietMode] = useState<DietMode>("any");
   const [dishType, setDishType] = useState<DishType>("any");
@@ -143,7 +144,7 @@ export default function HomePage() {
   const [budgetFriendly, setBudgetFriendly] = useState(false);
   const [preferences, setPreferences] = useState<string[]>([]);
   const [draftMeal, setDraftMeal] = useState<MealType>("any");
-  const [draftMaxMinutes, setDraftMaxMinutes] = useState(45);
+  const [draftMaxMinutes, setDraftMaxMinutes] = useState(180);
   const [draftDietMode, setDraftDietMode] = useState<DietMode>("any");
   const [draftDishType, setDraftDishType] = useState<DishType>("any");
   const [draftDifficulty, setDraftDifficulty] = useState<Difficulty | "any">(
@@ -157,16 +158,18 @@ export default function HomePage() {
     let cancelled = false;
     void (async () => {
       try {
-        const inv = await atlasClient.getInventory();
+        const inv = await withApiSession(() => atlasClient.getInventory());
         if (!cancelled) {
           pageCache.inventory = inv;
           setInventory(inv);
           setLoading(false);
         }
-        const rec = await atlasClient.getRecommendations({
-          meal: "any",
-          maxMinutes: 60,
-        });
+        const rec = await withApiSession(() =>
+          atlasClient.getRecommendations({
+            meal: "any",
+            maxMinutes: 60,
+          }),
+        );
         if (!cancelled) {
           const cards = [...rec.exact, ...rec.near, ...rec.discovery].slice(
             0,
@@ -216,7 +219,7 @@ export default function HomePage() {
   const advancedCount = useMemo(() => {
     let n = 0;
     if (meal !== "any") n += 1;
-    if (maxMinutes !== 45) n += 1;
+    if (maxMinutes !== 180) n += 1;
     if (dietMode !== "any") n += 1;
     if (dishType !== "any") n += 1;
     if (difficulty !== "any") n += 1;
@@ -236,7 +239,7 @@ export default function HomePage() {
   ]);
 
   async function reloadInventory() {
-    const inv = await atlasClient.getInventory();
+    const inv = await withApiSession(() => atlasClient.getInventory());
     pageCache.inventory = inv;
     setInventory(inv);
   }
@@ -244,10 +247,15 @@ export default function HomePage() {
   const voice = useIngredientVoiceInput({
     onTranscript: async (transcript) => {
       setAdding(true);
+      setAddError(null);
       try {
-        await atlasClient.addIngredientsFromSpeech(transcript);
+        await withApiSession(() =>
+          atlasClient.addIngredientsFromSpeech(transcript),
+        );
         await reloadInventory();
         setQuery("");
+      } catch {
+        setAddError("افزودن با صدا انجام نشد. اتصال API یا ورود را چک کنید.");
       } finally {
         setAdding(false);
       }
@@ -257,10 +265,13 @@ export default function HomePage() {
   async function addTyped() {
     if (!canAdd) return;
     setAdding(true);
+    setAddError(null);
     try {
-      await atlasClient.addIngredientByName(trimmed);
+      await withApiSession(() => atlasClient.addIngredientByName(trimmed));
       await reloadInventory();
       setQuery("");
+    } catch {
+      setAddError("افزودن ماده انجام نشد. اتصال به سرور را چک کنید.");
     } finally {
       setAdding(false);
     }
@@ -269,10 +280,13 @@ export default function HomePage() {
   async function addSuggestion(item: Ingredient) {
     if (selectedIds.has(item.id)) return;
     setAdding(true);
+    setAddError(null);
     try {
-      await atlasClient.addInventoryItem(item.id);
+      await withApiSession(() => atlasClient.addInventoryItem(item.id));
       await reloadInventory();
       setQuery("");
+    } catch {
+      setAddError("افزودن از لیست انجام نشد. اتصال به سرور را چک کنید.");
     } finally {
       setAdding(false);
     }
@@ -304,7 +318,7 @@ export default function HomePage() {
 
   function resetMoreSettings() {
     setDraftMeal("any");
-    setDraftMaxMinutes(45);
+    setDraftMaxMinutes(180);
     setDraftDietMode("any");
     setDraftDishType("any");
     setDraftDifficulty("any");
@@ -317,6 +331,26 @@ export default function HomePage() {
     setDraftPreferences((prev) =>
       prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag],
     );
+  }
+
+  async function clearAllIngredients() {
+    if (inventory.length === 0) return;
+    const ids = inventory.map((item) => item.id);
+    pageCache.inventory = [];
+    setInventory([]);
+    setAddError(null);
+    setAdding(true);
+    try {
+      await withApiSession(async () => {
+        await Promise.all(
+          ids.map((id) => atlasClient.removeInventoryItem(id)),
+        );
+      });
+    } catch {
+      void reloadInventory();
+    } finally {
+      setAdding(false);
+    }
   }
 
   function goToFoodList() {
@@ -332,8 +366,7 @@ export default function HomePage() {
     if (budgetFriendly) params.set("budgetFriendly", "1");
     if (preferences.length > 0) params.set("tags", preferences.join(","));
     const href = `/recommendations?${params.toString()}`;
-    if (isAtlasMobileWebView()) appNavigate(href);
-    else router.push(href);
+    router.push(href);
   }
 
   return (
@@ -373,7 +406,7 @@ export default function HomePage() {
 
             <div className="mt-6 flex flex-col gap-6">
               <div className="flex flex-col gap-4">
-                <div className="flex flex-col items-center">
+                <div className="flex flex-col items-center gap-3">
                   <div className="relative flex h-[5.75rem] w-[5.75rem] items-center justify-center">
                     {voice.listening ? (
                       <>
@@ -394,7 +427,7 @@ export default function HomePage() {
                       onClick={() => {
                         if (voice.processing) return;
                         if (voice.listening) {
-                          voice.stop();
+                          voice.cancel();
                           return;
                         }
                         voice.start();
@@ -402,7 +435,7 @@ export default function HomePage() {
                       disabled={adding && !voice.listening}
                       aria-label={
                         voice.listening
-                          ? "پایان ضبط"
+                          ? "لغو ضبط"
                           : "افزودن مواد با صدا"
                       }
                       className={`relative z-10 inline-flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-full text-white transition active:scale-95 disabled:opacity-50 ${
@@ -413,7 +446,11 @@ export default function HomePage() {
                     >
                       <span className="relative z-10">
                         {voice.listening ? (
-                          <Stop size={28} color="currentColor" variant="Bold" />
+                          <CloseCircle
+                            size={30}
+                            color="currentColor"
+                            variant="Bold"
+                          />
                         ) : (
                           <Microphone2
                             size={30}
@@ -448,14 +485,32 @@ export default function HomePage() {
                       </div>
                     ) : null}
                   </div>
+
+                  {voice.listening && voice.engineMode !== "intent" ? (
+                    <button
+                      type="button"
+                      onClick={() => voice.stop()}
+                      disabled={!voice.canSend || voice.processing}
+                      className="inline-flex h-11 items-center gap-2 rounded-full bg-atlas-ink px-5 text-[13px] font-bold text-white transition active:scale-[0.98] disabled:opacity-40"
+                    >
+                      <Send2 size={18} color="currentColor" variant="Bold" />
+                      ارسال
+                    </button>
+                  ) : null}
                 </div>
 
-                <p className="text-center text-[12px] font-medium text-atlas-ink-faint">
-                  {voice.listening && voice.interim
-                    ? voice.interim
-                    : voice.processing
-                      ? "…"
-                      : "یا"}
+                <p className="min-h-[1.1rem] text-center text-[12px] font-medium text-atlas-ink-faint">
+                  {voice.errorMessage
+                    ? voice.errorMessage
+                    : voice.listening && voice.engineMode === "intent"
+                      ? "دارم گوش می‌دم…"
+                      : voice.listening && voice.draft
+                      ? voice.draft
+                      : voice.listening
+                        ? "دارم گوش می‌دم… بعد بزن ارسال"
+                        : voice.processing
+                          ? "…"
+                          : "یا"}
                 </p>
 
                 <div className="flex items-start gap-2">
@@ -548,21 +603,39 @@ export default function HomePage() {
                     ) : null}
                   </button>
                 </div>
+
+                {addError ? (
+                  <p className="text-caption text-atlas-danger">{addError}</p>
+                ) : null}
               </div>
 
               {inventory.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  {inventory.map((item) => (
-                    <Chip
-                      key={item.id}
-                      label={item.ingredient.name}
-                      onRemove={() =>
-                        void atlasClient
-                          .removeInventoryItem(item.id)
-                          .then(reloadInventory)
-                      }
-                    />
-                  ))}
+                <div className="flex items-start gap-2">
+                  <div className="flex min-w-0 flex-1 flex-wrap gap-2">
+                    {inventory.map((item) => (
+                      <Chip
+                        key={item.id}
+                        label={item.ingredient.name}
+                        onRemove={() =>
+                          void withApiSession(() =>
+                            atlasClient.removeInventoryItem(item.id),
+                          ).then(reloadInventory)
+                        }
+                      />
+                    ))}
+                  </div>
+                  {inventory.length > 1 ? (
+                    <button
+                      type="button"
+                      aria-label="پاک کردن همه مواد"
+                      title="پاک کردن همه"
+                      disabled={adding}
+                      onClick={() => void clearAllIngredients()}
+                      className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-atlas-ink-faint transition hover:bg-atlas-surface-muted hover:text-atlas-danger disabled:opacity-50"
+                    >
+                      <Trash size={16} color="currentColor" variant="Bold" />
+                    </button>
+                  ) : null}
                 </div>
               ) : null}
 

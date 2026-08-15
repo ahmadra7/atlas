@@ -11,7 +11,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.atlas.mobile",
       "infoPlist": {
-        "NSMicrophoneUsageDescription": "برای افزودن مواد اولیه با صدا",
+        "NSMicrophoneUsageDescription": "برای افزودن مواد اولیه با صدا به میکروفون نیاز داریم",
         "NSSpeechRecognitionUsageDescription": "برای تشخیص مواد اولیه از صدای شما"
       }
     },
@@ -26,7 +26,8 @@
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "RECORD_AUDIO",
-        "MODIFY_AUDIO_SETTINGS"
+        "MODIFY_AUDIO_SETTINGS",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "web": {
@@ -42,6 +43,12 @@
           "speechRecognitionPermission": "برای تشخیص مواد اولیه از صدای شما"
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "360b02ea-68fb-450d-8a5e-d431a675a4b6"
+      }
+    },
+    "owner": "ahmadrs1"
   }
 }

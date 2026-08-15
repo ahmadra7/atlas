@@ -108,7 +108,7 @@ export default function CookingPage() {
       setSession(await atlasClient.completeSession(session.id));
       return;
     }
-    setSession(await atlasClient.completeStep(session.id, step.id));
+    setSession(await atlasClient.completeStep(session.id, step.order));
   }
 
   async function goPrev() {

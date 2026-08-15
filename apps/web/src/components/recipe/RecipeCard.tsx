@@ -8,6 +8,7 @@ import { formatMinutesFa, toPersianDigits } from "@atlas/shared";
 import { SoftTag } from "@/components/ui/SoftTag";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { RecipeImage } from "./RecipeImage";
+import { isAtlasMobileWebView } from "@/lib/navigate";
 import { ArrowDown2, ArrowLeft2, ArrowUp2, ShoppingCart, Timer1 } from "iconsax-react";
 
 function shopSearchUrl(
@@ -35,6 +36,8 @@ export function RecipeCard({ card }: { card: RecommendationCard }) {
     [missing],
   );
 
+  const openShopInSameWindow = isAtlasMobileWebView();
+
   return (
     <article className="atlas-surface overflow-hidden transition">
       <Link
@@ -48,7 +51,9 @@ export function RecipeCard({ card }: { card: RecommendationCard }) {
           width={420}
         />
         <div className="flex items-start justify-between gap-3 p-4 pb-2">
-          <h3 className="text-h3 text-atlas-ink">{card.title}</h3>
+          <h3 className="text-[0.95rem] font-bold leading-6 text-atlas-ink">
+            {card.title}
+          </h3>
           <SoftTag
             label={`${toPersianDigits(card.matchScore)}٪`}
             tone="black"
@@ -129,8 +134,9 @@ export function RecipeCard({ card }: { card: RecommendationCard }) {
           <div className="space-y-3 pt-1">
             <a
               href={shopLinks.okala}
-              target="_blank"
-              rel="noopener noreferrer"
+              {...(openShopInSameWindow
+                ? {}
+                : { target: "_blank", rel: "noopener noreferrer" })}
               className="flex items-center gap-3 rounded-atlas-xl border border-atlas-border bg-white px-4 py-3.5 shadow-[0_8px_24px_rgba(17,17,17,0.06)] transition hover:border-[#E6123D]/40 hover:bg-red-50/40 active:scale-[0.99] dark:bg-atlas-surface"
             >
               <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl">
@@ -156,8 +162,9 @@ export function RecipeCard({ card }: { card: RecommendationCard }) {
 
             <a
               href={shopLinks.snapp}
-              target="_blank"
-              rel="noopener noreferrer"
+              {...(openShopInSameWindow
+                ? {}
+                : { target: "_blank", rel: "noopener noreferrer" })}
               className="flex items-center gap-3 rounded-atlas-xl border border-atlas-border bg-white px-4 py-3.5 shadow-[0_8px_24px_rgba(17,17,17,0.06)] transition hover:border-[#FF6B00]/40 hover:bg-orange-50/40 active:scale-[0.99] dark:bg-atlas-surface"
             >
               <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl">

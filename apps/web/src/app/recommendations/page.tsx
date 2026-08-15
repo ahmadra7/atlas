@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import type {
   DietMode,
   Difficulty,
   DishType,
   MealType,
+  RecommendationCard,
   RecommendationFilters,
   RecommendationResult,
 } from "@atlas/contracts";
@@ -17,7 +18,7 @@ import { RecipeCard } from "@/components/recipe/RecipeCard";
 import { Button } from "@/components/ui/Button";
 import { RecommendationsSkeleton } from "@/components/ui/Skeleton";
 import { StateView } from "@/components/ui/StateView";
-import { atlasClient } from "@/lib/client";
+import { atlasClient, withApiSession } from "@/lib/client";
 
 const meals: MealType[] = ["any", "breakfast", "lunch", "dinner", "snack"];
 const dietModes: DietMode[] = ["any", "diet", "regular"];
@@ -37,7 +38,7 @@ const difficulties: Array<Difficulty | "any"> = ["any", "easy", "medium", "hard"
 
 function parseFilters(searchParams: URLSearchParams): RecommendationFilters {
   const mealParam = searchParams.get("meal") as MealType | null;
-  const maxParam = Number(searchParams.get("maxMinutes") || 60);
+  const maxParam = Number(searchParams.get("maxMinutes") || 180);
   const dietModeParam = searchParams.get("dietMode") as DietMode | null;
   const dishTypeParam = searchParams.get("dishType") as DishType | null;
   const difficultyParam = searchParams.get("difficulty") as
@@ -50,7 +51,7 @@ function parseFilters(searchParams: URLSearchParams): RecommendationFilters {
 
   return {
     meal: mealParam && meals.includes(mealParam) ? mealParam : "any",
-    maxMinutes: Number.isFinite(maxParam) && maxParam > 0 ? maxParam : 60,
+    maxMinutes: Number.isFinite(maxParam) && maxParam > 0 ? maxParam : 180,
     dietMode:
       dietModeParam && dietModes.includes(dietModeParam)
         ? dietModeParam
@@ -84,7 +85,9 @@ function RecommendationsContent() {
     setLoading(true);
     setError(null);
     try {
-      setResult(await atlasClient.getRecommendations(next));
+      setResult(
+        await withApiSession(() => atlasClient.getRecommendations(next)),
+      );
     } catch {
       setError("دریافت پیشنهادها ممکن نشد.");
     } finally {
@@ -99,11 +102,14 @@ function RecommendationsContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
-  const cards = [
-    ...(result?.exact ?? []),
-    ...(result?.near ?? []),
-    ...(result?.discovery ?? []),
-  ];
+  const cards = useMemo(() => {
+    const list: RecommendationCard[] = [
+      ...(result?.exact ?? []),
+      ...(result?.near ?? []),
+      ...(result?.discovery ?? []),
+    ];
+    return list;
+  }, [result]);
 
   return (
     <AppShell hideNav showBack backHref="/home" title="لیست غذاها">
@@ -137,7 +143,7 @@ function RecommendationsContent() {
               <StateView
                 tone="empty"
                 title="نتیجه‌ای پیدا نشد"
-                description="مواد را بیشتر کنید یا فیلتر را بازتر بگیرید."
+                description="غذایی که همه مواد واردشده را داشته باشد پیدا نشد."
               />
             ) : null}
 

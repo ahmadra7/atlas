@@ -1,29 +1,28 @@
 "use client";
 
-const FALLBACK =
-  "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=480&q=40&fm=webp";
+import { useState } from "react";
 
-/** Direct CDN URLs — skip Next `/_next/image` proxy (slow over tunnel/WebView). */
+const PLACEHOLDER = "/images/recipe-placeholder.svg";
+
+function isMissingOrPlaceholder(src?: string | null): boolean {
+  if (!src) return true;
+  const s = src.trim();
+  if (!s) return true;
+  return (
+    s.includes("recipe-placeholder") ||
+    s === "null" ||
+    s === "undefined"
+  );
+}
+
+/** Prefer local food icon when recipe has no photo. */
 export function optimizeImageSrc(
   src?: string | null,
-  width = 480,
-  quality = 40,
+  _width = 480,
+  _quality = 40,
 ): string {
-  if (!src) return FALLBACK;
-  try {
-    const url = new URL(src);
-    if (url.hostname === "images.unsplash.com") {
-      url.searchParams.set("auto", "format");
-      url.searchParams.set("fit", "crop");
-      url.searchParams.set("w", String(width));
-      url.searchParams.set("q", String(quality));
-      url.searchParams.set("fm", "webp");
-      return url.toString();
-    }
-  } catch {
-    /* keep original */
-  }
-  return src;
+  if (isMissingOrPlaceholder(src)) return PLACEHOLDER;
+  return src!.trim();
 }
 
 export function RecipeImage({
@@ -40,20 +39,31 @@ export function RecipeImage({
   sizes?: string;
   width?: number;
 }) {
-  const optimized = optimizeImageSrc(src, width, 40);
+  const [broken, setBroken] = useState(false);
+  const optimized = broken
+    ? PLACEHOLDER
+    : optimizeImageSrc(src, width, 40);
+  const isPlaceholder = isMissingOrPlaceholder(optimized) || broken;
 
   return (
-    <div className={`relative overflow-hidden bg-zinc-100 ${className}`}>
+    <div
+      className={`relative overflow-hidden ${
+        isPlaceholder ? "bg-[#EDE8E0]" : "bg-zinc-100"
+      } ${className}`}
+    >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={optimized}
-        alt={alt}
+        alt={isPlaceholder ? "" : alt}
         loading={priority ? "eager" : "lazy"}
         decoding="async"
         fetchPriority={priority ? "high" : "low"}
+        onError={() => setBroken(true)}
         className="absolute inset-0 h-full w-full object-cover"
       />
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-black/5" />
+      {!isPlaceholder ? (
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-black/5" />
+      ) : null}
     </div>
   );
 }

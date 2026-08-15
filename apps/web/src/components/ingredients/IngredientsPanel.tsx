@@ -3,11 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Ingredient, InventoryItem } from "@atlas/contracts";
 import { normalizePersian } from "@atlas/shared";
-import { Add, SearchNormal1, TickCircle } from "iconsax-react";
+import { Add, SearchNormal1, TickCircle, Trash } from "iconsax-react";
 import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
 import { LoadingBlock, StateView } from "@/components/ui/StateView";
-import { atlasClient } from "@/lib/client";
+import { atlasClient, withApiSession } from "@/lib/client";
 
 export function IngredientsPanel({
   onInventoryChange,
@@ -26,7 +26,7 @@ export function IngredientsPanel({
     setLoading(true);
     setError(null);
     try {
-      const items = await atlasClient.getInventory();
+      const items = await withApiSession(() => atlasClient.getInventory());
       setInventory(items);
       onInventoryChange?.(items);
     } catch {
@@ -86,8 +86,24 @@ export function IngredientsPanel({
   async function addSuggestion(item: Ingredient) {
     if (selectedIds.has(item.id)) return;
     setAdding(true);
+    setError(null);
     try {
-      await atlasClient.addInventoryItem(item.id);
+      await withApiSession(() => atlasClient.addInventoryItem(item.id));
+      await loadInventory();
+      setQuery("");
+    } catch {
+      setError("افزودن ماده از لیست انجام نشد.");
+    } finally {
+      setAdding(false);
+    }
+  }
+
+  async function addTyped() {
+    if (!trimmed) return;
+    setAdding(true);
+    setError(null);
+    try {
+      await withApiSession(() => atlasClient.addIngredientByName(trimmed));
       await loadInventory();
       setQuery("");
     } catch {
@@ -97,15 +113,21 @@ export function IngredientsPanel({
     }
   }
 
-  async function addTyped() {
-    if (!trimmed) return;
+  async function clearAllIngredients() {
+    if (inventory.length === 0) return;
+    const ids = inventory.map((item) => item.id);
+    setInventory([]);
+    onInventoryChange?.([]);
+    setError(null);
     setAdding(true);
     try {
-      await atlasClient.addIngredientByName(trimmed);
-      await loadInventory();
-      setQuery("");
+      await withApiSession(async () => {
+        await Promise.all(
+          ids.map((id) => atlasClient.removeInventoryItem(id)),
+        );
+      });
     } catch {
-      setError("افزودن ماده انجام نشد.");
+      void loadInventory();
     } finally {
       setAdding(false);
     }
@@ -223,18 +245,32 @@ export function IngredientsPanel({
         />
       ) : (
         <section className="space-y-3">
-          <h3 className="text-caption font-semibold text-atlas-ink-muted">
-            مواد اضافه‌شده
-          </h3>
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="text-caption font-semibold text-atlas-ink-muted">
+              مواد اضافه‌شده
+            </h3>
+            {inventory.length > 1 ? (
+              <button
+                type="button"
+                aria-label="پاک کردن همه مواد"
+                title="پاک کردن همه"
+                disabled={adding}
+                onClick={() => void clearAllIngredients()}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full text-atlas-ink-faint transition hover:bg-atlas-surface-muted hover:text-atlas-danger disabled:opacity-50"
+              >
+                <Trash size={16} color="currentColor" variant="Bold" />
+              </button>
+            ) : null}
+          </div>
           <div className="flex flex-wrap gap-2">
             {inventory.map((item) => (
               <Chip
                 key={item.id}
                 label={item.ingredient.name}
                 onRemove={() =>
-                  void atlasClient
-                    .removeInventoryItem(item.id)
-                    .then(loadInventory)
+                  void withApiSession(() =>
+                    atlasClient.removeInventoryItem(item.id),
+                  ).then(loadInventory)
                 }
               />
             ))}

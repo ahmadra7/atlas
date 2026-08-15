@@ -72,8 +72,8 @@ function composeTranscript(text: string, alts: string[] = []): string {
 }
 
 /**
- * Voice capture for ingredients — auto-adds on user confirmation / final result.
- * Mobile: native bridge. Desktop: Web Speech API.
+ * Voice capture for ingredients.
+ * Stays on the page — user must press Send; no auto-cut / Google overlay.
  */
 export function useIngredientVoiceInput(options: {
   onTranscript: (transcript: string) => void | Promise<void>;
@@ -91,14 +91,24 @@ export function useIngredientVoiceInput(options: {
   const engineRef = useRef<"native" | "web" | null>(null);
   const nativeModeRef = useRef<NativeVoiceMode | null>(null);
   const submittingRef = useRef(false);
+  const userStoppingRef = useRef(false);
+  const listeningRef = useRef(false);
 
   const [phase, setPhase] = useState<VoicePhase>("idle");
   const [interim, setInterim] = useState("");
+  const [draft, setDraft] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [volume, setVolume] = useState(0);
   const [engineMode, setEngineMode] = useState<NativeVoiceMode | "web" | null>(
     null,
   );
+
+  const syncDraft = useCallback((finals: string[], interimText: string) => {
+    const text = [...finals, interimText].map((t) => t.trim()).filter(Boolean).join(" ");
+    setDraft(text);
+    setInterim(interimText);
+    interimRef.current = interimText;
+  }, []);
 
   const cleanupWebRecognition = useCallback(() => {
     const rec = recognitionRef.current;
@@ -115,6 +125,8 @@ export function useIngredientVoiceInput(options: {
       setPhase("idle");
       setVolume(0);
       setInterim("");
+      setDraft("");
+      listeningRef.current = false;
       return;
     }
     if (submittingRef.current) return;
@@ -130,9 +142,14 @@ export function useIngredientVoiceInput(options: {
     } finally {
       setPhase("idle");
       setVolume(0);
+      setDraft("");
       submittingRef.current = false;
+      userStoppingRef.current = false;
+      listeningRef.current = false;
       requestIdRef.current = null;
       engineRef.current = null;
+      finalsRef.current = [];
+      alternativesRef.current = [];
     }
   }, []);
 
@@ -149,8 +166,10 @@ export function useIngredientVoiceInput(options: {
       if ("requestId" in msg && active && msg.requestId !== active) return;
 
       if (msg.type === "atlas-voice/started") {
+        nativeModeRef.current = msg.mode;
         setEngineMode(msg.mode);
         setPhase("listening");
+        listeningRef.current = true;
         setErrorMessage(null);
         setVolume(0.25);
         return;
@@ -162,16 +181,31 @@ export function useIngredientVoiceInput(options: {
       }
 
       if (msg.type === "atlas-voice/partial") {
-        setInterim(msg.transcript);
-        interimRef.current = msg.transcript;
+        syncDraft(finalsRef.current, msg.transcript);
         setPhase("listening");
+        listeningRef.current = true;
         return;
       }
 
       if (msg.type === "atlas-voice/final") {
-        finalsRef.current = [msg.transcript];
-        alternativesRef.current = msg.alternatives ?? [];
-        void submitTranscript(msg.transcript, msg.alternatives ?? []);
+        // Intent (Expo Go): one-shot result — submit immediately.
+        if (nativeModeRef.current === "intent") {
+          void submitTranscript(msg.transcript, msg.alternatives ?? []);
+          return;
+        }
+        // Native continuous: accumulate until user presses Send.
+        if (msg.transcript.trim()) {
+          finalsRef.current = [...finalsRef.current, msg.transcript.trim()];
+        }
+        if (msg.alternatives?.length) {
+          alternativesRef.current = [
+            ...alternativesRef.current,
+            ...msg.alternatives,
+          ];
+        }
+        syncDraft(finalsRef.current, "");
+        setPhase("listening");
+        listeningRef.current = true;
         return;
       }
 
@@ -179,7 +213,9 @@ export function useIngredientVoiceInput(options: {
         setPhase("idle");
         setVolume(0);
         setInterim("");
+        setDraft("");
         setErrorMessage(null);
+        listeningRef.current = false;
         requestIdRef.current = null;
         engineRef.current = null;
         return;
@@ -187,31 +223,52 @@ export function useIngredientVoiceInput(options: {
 
       if (msg.type === "atlas-voice/ended") {
         if (submittingRef.current) return;
-        setPhase((prev) => {
-          if (prev === "processing") return prev;
-          const text =
-            finalsRef.current.join(" ").trim() || interimRef.current.trim();
-          if (text) {
-            void submitTranscript(text, alternativesRef.current);
-            return "processing";
-          }
+        if (nativeModeRef.current === "intent") {
+          setPhase("idle");
           setVolume(0);
           setInterim("");
-          return "idle";
-        });
-        requestIdRef.current = null;
-        engineRef.current = null;
+          setDraft("");
+          listeningRef.current = false;
+          requestIdRef.current = null;
+          engineRef.current = null;
+          return;
+        }
+        // Native bridge auto-restarts; only finalize when user pressed Send.
+        if (!userStoppingRef.current) {
+          if (listeningRef.current) {
+            setPhase("listening");
+            return;
+          }
+          setPhase("idle");
+          setVolume(0);
+          return;
+        }
+        const text =
+          finalsRef.current.join(" ").trim() || interimRef.current.trim();
+        if (text) {
+          void submitTranscript(text, alternativesRef.current);
+        } else {
+          setPhase("idle");
+          setVolume(0);
+          setInterim("");
+          setDraft("");
+          listeningRef.current = false;
+          requestIdRef.current = null;
+          engineRef.current = null;
+          userStoppingRef.current = false;
+        }
       }
     });
 
     postToNative({ type: "atlas-voice/ping" });
     return unsub;
-  }, [submitTranscript]);
+  }, [submitTranscript, syncDraft]);
 
   const startWeb = useCallback(() => {
     const Ctor = getSpeechRecognitionCtor();
     if (!Ctor) {
       setPhase("idle");
+      listeningRef.current = false;
       return;
     }
 
@@ -226,8 +283,11 @@ export function useIngredientVoiceInput(options: {
     alternativesRef.current = [];
     interimRef.current = "";
     setInterim("");
+    setDraft("");
     setErrorMessage(null);
     setPhase("listening");
+    listeningRef.current = true;
+    userStoppingRef.current = false;
     setEngineMode("web");
     setVolume(0.35);
     engineRef.current = "web";
@@ -254,28 +314,62 @@ export function useIngredientVoiceInput(options: {
           interimChunk += (interimChunk ? " " : "") + best;
         }
       }
-      interimRef.current = interimChunk;
-      setInterim(interimChunk);
-      // Web Speech has no volume meter — pulse UI while words arrive.
+      syncDraft(finalsRef.current, interimChunk);
       setVolume(interimChunk || finalsRef.current.length ? 0.7 : 0.3);
     };
 
     recognition.onerror = (event) => {
-      if (event.error === "aborted" || event.error === "no-speech") return;
-      setPhase("idle");
-      setVolume(0);
-      setErrorMessage(null);
-      engineRef.current = null;
+      if (event.error === "aborted") return;
+      if (event.error === "no-speech" && listeningRef.current && !userStoppingRef.current) {
+        // Keep session; onend will restart.
+        return;
+      }
+      if (!userStoppingRef.current) {
+        setPhase("idle");
+        listeningRef.current = false;
+        setVolume(0);
+        setErrorMessage(null);
+        engineRef.current = null;
+      }
     };
 
     recognition.onend = () => {
       cleanupWebRecognition();
       if (engineRef.current !== "web") return;
+
+      if (userStoppingRef.current) {
+        engineRef.current = null;
+        if (submittingRef.current) return;
+        const primary = finalsRef.current.join(" ").trim();
+        const trailing = interimRef.current.trim();
+        void submitTranscript(primary || trailing, alternativesRef.current);
+        return;
+      }
+
+      // Keep listening until user presses Send.
+      if (listeningRef.current) {
+        try {
+          const next = new Ctor();
+          next.lang = "fa-IR";
+          next.continuous = true;
+          next.interimResults = true;
+          next.maxAlternatives = 5;
+          next.onresult = recognition.onresult;
+          next.onerror = recognition.onerror;
+          next.onend = recognition.onend;
+          recognitionRef.current = next;
+          next.start();
+          setPhase("listening");
+          return;
+        } catch {
+          /* fall through */
+        }
+      }
+
       engineRef.current = null;
-      if (submittingRef.current) return;
-      const primary = finalsRef.current.join(" ").trim();
-      const trailing = interimRef.current.trim();
-      void submitTranscript(primary || trailing, alternativesRef.current);
+      listeningRef.current = false;
+      setPhase("idle");
+      setVolume(0);
     };
 
     recognitionRef.current = recognition;
@@ -283,11 +377,12 @@ export function useIngredientVoiceInput(options: {
       recognition.start();
     } catch {
       setPhase("idle");
+      listeningRef.current = false;
       setVolume(0);
       cleanupWebRecognition();
       engineRef.current = null;
     }
-  }, [cleanupWebRecognition, submitTranscript]);
+  }, [cleanupWebRecognition, submitTranscript, syncDraft]);
 
   const start = useCallback(() => {
     if (phase === "listening" || phase === "processing") return;
@@ -296,13 +391,16 @@ export function useIngredientVoiceInput(options: {
     alternativesRef.current = [];
     interimRef.current = "";
     setInterim("");
+    setDraft("");
     setErrorMessage(null);
+    userStoppingRef.current = false;
 
     if (isAtlasNativeApp()) {
       const requestId = `v-${Date.now()}`;
       requestIdRef.current = requestId;
       engineRef.current = "native";
       setPhase("listening");
+      listeningRef.current = true;
       const ok = postToNative({
         type: "atlas-voice/start",
         requestId,
@@ -317,6 +415,8 @@ export function useIngredientVoiceInput(options: {
   }, [contextualStrings, phase, startWeb]);
 
   const cancel = useCallback(() => {
+    userStoppingRef.current = false;
+    listeningRef.current = false;
     if (engineRef.current === "native") {
       postToNative({
         type: "atlas-voice/abort",
@@ -337,19 +437,34 @@ export function useIngredientVoiceInput(options: {
     alternativesRef.current = [];
     interimRef.current = "";
     setInterim("");
+    setDraft("");
     setVolume(0);
     setErrorMessage(null);
     setPhase("idle");
   }, [cleanupWebRecognition]);
 
-  /** Finish listening and add ingredients from what was heard. */
+  /** User pressed Send — stop capture and add ingredients. */
   const stop = useCallback(() => {
     if (phase !== "listening") return;
+    userStoppingRef.current = true;
+    const text =
+      finalsRef.current.join(" ").trim() || interimRef.current.trim();
+
     if (engineRef.current === "native") {
       postToNative({
         type: "atlas-voice/stop",
         requestId: requestIdRef.current ?? "",
       });
+      if (text) void submitTranscript(text, alternativesRef.current);
+      else {
+        setPhase("idle");
+        setVolume(0);
+        setDraft("");
+        listeningRef.current = false;
+        requestIdRef.current = null;
+        engineRef.current = null;
+        userStoppingRef.current = false;
+      }
       return;
     }
     if (engineRef.current === "web") {
@@ -360,8 +475,6 @@ export function useIngredientVoiceInput(options: {
       }
       return;
     }
-    const text =
-      finalsRef.current.join(" ").trim() || interimRef.current.trim();
     if (text) void submitTranscript(text, alternativesRef.current);
     else cancel();
   }, [cancel, phase, submitTranscript]);
@@ -383,7 +496,6 @@ export function useIngredientVoiceInput(options: {
     };
   }, [cleanupWebRecognition]);
 
-  // Soft idle pulse when listening without volume events (intent / silence).
   useEffect(() => {
     if (phase !== "listening") return;
     if (engineMode === "native") return;
@@ -399,6 +511,7 @@ export function useIngredientVoiceInput(options: {
   return {
     phase,
     interim,
+    draft,
     volume,
     engineMode,
     errorMessage,
@@ -406,6 +519,10 @@ export function useIngredientVoiceInput(options: {
     processing: phase === "processing",
     /** True when recognition stays inside our UI (no Google popup). */
     inAppRecording: engineMode === "native" || engineMode === "web",
+    canSend:
+      phase === "listening" &&
+      engineMode !== "intent" &&
+      draft.trim().length > 0,
     start,
     stop,
     cancel,

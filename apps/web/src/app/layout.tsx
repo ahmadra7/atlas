@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { ApiSessionBootstrap } from "@/components/auth/ApiSessionBootstrap";
 import { MobileHardNav } from "@/components/navigation/MobileHardNav";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 
@@ -51,6 +52,7 @@ export default function RootLayout({
       </head>
       <body className="bg-atlas-background font-sans text-atlas-ink transition-colors duration-300">
         <ThemeProvider>
+          <ApiSessionBootstrap />
           <MobileHardNav />
           {children}
         </ThemeProvider>

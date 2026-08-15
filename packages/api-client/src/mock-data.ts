@@ -799,12 +799,14 @@ export async function getCookingSession(
 
 export async function completeStep(
   sessionId: string,
-  stepId: string,
+  stepOrder: number,
 ): Promise<CookingSession> {
   await delay(0);
   const session = sessions.get(sessionId);
   if (!session) throw new Error("SESSION_NOT_FOUND");
-  const step = session.steps.find((s) => s.id === stepId);
+  const step =
+    session.steps.find((s) => s.order === stepOrder) ??
+    session.steps.find((s) => s.id === String(stepOrder));
   if (!step) throw new Error("STEP_NOT_FOUND");
   const nextOrder = Math.min(step.order + 1, session.totalSteps);
   const updated: CookingSession = {

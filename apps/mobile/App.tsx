@@ -10,6 +10,7 @@ import {
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
+import type { WebViewNavigation } from "react-native-webview/lib/WebViewTypes";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { ErrorBoundary } from "./src/components/ErrorBoundary";
 import {
@@ -19,33 +20,103 @@ import {
 import { WEB_APP_URL } from "./src/webUrl";
 
 const RETRY_MS = 3500;
+/** Never leave the blocking overlay up longer than this. */
+const LOAD_TIMEOUT_MS = 2500;
+
+function isExternalShopUrl(url: string): boolean {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return (
+      host === "okala.com" ||
+      host.endsWith(".okala.com") ||
+      host === "snapp.market" ||
+      host.endsWith(".snapp.market") ||
+      host.includes("snapp.market")
+    );
+  } catch {
+    return /okala\.com|snapp\.market/i.test(url);
+  }
+}
 
 export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [key, setKey] = useState(0);
   const [url, setUrl] = useState(WEB_APP_URL);
+  const [nav, setNav] = useState<{ url: string; canGoBack: boolean }>({
+    url: WEB_APP_URL,
+    canGoBack: false,
+  });
   const autoRetries = useRef(0);
   const webRef = useRef<WebView>(null);
   const voiceBridgeRef = useRef<ReturnType<typeof createVoiceBridge> | null>(
     null,
   );
+  /** After first paint, in-app navigations must not freeze the UI. */
+  const hasLoadedOnce = useRef(false);
+  const loadTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showShopBack = isExternalShopUrl(nav.url);
+
+  const clearLoadTimer = () => {
+    if (loadTimer.current) {
+      clearTimeout(loadTimer.current);
+      loadTimer.current = null;
+    }
+  };
+
+  const finishLoading = () => {
+    clearLoadTimer();
+    setLoading(false);
+    hasLoadedOnce.current = true;
+    autoRetries.current = 0;
+    voiceBridgeRef.current?.announceReady();
+  };
+
+  const beginLoading = (force = false) => {
+    // Subsequent page changes: keep WebView interactive (no full-screen freeze).
+    if (hasLoadedOnce.current && !force) return;
+    setLoading(true);
+    clearLoadTimer();
+    loadTimer.current = setTimeout(() => {
+      setLoading(false);
+      hasLoadedOnce.current = true;
+    }, LOAD_TIMEOUT_MS);
+  };
+
+  const returnToApp = () => {
+    if (nav.canGoBack) {
+      webRef.current?.goBack();
+      return;
+    }
+    webRef.current?.injectJavaScript(
+      `window.location.replace(${JSON.stringify(WEB_APP_URL)}); true;`,
+    );
+  };
+
+  const onNavChange = (state: WebViewNavigation) => {
+    setNav({ url: state.url, canGoBack: state.canGoBack });
+  };
 
   useEffect(() => {
     voiceBridgeRef.current = createVoiceBridge(webRef);
     return () => {
       voiceBridgeRef.current?.dispose();
       voiceBridgeRef.current = null;
+      clearLoadTimer();
     };
   }, []);
 
   // Pick up HMR updates when keep-web-tunnel rewrites webUrl.ts
   useEffect(() => {
     setUrl(WEB_APP_URL);
+    setNav({ url: WEB_APP_URL, canGoBack: false });
     setError(null);
-    setLoading(true);
+    hasLoadedOnce.current = false;
+    beginLoading(true);
     setKey((k) => k + 1);
     autoRetries.current = 0;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [WEB_APP_URL]);
 
   useEffect(() => {
@@ -53,10 +124,12 @@ export default function App() {
     const timer = setInterval(() => {
       autoRetries.current += 1;
       setError(null);
-      setLoading(true);
+      hasLoadedOnce.current = false;
+      beginLoading(true);
       setKey((k) => k + 1);
     }, RETRY_MS);
     return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [error]);
 
   const source = useMemo(() => ({ uri: url }), [url]);
@@ -79,7 +152,8 @@ export default function App() {
                   style={styles.retry}
                   onPress={() => {
                     setError(null);
-                    setLoading(true);
+                    hasLoadedOnce.current = false;
+                    beginLoading(true);
                     setKey((k) => k + 1);
                   }}
                 >
@@ -88,23 +162,42 @@ export default function App() {
               </View>
             ) : (
               <View style={styles.flex}>
+                {showShopBack ? (
+                  <View style={styles.shopBar}>
+                    <Pressable
+                      style={styles.shopBackBtn}
+                      onPress={returnToApp}
+                      accessibilityRole="button"
+                      accessibilityLabel="بازگشت به اپ"
+                    >
+                      <Text style={styles.shopBackChevron}>‹</Text>
+                      <Text style={styles.shopBackText}>بازگشت به اپ</Text>
+                    </Pressable>
+                    <Text style={styles.shopBarTitle} numberOfLines={1}>
+                      فروشگاه
+                    </Text>
+                    <View style={styles.shopBarSpacer} />
+                  </View>
+                ) : null}
                 <WebView
                   ref={webRef}
                   key={key}
                   source={source}
                   style={styles.flex}
-                  onLoadStart={() => setLoading(true)}
-                  onLoadEnd={() => {
-                    setLoading(false);
-                    autoRetries.current = 0;
-                    voiceBridgeRef.current?.announceReady();
+                  onLoadStart={() => beginLoading(false)}
+                  onLoadProgress={({ nativeEvent }) => {
+                    if (nativeEvent.progress >= 0.85) finishLoading();
                   }}
+                  onLoadEnd={finishLoading}
+                  onNavigationStateChange={onNavChange}
                   onError={(e) => {
+                    clearLoadTimer();
                     setLoading(false);
                     setError(e.nativeEvent.description || "خطای شبکه");
                   }}
                   onHttpError={(e) => {
                     if (e.nativeEvent.statusCode >= 400) {
+                      clearLoadTimer();
                       setLoading(false);
                       setError(`خطای HTTP ${e.nativeEvent.statusCode}`);
                     }
@@ -116,7 +209,7 @@ export default function App() {
                   }}
                   injectedJavaScriptBeforeContentLoaded={voiceBridgeBootstrap}
                   allowsBackForwardNavigationGestures
-                  startInLoadingState
+                  startInLoadingState={false}
                   javaScriptEnabled
                   domStorageEnabled
                   sharedCookiesEnabled
@@ -127,9 +220,9 @@ export default function App() {
                   applicationNameForUserAgent={`AtlasMobile/${Platform.OS}`}
                 />
                 {loading ? (
-                  <View style={styles.loader}>
+                  <View style={styles.loader} pointerEvents="none">
                     <ActivityIndicator size="large" color="#FF3737" />
-                    <Text style={styles.loaderText}>در حال همگام‌سازی با IDE…</Text>
+                    <Text style={styles.loaderText}>در حال بارگذاری…</Text>
                   </View>
                 ) : null}
               </View>
@@ -143,6 +236,42 @@ export default function App() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: "#FAFAFA" },
+  shopBar: {
+    height: 48,
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    paddingHorizontal: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#E4E4E7",
+    backgroundColor: "#FFFFFF",
+  },
+  shopBackBtn: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 2,
+    paddingVertical: 8,
+    paddingHorizontal: 6,
+    minWidth: 110,
+  },
+  shopBackChevron: {
+    fontSize: 28,
+    lineHeight: 28,
+    color: "#FF3737",
+    fontWeight: "300",
+  },
+  shopBackText: {
+    color: "#FF3737",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  shopBarTitle: {
+    flex: 1,
+    textAlign: "center",
+    color: "#18181B",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  shopBarSpacer: { minWidth: 110 },
   loader: {
     ...StyleSheet.absoluteFill,
     alignItems: "center",

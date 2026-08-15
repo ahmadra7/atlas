@@ -9,17 +9,32 @@
   "scripts": {
     "dev": "npm run dev -w @atlas/web",
     "dev:web": "npm run dev -w @atlas/web",
+    "dev:api": "npm run dev -w @atlas/api",
     "dev:mobile": "npm run start -w @atlas/mobile",
     "tunnel:web": "node scripts/keep-web-tunnel.mjs",
+    "db:up": "docker compose up -d postgres",
+    "db:migrate": "npm run db:migrate -w @atlas/api",
+    "db:seed": "npm run db:seed -w @atlas/api",
     "build": "npm run build -w @atlas/web",
     "build:web": "npm run build -w @atlas/web",
+    "build:api": "npm run build -w @atlas/api",
     "build:apk": "npm run build:apk -w @atlas/mobile",
     "build:dev-apk": "npm run build:dev -w @atlas/mobile",
     "run:android": "npm run run:android -w @atlas/mobile",
     "lint": "npm run lint -w @atlas/web",
-    "typecheck": "npm run typecheck -w @atlas/web && npm run typecheck -w @atlas/mobile"
+    "typecheck": "npm run typecheck -w @atlas/web && npm run typecheck -w @atlas/mobile && npm run typecheck -w @atlas/api"
   },
   "engines": {
     "node": ">=20"
+  },
+  "devDependencies": {
+    "prisma": "^6.19.3",
+    "tsx": "^4.23.12"
+  },
+  "allowScripts": {
+    "prisma@6.19.3": true,
+    "@prisma/engines@6.19.3": true,
+    "@prisma/client@6.19.3": true,
+    "esbuild@0.28.2": true
   }
 }

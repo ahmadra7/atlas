@@ -8,27 +8,39 @@
 
 ```
 apps/web                 Next.js + React + TypeScript (UI اصلی)
+apps/api                 NestJS + Prisma + PostgreSQL
 apps/mobile              Expo WebView + native voice bridge
 packages/contracts       قراردادهای API مشترک
-packages/api-client      کلاینت API (فعلاً mock)
+packages/api-client      کلاینت API (mock | http)
 packages/design-tokens   توکن‌های طراحی
 packages/shared          نرمال‌سازی فارسی و برچسب‌ها
 ```
 
+معماری کامل: [`docs/architecture.md`](docs/architecture.md)
+
 ## پیش‌نیاز
 
 - Node.js ≥ 20
+- Docker (برای PostgreSQL محلی)
 - برای اندروید محلی: Android SDK / دستگاه یا شبیه‌ساز
 - برای APK ابری: حساب Expo + `eas-cli`
 
 ## نصب و اجرا
 
 ```bash
-npm install
-npm run dev:web      # http://localhost:3000
-npm run dev:mobile   # Expo Dev Client / Expo Go
+npm install --legacy-peer-deps
+docker compose up -d postgres   # نیاز به Docker Desktop
+npm run db:migrate -w @atlas/api
+npm run db:seed -w @atlas/api
+npm run dev:api        # http://localhost:4000/api
+npm run dev:web        # http://localhost:3000  (mode=http)
 ```
 
+کاربر دمو بعد از seed: `ahmad@atlas.local` / `atlas-demo`
+
+وب با `NEXT_PUBLIC_ATLAS_API_MODE=http` به API وصل می‌شود. برای برگشت موقت به mock همان متغیر را `mock` بگذار.
+
+دیتابیس هدف: **PostgreSQL** (نه SQLite). جزئیات: `docs/architecture.md`.
 ### تونل (گوشی خارج از Wi‑Fi محلی)
 
 ```bash
@@ -57,4 +69,4 @@ npm run typecheck
 npm run build
 ```
 
-وب فعلاً با `mode: "mock"` کار می‌کند تا Nest API آماده شود.
+وب با `NEXT_PUBLIC_ATLAS_API_MODE=http` به Nest/Postgres وصل می‌شود. جزئیات: `docs/architecture.md`.

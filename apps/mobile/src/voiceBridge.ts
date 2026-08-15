@@ -34,6 +34,7 @@ export function detectVoiceMode(): VoiceMode {
   if (speechModule?.ExpoSpeechRecognitionModule?.isRecognitionAvailable?.()) {
     return "native";
   }
+  // Expo Go / no custom native module: Android speech intent still works.
   if (Platform.OS === "android") return "intent";
   return "none";
 }
@@ -72,13 +73,52 @@ function extractIntentTranscript(extra: Record<string, unknown> | undefined): {
   };
 }
 
+type StartOpts = {
+  lang: string;
+  contextualStrings: string[];
+};
+
 export function createVoiceBridge(webRef: RefObject<WebView | null>) {
   const mode = detectVoiceMode();
   let activeRequestId: string | null = null;
   let nativeStarted = false;
+  let userStopping = false;
+  let userAborting = false;
+  let startOpts: StartOpts | null = null;
   const subscriptions: Array<{ remove: () => void }> = [];
 
   const post = (payload: unknown) => inject(webRef, payload);
+
+  const startOptions = (opts: StartOpts) => ({
+    lang: opts.lang,
+    interimResults: true,
+    continuous: true,
+    maxAlternatives: 5,
+    contextualStrings: opts.contextualStrings.slice(0, 40),
+    iosTaskHint: "dictation" as const,
+    androidIntentOptions: {
+      EXTRA_LANGUAGE_MODEL: "web_search",
+      EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS: 15000,
+      EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS: 12000,
+      EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS: 2000,
+    },
+    volumeChangeEventOptions: {
+      enabled: true,
+      intervalMillis: 80,
+    },
+  });
+
+  const restartIfNeeded = () => {
+    if (!speechModule || !activeRequestId || !startOpts) return false;
+    if (userStopping || userAborting) return false;
+    try {
+      speechModule.ExpoSpeechRecognitionModule.start(startOptions(startOpts));
+      nativeStarted = true;
+      return true;
+    } catch {
+      return false;
+    }
+  };
 
   const attachNativeListeners = () => {
     if (!speechModule || subscriptions.length > 0) return;
@@ -114,21 +154,47 @@ export function createVoiceBridge(webRef: RefObject<WebView | null>) {
     subscriptions.push(
       mod.addListener("error", (event) => {
         if (!activeRequestId) return;
-        if (event.error === "aborted" || event.error === "no-speech") {
+        if (
+          !userStopping &&
+          !userAborting &&
+          (event.error === "no-speech" ||
+            event.error === "speech-timeout" ||
+            event.error === "client")
+        ) {
+          if (restartIfNeeded()) return;
+        }
+        if (userAborting) {
           post({ type: "atlas-voice/ended", requestId: activeRequestId });
           activeRequestId = null;
           nativeStarted = false;
+          userAborting = false;
           return;
         }
         post({ type: "atlas-voice/ended", requestId: activeRequestId });
         activeRequestId = null;
         nativeStarted = false;
+        userStopping = false;
       }),
     );
 
     subscriptions.push(
       mod.addListener("end", () => {
         if (!activeRequestId) return;
+        if (userAborting) {
+          post({ type: "atlas-voice/ended", requestId: activeRequestId });
+          activeRequestId = null;
+          nativeStarted = false;
+          userAborting = false;
+          return;
+        }
+        if (userStopping) {
+          post({ type: "atlas-voice/ended", requestId: activeRequestId });
+          activeRequestId = null;
+          nativeStarted = false;
+          userStopping = false;
+          return;
+        }
+        if (restartIfNeeded()) return;
         post({ type: "atlas-voice/ended", requestId: activeRequestId });
         activeRequestId = null;
         nativeStarted = false;
@@ -138,7 +204,6 @@ export function createVoiceBridge(webRef: RefObject<WebView | null>) {
     subscriptions.push(
       mod.addListener("volumechange", (event) => {
         if (!activeRequestId) return;
-        // Native range is roughly -2..10 — normalize to 0..1 for UI.
         const raw = typeof event.value === "number" ? event.value : 0;
         const value = Math.max(0, Math.min(1, (raw + 2) / 12));
         post({
@@ -165,25 +230,15 @@ export function createVoiceBridge(webRef: RefObject<WebView | null>) {
 
     activeRequestId = requestId;
     nativeStarted = true;
-    // In-app recognition (no Google popup UI).
-    mod.start({
-      lang,
-      interimResults: true,
-      continuous: true,
-      maxAlternatives: 5,
-      contextualStrings: contextualStrings.slice(0, 40),
-      iosTaskHint: "dictation",
-      androidIntentOptions: {
-        EXTRA_LANGUAGE_MODEL: "web_search",
-      },
-      volumeChangeEventOptions: {
-        enabled: true,
-        intervalMillis: 80,
-      },
-    });
+    userStopping = false;
+    userAborting = false;
+    startOpts = { lang, contextualStrings };
+
+    mod.start(startOptions(startOpts));
     post({ type: "atlas-voice/started", requestId, mode: "native" });
   };
 
+  /** Expo Go path — system speech sheet (only STT available without custom APK). */
   const startIntent = async (requestId: string, lang: string) => {
     activeRequestId = requestId;
     post({ type: "atlas-voice/started", requestId, mode: "intent" });
@@ -194,7 +249,7 @@ export function createVoiceBridge(webRef: RefObject<WebView | null>) {
           extra: {
             "android.speech.extra.LANGUAGE_MODEL": "web_search",
             "android.speech.extra.LANGUAGE": lang,
-            "android.speech.extra.PROMPT": "مواد یخچالت را بگو…",
+            "android.speech.extra.PROMPT": "مواد یخچال را بگو…",
             "android.speech.extra.MAX_RESULTS": 5,
             "android.speech.extra.PARTIAL_RESULTS": true,
           },
@@ -255,6 +310,9 @@ export function createVoiceBridge(webRef: RefObject<WebView | null>) {
       }
 
       if (msg.type === "atlas-voice/abort" || msg.type === "atlas-voice/stop") {
+        if (msg.type === "atlas-voice/abort") userAborting = true;
+        else userStopping = true;
+
         if (nativeStarted && speechModule) {
           try {
             if (msg.type === "atlas-voice/abort") {
@@ -266,9 +324,20 @@ export function createVoiceBridge(webRef: RefObject<WebView | null>) {
             /* ignore */
           }
           nativeStarted = false;
+        } else if (mode === "intent" && activeRequestId) {
+          // Intent UI is modal — abort just clears our session wait.
+          if (msg.type === "atlas-voice/abort") {
+            post({ type: "atlas-voice/ended", requestId: activeRequestId });
+            activeRequestId = null;
+          }
+        } else if (activeRequestId) {
+          post({ type: "atlas-voice/ended", requestId: activeRequestId });
+          activeRequestId = null;
         }
+
         if (msg.type === "atlas-voice/abort") {
           activeRequestId = null;
+          userAborting = false;
         }
         return true;
       }
@@ -306,6 +375,7 @@ export function createVoiceBridge(webRef: RefObject<WebView | null>) {
       }
       activeRequestId = null;
       nativeStarted = false;
+      startOpts = null;
     },
   };
 }

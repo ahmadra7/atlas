@@ -1,0 +1,225 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Difficulty {
+  easy
+  medium
+  hard
+}
+
+enum MealType {
+  breakfast
+  lunch
+  dinner
+  snack
+  any
+}
+
+enum CookingSessionStatus {
+  active
+  completed
+  abandoned
+  paused
+}
+
+model User {
+  id                  String   @id @default(cuid())
+  email               String   @unique
+  passwordHash        String
+  displayName         String
+  dietaryPreferences  String[] @default([])
+  defaultMaxMinutes   Int?
+  locale              String   @default("fa")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  inventory       InventoryItem[]
+  favorites       Favorite[]
+  cookingSessions CookingSession[]
+  analyticsEvents AnalyticsEvent[]
+}
+
+model Ingredient {
+  id             String   @id
+  name           String
+  normalizedName String
+  category       String
+  popularity     Int      @default(0)
+  isCustom       Boolean  @default(false)
+  createdById    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  aliases           IngredientAlias[]
+  inventoryItems    InventoryItem[]
+  recipeIngredients RecipeIngredient[]
+
+  @@index([normalizedName])
+  @@index([category])
+  @@index([popularity])
+}
+
+model IngredientAlias {
+  id               String @id @default(cuid())
+  ingredientId     String
+  alias            String
+  normalizedAlias  String
+
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+
+  @@unique([normalizedAlias])
+  @@index([ingredientId])
+}
+
+model Recipe {
+  id                  String     @id
+  slug                String     @unique
+  /// Stable id from upstream catalog (e.g. iranian_recipes.json) for incremental upserts
+  sourceExternalId    String?    @unique
+  title               String
+  description         String
+  category            String
+  subcategory         String?
+  meal                MealType
+  cuisine             String
+  region              String?
+  difficulty          Difficulty
+  prepMinutes         Int
+  cookMinutes         Int
+  totalMinutes        Int
+  servings            Int
+  imageUrl            String
+  caloriesPerServing  Int?
+  cookingMethod       String?
+  dietaryTags         String[]   @default([])
+  budgetFriendly      Boolean    @default(false)
+  verified            Boolean    @default(false)
+  published           Boolean    @default(true)
+  /// Extra/future fields from richer dumps without schema churn
+  meta                Json?
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+
+  versions        RecipeVersion[]
+  favorites       Favorite[]
+  cookingSessions CookingSession[]
+
+  @@index([published, totalMinutes])
+  @@index([meal, difficulty])
+  @@index([cuisine])
+  @@index([category])
+  @@index([title])
+}
+
+/// Immutable snapshot of a recipe used by cooking sessions.
+model RecipeVersion {
+  id            String   @id
+  recipeId      String
+  versionNumber Int
+  isCurrent     Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  recipe      Recipe             @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  ingredients RecipeIngredient[]
+  steps       RecipeStep[]
+  sessions    CookingSession[]
+
+  @@unique([recipeId, versionNumber])
+  @@index([recipeId, isCurrent])
+}
+
+model RecipeIngredient {
+  id              String  @id @default(cuid())
+  recipeVersionId String
+  ingredientId    String
+  name            String
+  quantity        String?
+  unit            String?
+  optional        Boolean @default(false)
+  sortOrder       Int     @default(0)
+
+  recipeVersion RecipeVersion @relation(fields: [recipeVersionId], references: [id], onDelete: Cascade)
+  ingredient    Ingredient    @relation(fields: [ingredientId], references: [id])
+
+  @@index([recipeVersionId])
+  @@index([ingredientId])
+}
+
+model RecipeStep {
+  id              String  @id
+  recipeVersionId String
+  order           Int
+  instruction     String
+  tip             String?
+  timerSeconds    Int?
+  imageUrl        String?
+
+  recipeVersion RecipeVersion @relation(fields: [recipeVersionId], references: [id], onDelete: Cascade)
+
+  @@unique([recipeVersionId, order])
+  @@index([recipeVersionId])
+}
+
+model InventoryItem {
+  id           String   @id @default(cuid())
+  userId       String
+  ingredientId String
+  quantity     Float?
+  unit         String?
+  createdAt    DateTime @default(now())
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id])
+
+  @@unique([userId, ingredientId])
+  @@index([userId])
+}
+
+model Favorite {
+  userId   String
+  recipeId String
+  savedAt  DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@id([userId, recipeId])
+  @@index([userId, savedAt])
+}
+
+model CookingSession {
+  id               String                @id @default(cuid())
+  userId           String
+  recipeId         String
+  recipeVersionId  String
+  status           CookingSessionStatus  @default(active)
+  currentStepOrder Int                   @default(1)
+  startedAt        DateTime              @default(now())
+  completedAt      DateTime?
+  abandonedAt      DateTime?
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipe        Recipe        @relation(fields: [recipeId], references: [id])
+  recipeVersion RecipeVersion @relation(fields: [recipeVersionId], references: [id])
+
+  @@index([userId, status])
+  @@index([userId, startedAt])
+}
+
+model AnalyticsEvent {
+  id         String   @id @default(cuid())
+  userId     String?
+  name       String
+  properties Json?
+  occurredAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([name, occurredAt])
+}

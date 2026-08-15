@@ -1,31 +1,53 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
-import { Trash } from "iconsax-react";
+import { useEffect, useState } from "react";
+import { Clock, Trash } from "iconsax-react";
+import type { Recipe } from "@atlas/contracts";
 import { AppShell } from "@/components/layout/AppShell";
 import { Chip } from "@/components/ui/Chip";
-import { MOCK_RECIPES } from "@atlas/api-client";
-import { normalizePersian } from "@atlas/shared";
+import { atlasClient } from "@/lib/client";
 
 const popularTags = [
-  "شام سریع",
-  "کم‌کالری",
-  "گیاهی",
-  "اقتصادی",
-  "کمتر از ۳۰ دقیقه",
+  "قرمه",
+  "زرشک پلو",
+  "کوکو",
+  "آش",
+  "خورش",
 ];
 
 export default function SearchPage() {
   const [query, setQuery] = useState("");
   const [recent, setRecent] = useState<string[]>(["املت", "عدسی", "مرغ"]);
+  const [results, setResults] = useState<Recipe[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const results = useMemo(() => {
-    const q = normalizePersian(query);
-    if (!q) return [];
-    return MOCK_RECIPES.filter((r) =>
-      normalizePersian(`${r.title} ${r.description} ${r.category}`).includes(q),
-    );
+  useEffect(() => {
+    const q = query.trim();
+    if (!q) {
+      setResults([]);
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    const timer = setTimeout(() => {
+      void atlasClient
+        .searchRecipes(q, 40)
+        .then((rows) => {
+          if (!cancelled) setResults(rows as Recipe[]);
+        })
+        .catch(() => {
+          if (!cancelled) setResults([]);
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false);
+        });
+    }, 250);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [query]);
 
   function submit(term: string) {
@@ -35,8 +57,8 @@ export default function SearchPage() {
     setRecent((prev) => [next, ...prev.filter((x) => x !== next)].slice(0, 6));
   }
 
-  function removeRecent(term: string) {
-    setRecent((prev) => prev.filter((x) => x !== term));
+  function clearRecent() {
+    setRecent([]);
   }
 
   return (
@@ -56,28 +78,23 @@ export default function SearchPage() {
           <>
             {recent.length > 0 ? (
               <section className="space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="flex items-center gap-2 text-[1.05rem] font-bold text-atlas-ink">
+                    <Clock size={20} color="currentColor" variant="Bold" />
+                    جستجوهای اخیر
+                  </h2>
+                  <button
+                    type="button"
+                    aria-label="پاک کردن تاریخچه جستجو"
+                    onClick={clearRecent}
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-full text-atlas-ink-faint transition hover:bg-atlas-surface-muted hover:text-atlas-danger"
+                  >
+                    <Trash size={18} color="currentColor" variant="Bold" />
+                  </button>
+                </div>
                 <div className="flex flex-wrap gap-2">
                   {recent.map((term) => (
-                    <span
-                      key={term}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200/90 bg-zinc-50 px-2.5 py-1.5 text-caption text-atlas-ink dark:border-atlas-border dark:bg-atlas-surface-muted/40"
-                    >
-                      <button
-                        type="button"
-                        onClick={() => submit(term)}
-                        className="hover:opacity-80"
-                      >
-                        {term}
-                      </button>
-                      <button
-                        type="button"
-                        aria-label={`حذف ${term}`}
-                        onClick={() => removeRecent(term)}
-                        className="inline-flex text-atlas-ink-faint transition hover:text-atlas-danger"
-                      >
-                        <Trash size={14} color="currentColor" variant="Linear" />
-                      </button>
-                    </span>
+                    <Chip key={term} label={term} onClick={() => submit(term)} />
                   ))}
                 </div>
               </section>
@@ -96,7 +113,9 @@ export default function SearchPage() {
         ) : (
           <section className="space-y-3">
             <h2 className="text-h3 text-atlas-ink">نتایج</h2>
-            {results.length === 0 ? (
+            {loading ? (
+              <p className="text-body text-atlas-ink-muted">در حال جستجو…</p>
+            ) : results.length === 0 ? (
               <p className="text-body text-atlas-ink-muted">نتیجه‌ای پیدا نشد.</p>
             ) : (
               results.map((recipe) => (
@@ -110,6 +129,7 @@ export default function SearchPage() {
                   </p>
                   <p className="mt-1 text-caption text-atlas-ink-muted">
                     {recipe.category}
+                    {recipe.totalMinutes ? ` · ${recipe.totalMinutes} دقیقه` : ""}
                   </p>
                 </Link>
               ))

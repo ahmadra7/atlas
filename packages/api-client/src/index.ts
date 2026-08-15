@@ -9,22 +9,190 @@ export type AtlasClientMode = "mock" | "http";
 export interface AtlasClientOptions {
   mode?: AtlasClientMode;
   baseUrl?: string;
+  /** Bearer token for authenticated HTTP calls */
+  getAccessToken?: () => string | null | Promise<string | null>;
+}
+
+type HttpMethod = "GET" | "POST" | "DELETE";
+
+async function httpRequest<T>(
+  baseUrl: string,
+  path: string,
+  options: {
+    method?: HttpMethod;
+    body?: unknown;
+    token?: string | null;
+    query?: Record<string, string | number | boolean | undefined | null>;
+  } = {},
+): Promise<T> {
+  const url = new URL(path.replace(/^\//, ""), baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`);
+  if (options.query) {
+    for (const [key, value] of Object.entries(options.query)) {
+      if (value === undefined || value === null || value === "") continue;
+      url.searchParams.set(key, String(value));
+    }
+  }
+
+  const headers: Record<string, string> = {
+    Accept: "application/json",
+  };
+  if (options.body !== undefined) {
+    headers["Content-Type"] = "application/json";
+  }
+  if (options.token) {
+    headers.Authorization = `Bearer ${options.token}`;
+  }
+
+  const res = await fetch(url, {
+    method: options.method ?? "GET",
+    headers,
+    body: options.body === undefined ? undefined : JSON.stringify(options.body),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`API ${res.status}: ${text || res.statusText}`);
+  }
+  if (res.status === 204) return undefined as T;
+  return (await res.json()) as T;
+}
+
+function createHttpClient(baseUrl: string, getAccessToken?: AtlasClientOptions["getAccessToken"]) {
+  const token = async () => (getAccessToken ? await getAccessToken() : null);
+
+  return {
+    mode: "http" as const,
+    searchIngredients: async (q: string) =>
+      httpRequest(baseUrl, "api/ingredients/search", {
+        query: { q },
+      }),
+    getInventory: async () =>
+      httpRequest(baseUrl, "api/inventory", { token: await token() }),
+    addInventoryItem: async (ingredientId: string) =>
+      httpRequest(baseUrl, "api/inventory", {
+        method: "POST",
+        token: await token(),
+        body: { ingredientId },
+      }),
+    addIngredientByName: async (name: string) =>
+      httpRequest(baseUrl, "api/inventory", {
+        method: "POST",
+        token: await token(),
+        body: { name },
+      }),
+    addIngredientsFromSpeech: async (transcript: string) =>
+      httpRequest(baseUrl, "api/inventory/speech", {
+        method: "POST",
+        token: await token(),
+        body: { transcript },
+      }),
+    resolveSpokenIngredients: async (transcript: string) =>
+      httpRequest(baseUrl, "api/inventory/speech/resolve", {
+        method: "POST",
+        token: await token(),
+        body: { transcript },
+      }),
+    removeInventoryItem: async (id: string) =>
+      httpRequest(baseUrl, `api/inventory/${id}`, {
+        method: "DELETE",
+        token: await token(),
+      }),
+    getRecommendations: async (filters: RecommendationFilters = {}) =>
+      httpRequest(baseUrl, "api/recommendations", {
+        token: await token(),
+        query: {
+          meal: filters.meal,
+          maxMinutes: filters.maxMinutes,
+          difficulty: filters.difficulty,
+          budgetFriendly: filters.budgetFriendly ? "1" : undefined,
+          cuisine: filters.cuisine,
+          dietMode: filters.dietMode,
+          dishType: filters.dishType,
+          tags: filters.dietaryTags?.join(","),
+        },
+      }),
+    searchRecipes: async (q: string, limit = 40) =>
+      httpRequest(baseUrl, "api/recipes", {
+        query: { q, limit },
+      }),
+    getRecipeBySlug: async (slug: string) =>
+      httpRequest(baseUrl, `api/recipes/${slug}`),
+    startCookingSession: async (recipeId: string) =>
+      httpRequest(baseUrl, "api/cooking/sessions", {
+        method: "POST",
+        token: await token(),
+        body: { recipeId },
+      }),
+    getCookingSession: async (id: string) =>
+      httpRequest(baseUrl, `api/cooking/sessions/${id}`, {
+        token: await token(),
+      }),
+    completeStep: async (id: string, stepOrder: number) =>
+      httpRequest(baseUrl, `api/cooking/sessions/${id}/complete-step`, {
+        method: "POST",
+        token: await token(),
+        body: { stepOrder },
+      }),
+    completeSession: async (id: string) =>
+      httpRequest(baseUrl, `api/cooking/sessions/${id}/complete`, {
+        method: "POST",
+        token: await token(),
+      }),
+    abandonSession: async (id: string) =>
+      httpRequest(baseUrl, `api/cooking/sessions/${id}/abandon`, {
+        method: "POST",
+        token: await token(),
+      }),
+    askAssistant: async () => {
+      throw new Error("ASSISTANT_NOT_IMPLEMENTED");
+    },
+    sendSos: async () => {
+      throw new Error("SOS_NOT_IMPLEMENTED");
+    },
+    getFavorites: async () =>
+      httpRequest(baseUrl, "api/favorites", { token: await token() }),
+    toggleFavorite: async (recipeId: string) =>
+      httpRequest(baseUrl, "api/favorites/toggle", {
+        method: "POST",
+        token: await token(),
+        body: { recipeId },
+      }),
+    getHistory: async () =>
+      httpRequest(baseUrl, "api/history", { token: await token() }),
+    getProfile: async () =>
+      httpRequest(baseUrl, "api/profile", { token: await token() }),
+    trackEvent: async (_event: AnalyticsEvent) => {
+      /* optional later */
+    },
+    login: async (email: string, password: string) =>
+      httpRequest<{
+        accessToken: string;
+        user: {
+          id: string;
+          email: string;
+          displayName: string;
+        };
+      }>(baseUrl, "api/auth/login", {
+        method: "POST",
+        body: { email, password },
+      }),
+  };
 }
 
 /**
- * Client facade. Web MVP uses mock mode until Nest API is ready.
- * Ranking/matching must remain server-side in production HTTP mode.
+ * Client facade.
+ * - mock: in-memory (legacy MVP)
+ * - http: Nest API + PostgreSQL
  */
 export function createAtlasClient(options: AtlasClientOptions = {}) {
   const mode = options.mode ?? "mock";
-  if (mode !== "mock") {
-    throw new Error(
-      "HTTP mode is not wired yet. Use mode: 'mock' for the web vertical slice.",
-    );
+  if (mode === "http") {
+    const baseUrl = options.baseUrl ?? "http://localhost:4000";
+    return createHttpClient(baseUrl, options.getAccessToken);
   }
 
   return {
-    mode,
+    mode: "mock" as const,
     searchIngredients: mock.searchIngredients,
     getInventory: mock.getInventory,
     addInventoryItem: mock.addInventoryItem,
@@ -34,6 +202,16 @@ export function createAtlasClient(options: AtlasClientOptions = {}) {
     removeInventoryItem: mock.removeInventoryItem,
     getRecommendations: (filters?: RecommendationFilters) =>
       mock.getRecommendations(filters),
+    searchRecipes: async (q: string, limit = 40) => {
+      const { normalizePersian } = await import("@atlas/shared");
+      const needle = normalizePersian(q);
+      if (!needle) return [];
+      return mock.MOCK_RECIPES.filter((r) =>
+        normalizePersian(`${r.title} ${r.description} ${r.category}`).includes(
+          needle,
+        ),
+      ).slice(0, limit);
+    },
     getRecipeBySlug: mock.getRecipeBySlug,
     startCookingSession: mock.startCookingSession,
     getCookingSession: mock.getCookingSession,
