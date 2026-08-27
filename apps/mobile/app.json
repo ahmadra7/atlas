@@ -43,6 +43,14 @@
           "microphonePermission": "برای افزودن مواد اولیه با صدا به میکروفون نیاز داریم",
           "speechRecognitionPermission": "برای تشخیص مواد اولیه از صدای شما"
         }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
       ]
     ],
     "extra": {

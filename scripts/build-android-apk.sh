@@ -59,6 +59,36 @@ ensure_node_modules() {
 ensure_prebuild() {
   log "Generating android/ via Expo prebuild"
   (cd "$MOBILE" && npx expo prebuild --platform android --non-interactive --no-install)
+  local manifest="$ANDROID_DIR/app/src/main/AndroidManifest.xml"
+  if [[ -f "$manifest" ]] && ! grep -q 'android:usesCleartextTraffic' "$manifest"; then
+    log "Enabling cleartext HTTP on the release AndroidManifest"
+    python3 - "$manifest" <<'PY'
+from pathlib import Path
+import sys
+path = Path(sys.argv[1])
+text = path.read_text()
+old = 'android:enableOnBackInvokedCallback="false"'
+new = 'android:enableOnBackInvokedCallback="false" android:usesCleartextTraffic="true"'
+if old in text and "android:usesCleartextTraffic" not in text:
+    path.write_text(text.replace(old, new, 1))
+PY
+  fi
+}
+
+ensure_gradle_foojay() {
+  # RN 0.85 pins foojay 0.5.0 which crashes on Gradle 9 (IBM_SEMERU removed).
+  local settings
+  settings="$(node -e "console.log(require.resolve('@react-native/gradle-plugin/settings.gradle.kts', { paths: ['$MOBILE'] }))")"
+  if [[ -f "$settings" ]]; then
+    log "Patching foojay-resolver-convention to 1.0.0 for Gradle 9"
+    python3 - "$settings" <<'PY'
+from pathlib import Path
+import sys
+path = Path(sys.argv[1])
+text = path.read_text()
+path.write_text(text.replace('version("0.5.0")', 'version("1.0.0")').replace("version(\"0.9.0\")", "version(\"1.0.0\")"))
+PY
+  fi
 }
 
 ensure_keystore() {
@@ -85,6 +115,7 @@ assemble_release() {
     ./gradlew :app:assembleRelease \
       --no-daemon \
       -Dorg.gradle.jvmargs="-Xmx4g -XX:MaxMetaspaceSize=1g" \
+      -PreactNativeArchitectures="${ATLAS_APK_ABIS:-arm64-v8a,armeabi-v7a}" \
       -Pandroid.injected.signing.store.file="$KEYSTORE_PATH" \
       -Pandroid.injected.signing.store.password="$STORE_PASS" \
       -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
@@ -110,6 +141,7 @@ ensure_cmdline_tools
 ensure_sdk_packages
 ensure_node_modules
 ensure_prebuild
+ensure_gradle_foojay
 ensure_keystore
 assemble_release
 copy_apk
