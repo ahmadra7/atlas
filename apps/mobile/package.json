@@ -14,6 +14,7 @@
     "eas:login": "eas login",
     "eas:init": "eas init",
     "build:apk": "eas build -p android --profile preview",
+    "build:apk:local": "bash ../../scripts/build-android-apk.sh",
     "build:dev": "eas build -p android --profile development",
     "typecheck": "tsc --noEmit"
   },

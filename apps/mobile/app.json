@@ -24,6 +24,7 @@
       },
       "package": "com.atlas.mobile",
       "predictiveBackGestureEnabled": false,
+      "usesCleartextTraffic": true,
       "permissions": [
         "RECORD_AUDIO",
         "MODIFY_AUDIO_SETTINGS",

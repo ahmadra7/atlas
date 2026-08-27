@@ -47,6 +47,8 @@ apps/api/data/*.db
 # EAS / Expo local credentials
 apps/mobile/.expo
 *.jks
+*.keystore
+*.apk
 *.p8
 *.p12
 *.mobileprovision
