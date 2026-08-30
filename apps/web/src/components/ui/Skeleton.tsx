@@ -9,10 +9,12 @@ export function Skeleton({
 }: {
   className?: string;
 }) {
+  const hasRadius = /\brounded(-|$)/.test(className);
   return (
     <div
       className={cx(
-        "relative overflow-hidden rounded-md bg-atlas-surface-muted",
+        "relative overflow-hidden bg-atlas-surface-muted",
+        !hasRadius && "rounded-md",
         "before:absolute before:inset-0 before:-translate-x-full before:animate-[skeletonShine_1.4s_ease-in-out_infinite]",
         "before:bg-gradient-to-r before:from-transparent before:via-white/45 before:to-transparent",
         "dark:before:via-white/10",
@@ -53,31 +55,25 @@ export function PageSkeleton({ children }: { children: ReactNode }) {
 export function HomeSkeleton() {
   return (
     <PageSkeleton>
-      <div className="rounded-atlas-xl bg-atlas-surface px-5 pb-6 pt-6 shadow-[0_18px_40px_rgba(17,17,17,0.08)]">
-        <div className="flex items-center gap-2.5">
-          <Skeleton className="h-[4.6rem] w-[4.6rem] shrink-0 rounded-lg" />
-          <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-            <Skeleton className="h-7 w-[85%]" />
-            <Skeleton className="h-3 w-[70%]" />
+      <div className="overflow-visible pt-8">
+        <div className="relative flex flex-col gap-5 overflow-visible rounded-atlas-xl bg-atlas-surface px-5 pb-5 shadow-[0_18px_40px_rgba(17,17,17,0.08)]">
+          <div className="flex flex-col items-center">
+            <Skeleton className="-mt-[2.3rem] mb-1 h-[4.6rem] w-[4.6rem] rounded-2xl" />
+            <Skeleton className="h-7 w-[68%]" />
+            <Skeleton className="mt-1 h-3 w-[52%]" />
           </div>
-        </div>
-
-        <div className="mt-6 flex flex-col gap-6">
-          <div className="flex flex-col gap-4">
-            <div className="flex justify-center">
-              <Skeleton className="h-[4.5rem] w-[4.5rem] rounded-full" />
-            </div>
-            <Skeleton className="mx-auto h-3 w-6" />
-            <div className="flex items-start gap-2">
-              <Skeleton className="h-11 min-w-0 flex-1 rounded-atlas" />
-              <Skeleton className="h-11 w-11 shrink-0 rounded-atlas" />
-            </div>
+          <div className="flex justify-center">
+            <Skeleton className="h-[4.5rem] w-[4.5rem] !rounded-full" />
+          </div>
+          <div className="flex items-start gap-2">
+            <Skeleton className="h-12 min-w-0 flex-1 rounded-atlas" />
+            <Skeleton className="h-12 w-12 shrink-0 rounded-atlas" />
           </div>
           <Skeleton className="h-12 w-full rounded-atlas" />
         </div>
       </div>
 
-      <Skeleton className="h-11 w-full rounded-atlas" />
+      <Skeleton className="h-12 w-full rounded-atlas" />
 
       <div className="space-y-3">
         <Skeleton className="h-5 w-28" />
@@ -165,12 +161,15 @@ export function RecommendationsSkeleton() {
 export function ProfileSkeleton() {
   return (
     <PageSkeleton>
-      <div className="rounded-atlas-xl bg-atlas-primary/90 px-4 pb-5 pt-5">
+      <div className="rounded-atlas-xl bg-atlas-primary px-4 pb-5 pt-5 shadow-[0_14px_32px_rgba(255,55,55,0.28)]">
         <div className="flex items-center gap-3">
-          <Skeleton className="h-16 w-16 shrink-0 rounded-full bg-white/25 before:via-white/40" />
+          <div className="relative shrink-0">
+            <Skeleton className="h-16 w-16 shrink-0 rounded-full bg-white/30 before:via-white/50" />
+            <span className="absolute bottom-0.5 end-0.5 h-3.5 w-3.5 rounded-full bg-emerald-400 ring-[3px] ring-atlas-primary" />
+          </div>
           <div className="flex-1 space-y-2">
             <Skeleton className="h-5 w-32 bg-white/25 before:via-white/40" />
-            <Skeleton className="h-3.5 w-20 bg-white/20 before:via-white/35" />
+            <Skeleton className="h-3.5 w-16 bg-white/20 before:via-white/35" />
           </div>
         </div>
         <div className="mt-5 grid grid-cols-3 gap-2">

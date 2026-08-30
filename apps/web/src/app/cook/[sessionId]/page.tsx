@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/Button";
 import { CookSkeleton } from "@/components/ui/Skeleton";
 import { StateView } from "@/components/ui/StateView";
 import { RecipeImage } from "@/components/recipe/RecipeImage";
+import { instantPush } from "@/components/navigation/InstantNav";
 import { atlasClient } from "@/lib/client";
 
 const sosIssues = [
@@ -147,7 +148,7 @@ export default function CookingPage() {
           title="نشست پخت در دسترس نیست"
           description={error ?? undefined}
           actionLabel="رفتن به خانه"
-          onAction={() => router.push("/home")}
+          onAction={() => instantPush(router, "/home")}
         />
       </AppShell>
     );
@@ -155,7 +156,7 @@ export default function CookingPage() {
 
   if (session.status === "completed") {
     function finishAndGoHome() {
-      router.push("/home");
+      instantPush(router, "/home");
     }
 
     function handleRate(n: number) {
@@ -471,7 +472,7 @@ export default function CookingPage() {
               variant="danger"
               onClick={async () => {
                 await atlasClient.abandonSession(session.id);
-                router.push("/home");
+                instantPush(router, "/home");
               }}
             >
               خروج

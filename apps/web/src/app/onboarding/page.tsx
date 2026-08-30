@@ -8,6 +8,7 @@ import {
   MagicStar,
   Timer1,
 } from "iconsax-react";
+import { instantPush } from "@/components/navigation/InstantNav";
 import { BrandMark } from "@/components/brand/BrandMark";
 import { Button } from "@/components/ui/Button";
 
@@ -41,7 +42,7 @@ export default function OnboardingPage() {
 
   function finish() {
     localStorage.setItem("atlas-onboarding-done", "1");
-    router.push("/home");
+    instantPush(router, "/home");
   }
 
   function next() {

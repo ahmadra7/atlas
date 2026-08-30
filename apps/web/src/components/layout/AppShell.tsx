@@ -3,38 +3,23 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
-import { Heart, Home2, Profile, SearchNormal1 } from "iconsax-react";
 import { BrandMark } from "@/components/brand/BrandMark";
+import { navTabs, shouldHideNav } from "@/components/layout/BottomNav";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { BackButton } from "@/components/ui/BackButton";
 
-const tabs = [
-  { href: "/home", label: "خانه", Icon: Home2 },
-  { href: "/search", label: "جستجو", Icon: SearchNormal1 },
-  { href: "/favorites", label: "علاقه", Icon: Heart },
-  { href: "/profile", label: "پروفایل", Icon: Profile },
-];
-
-const hideNavPrefixes = [
-  "/",
-  "/onboarding",
-  "/auth",
-  "/cook",
-  "/recipes",
-  "/recommendations",
-];
-
-function shouldHideNav(pathname: string) {
-  if (pathname === "/") return true;
-  return hideNavPrefixes.some(
-    (p) => p !== "/home" && p !== "/" && pathname.startsWith(p),
-  );
-}
+export const homeAppTitle = (
+  <>
+    <span className="block">سرآشپز</span>
+    <span className="block">هوشمند</span>
+  </>
+);
 
 export function AppShell({
   children,
   hideNav,
   title,
+  splitTitle = false,
   showBack = false,
   backHref,
   headerAction,
@@ -44,7 +29,9 @@ export function AppShell({
 }: {
   children: ReactNode;
   hideNav?: boolean;
-  title?: string;
+  title?: ReactNode;
+  /** Two-line brand name so it fits beside the greeting. */
+  splitTitle?: boolean;
   showBack?: boolean;
   backHref?: string;
   headerAction?: ReactNode;
@@ -64,7 +51,7 @@ export function AppShell({
   const showThemeToggle = pathname === "/home";
 
   useEffect(() => {
-    for (const tab of tabs) router.prefetch(tab.href);
+    for (const tab of navTabs) router.prefetch(tab.href);
   }, [router]);
 
   return (
@@ -75,8 +62,8 @@ export function AppShell({
     >
       {showHeader ? (
         <header className="sticky top-0 z-30 shrink-0 border-b border-atlas-border/70 bg-atlas-surface/80 px-4 py-3 backdrop-blur-xl dark:border-white/15">
-          <div className="relative flex min-h-11 items-center">
-            <div className="z-10 flex max-w-[58%] items-center gap-2.5">
+          <div className="grid min-h-11 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1">
+            <div className="z-10 flex min-w-0 items-center gap-2">
               {showBrand ? (
                 <Link
                   href="/profile"
@@ -94,12 +81,18 @@ export function AppShell({
             </div>
 
             {title ? (
-              <h1 className="pointer-events-none absolute inset-x-0 text-center text-h3 font-bold text-atlas-ink">
+              <h1
+                className={`text-center font-bold text-atlas-ink ${
+                  splitTitle ? "text-[16px] leading-[1.2]" : "text-h3"
+                }`}
+              >
                 {title}
               </h1>
-            ) : null}
+            ) : (
+              <div />
+            )}
 
-            <div className="absolute left-0 z-10 flex items-center gap-1">
+            <div className="z-10 flex items-center justify-end gap-1">
               {showThemeToggle ? <ThemeToggle /> : null}
               {headerAction}
               {showBack ? <BackButton href={backHref} /> : null}
@@ -119,45 +112,6 @@ export function AppShell({
       >
         {children}
       </main>
-
-      {showNav ? (
-        <nav className="pointer-events-none fixed bottom-5 left-1/2 z-40 w-[calc(100%-2rem)] max-w-[22.5rem] -translate-x-1/2">
-          <div className="pointer-events-auto overflow-hidden rounded-full border border-white/80 bg-white/95 shadow-[0_12px_32px_rgba(0,0,0,0.14),0_2px_8px_rgba(0,0,0,0.06)] backdrop-blur-[48px] dark:border-white/20 dark:bg-atlas-surface/90 dark:shadow-[0_12px_32px_rgba(0,0,0,0.55),0_0_0_1px_rgba(255,77,77,0.08)]">
-            <ul className="grid grid-cols-4 items-stretch gap-1 bg-white/70 p-1.5 dark:bg-black/30">
-              {tabs.map((tab) => {
-                const active =
-                  pathname === tab.href || pathname.startsWith(`${tab.href}/`);
-                const Icon = tab.Icon;
-                return (
-                  <li key={tab.href} className="flex min-h-[3.4rem]">
-                    <Link
-                      href={tab.href}
-                      prefetch
-                      scroll={false}
-                      className={`flex w-full flex-col items-center justify-center gap-1 rounded-full px-1 py-1.5 text-caption transition ${
-                        active
-                          ? "bg-transparent text-atlas-primary"
-                          : "text-atlas-ink-faint hover:bg-atlas-surface-muted/70 hover:text-atlas-ink"
-                      }`}
-                    >
-                      <Icon
-                        size={20}
-                        variant={active ? "Bold" : "Linear"}
-                        color="currentColor"
-                      />
-                      {active ? (
-                        <span className="text-caption font-medium leading-tight text-atlas-primary">
-                          {tab.label}
-                        </span>
-                      ) : null}
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        </nav>
-      ) : null}
     </div>
   );
 }

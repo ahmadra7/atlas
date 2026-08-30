@@ -21,6 +21,7 @@ import {
   UserEdit,
 } from "iconsax-react";
 import { AppShell } from "@/components/layout/AppShell";
+import { BrandMark } from "@/components/brand/BrandMark";
 import { useTheme } from "@/components/theme/ThemeProvider";
 import { ProfileSkeleton } from "@/components/ui/Skeleton";
 import { atlasClient } from "@/lib/client";
@@ -144,24 +145,17 @@ export default function ProfilePage() {
           <>
             <section className="overflow-hidden rounded-atlas-xl bg-atlas-primary px-4 pb-5 pt-5 text-white shadow-[0_14px_32px_rgba(255,55,55,0.28)]">
               <div className="flex items-center gap-3">
-                <div className="relative">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white text-h2 font-bold text-atlas-primary shadow-md">
-                    {profile.displayName.slice(0, 1)}
+                <div className="relative shrink-0">
+                  <div className="relative h-16 w-16 overflow-hidden rounded-full bg-white shadow-md">
+                    <BrandMark size={64} className="h-16 w-16" />
                   </div>
                   <span className="absolute bottom-0.5 end-0.5 h-3.5 w-3.5 rounded-full bg-emerald-400 ring-[3px] ring-atlas-primary" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <h2 className="truncate text-h3 text-white">
-                      {profile.displayName}
-                    </h2>
-                    <span className="rounded-full bg-white/20 px-2 py-0.5 text-[11px] font-medium text-white">
-                      آنلاین
-                    </span>
-                  </div>
-                  <p className="mt-1 text-caption text-white/80">
-                    مهمان · {profile.locale === "fa" ? "فارسی" : profile.locale}
-                  </p>
+                  <h2 className="truncate text-h3 text-white">
+                    {profile.displayName}
+                  </h2>
+                  <p className="mt-1 text-caption text-white/80">مهمان</p>
                 </div>
                 <Link
                   href="/auth"

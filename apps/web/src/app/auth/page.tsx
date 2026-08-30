@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { Google, ProfileCircle, Apple } from "iconsax-react";
+import { instantPush } from "@/components/navigation/InstantNav";
 import { AppShell } from "@/components/layout/AppShell";
 import { BrandMark } from "@/components/brand/BrandMark";
 import { Button } from "@/components/ui/Button";
@@ -11,7 +12,7 @@ export default function AuthPage() {
 
   function enterGuest() {
     localStorage.setItem("atlas-auth", "guest");
-    router.push("/home");
+    instantPush(router, "/home");
   }
 
   return (

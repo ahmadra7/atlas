@@ -63,18 +63,39 @@ export class InventoryService {
   }
 
   resolveSpokenNames(transcript: string): string[] {
-    // Lightweight tokenizer; catalog matching happens per name in add flow.
-    return transcript
-      .split(/[،, و\n]+/g)
-      .map((t) => t.trim())
-      .filter((t) => normalizePersian(t).length >= 2);
+    const compounds = ["گوجه فرنگی", "سیب زمینی", "تخم مرغ", "تخم‌مرغ"];
+    let text = normalizePersian(transcript)
+      .replace(/[?!.;:…،,|]/g, " ")
+      .replace(/\s+و\s+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    const names: string[] = [];
+    const seen = new Set<string>();
+    const take = (raw: string) => {
+      const key = normalizePersian(raw);
+      if (key.length < 2 || seen.has(key) || /^\d+$/.test(key)) return;
+      seen.add(key);
+      names.push(raw.trim());
+    };
+    for (const phrase of compounds.sort((a, b) => b.length - a.length)) {
+      const needle = normalizePersian(phrase);
+      if (!text.includes(needle)) continue;
+      take(phrase);
+      text = text.split(needle).join(" ");
+    }
+    for (const part of text.split(/\s+/)) take(part);
+    return names;
   }
 
   async addFromSpeech(userId: string, transcript: string) {
     const names = this.resolveSpokenNames(transcript);
     const added: InventoryItem[] = [];
     for (const name of names) {
-      added.push(await this.addByName(userId, name));
+      try {
+        added.push(await this.addByName(userId, name));
+      } catch {
+        /* skip non-catalog words */
+      }
     }
     return added;
   }

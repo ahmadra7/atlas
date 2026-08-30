@@ -1,6 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import {
+  imageAlreadyLoaded,
+  rememberLoadedImage,
+} from "@/lib/image-cache";
 
 const PLACEHOLDER = "/images/recipe-placeholder.svg";
 
@@ -22,7 +26,15 @@ export function optimizeImageSrc(
   _quality = 40,
 ): string {
   if (isMissingOrPlaceholder(src)) return PLACEHOLDER;
-  return src!.trim();
+  const trimmed = src!.trim();
+  if (trimmed.startsWith("/") || trimmed.startsWith("data:")) return trimmed;
+  try {
+    const url = new URL(trimmed);
+    if (url.protocol !== "https:") return PLACEHOLDER;
+    return `/api/img?u=${encodeURIComponent(trimmed)}`;
+  } catch {
+    return PLACEHOLDER;
+  }
 }
 
 export function RecipeImage({
@@ -44,6 +56,18 @@ export function RecipeImage({
     ? PLACEHOLDER
     : optimizeImageSrc(src, width, 40);
   const isPlaceholder = isMissingOrPlaceholder(optimized) || broken;
+  const [shown, setShown] = useState(
+    () => isPlaceholder || imageAlreadyLoaded(optimized),
+  );
+  const imgRef = useRef<HTMLImageElement>(null);
+
+  useEffect(() => {
+    const el = imgRef.current;
+    if (el && el.complete && el.naturalWidth > 0) {
+      rememberLoadedImage(optimized);
+      setShown(true);
+    }
+  }, [optimized]);
 
   return (
     <div
@@ -53,13 +77,24 @@ export function RecipeImage({
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
+        ref={imgRef}
         src={optimized}
         alt={isPlaceholder ? "" : alt}
-        loading={priority ? "eager" : "lazy"}
+        loading={
+          shown || priority || imageAlreadyLoaded(optimized) ? "eager" : "lazy"
+        }
         decoding="async"
-        fetchPriority={priority ? "high" : "low"}
-        onError={() => setBroken(true)}
-        className="absolute inset-0 h-full w-full object-cover"
+        fetchPriority={priority || shown ? "high" : "low"}
+        referrerPolicy="no-referrer"
+        onLoad={() => {
+          rememberLoadedImage(optimized);
+          setShown(true);
+        }}
+        onError={() => {
+          setBroken(true);
+          setShown(true);
+        }}
+        className="absolute inset-0 h-full w-full object-cover opacity-100"
       />
       {!isPlaceholder ? (
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-black/5" />

@@ -55,22 +55,40 @@ function inject(webRef: RefObject<WebView | null>, payload: unknown) {
   `);
 }
 
+function asStringList(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item).trim()).filter(Boolean);
+  }
+  if (typeof value === "string" && value.trim()) return [value.trim()];
+  return [];
+}
+
 function extractIntentTranscript(extra: Record<string, unknown> | undefined): {
   transcript: string;
   alternatives: string[];
 } {
   if (!extra) return { transcript: "", alternatives: [] };
-  const results =
-    (extra["android.speech.extra.RESULTS"] as string[] | undefined) ??
-    (extra.RESULTS as string[] | undefined) ??
-    [];
-  const list = Array.isArray(results)
-    ? results.map((r) => String(r).trim()).filter(Boolean)
-    : [];
-  return {
-    transcript: list[0] ?? "",
-    alternatives: list.slice(1),
-  };
+
+  const keyed = [
+    extra["android.speech.extra.RESULTS"],
+    extra.RESULTS,
+    extra.results,
+  ]
+    .map(asStringList)
+    .find((list) => list.length > 0) ?? [];
+
+  if (keyed.length > 0) {
+    return { transcript: keyed[0]!, alternatives: keyed.slice(1) };
+  }
+
+  for (const value of Object.values(extra)) {
+    const list = asStringList(value);
+    if (list.length > 0) {
+      return { transcript: list[0]!, alternatives: list.slice(1) };
+    }
+  }
+
+  return { transcript: "", alternatives: [] };
 }
 
 type StartOpts = {

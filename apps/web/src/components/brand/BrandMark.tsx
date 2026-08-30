@@ -1,5 +1,14 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
+import { useState } from "react";
+import {
+  imageAlreadyLoaded,
+  rememberLoadedImage,
+} from "@/lib/image-cache";
+
+const CHEF_SRC = "/avatars/chef-cute-3d.png";
 
 /** Cute 3D chef avatar for app bar / profile entry */
 export function BrandMark({
@@ -9,16 +18,38 @@ export function BrandMark({
   size?: number;
   className?: string;
 }) {
+  const [loaded, setLoaded] = useState(() => imageAlreadyLoaded(CHEF_SRC));
+
+  function markReady() {
+    rememberLoadedImage(CHEF_SRC);
+    setLoaded(true);
+  }
+
   return (
-    <Image
-      src="/avatars/chef-cute-3d.png"
-      alt="سرآشپز هوشمند"
-      width={size}
-      height={size}
-      className={`rounded-full object-cover object-top ${className}`}
-      priority
-      unoptimized
-    />
+    <span
+      className={`relative inline-flex shrink-0 overflow-hidden rounded-full ${className}`}
+      style={{ width: size, height: size }}
+    >
+      {!loaded ? (
+        <span
+          aria-hidden
+          className="absolute inset-0 overflow-hidden rounded-full bg-zinc-200 dark:bg-white/20 before:absolute before:inset-0 before:-translate-x-full before:animate-[skeletonShine_1.4s_ease-in-out_infinite] before:bg-gradient-to-r before:from-transparent before:via-white/70 before:to-transparent"
+        />
+      ) : null}
+      <Image
+        src={CHEF_SRC}
+        alt="سرآشپز هوشمند"
+        width={size}
+        height={size}
+        className={`h-full w-full rounded-full object-cover object-top ${
+          loaded ? "opacity-100" : "opacity-0"
+        }`}
+        priority
+        unoptimized
+        onLoad={markReady}
+        onError={markReady}
+      />
+    </span>
   );
 }
 

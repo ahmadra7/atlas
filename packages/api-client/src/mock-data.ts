@@ -10,7 +10,11 @@ import type {
   RecommendationResult,
   UserProfile,
 } from "@atlas/contracts";
-import { normalizePersian } from "@atlas/shared";
+import {
+  ingredientsLooselyMatch,
+  isLikelyFoodIngredient,
+  normalizePersian,
+} from "@atlas/shared";
 
 export const MOCK_INGREDIENTS: Ingredient[] = [
   {
@@ -594,17 +598,26 @@ export async function addIngredientByName(name: string): Promise<InventoryItem> 
     return addInventoryItem(catalogMatch.id);
   }
 
+  const loose = [...MOCK_INGREDIENTS, ...customIngredients].find((item) =>
+    ingredientsLooselyMatch(name, item.name),
+  );
+  if (loose) return addInventoryItem(loose.id);
+
   const byNameInInventory = inventory.find(
     (i) => normalizePersian(i.ingredient.name) === query,
   );
   if (byNameInInventory) return byNameInInventory;
+
+  if (!isLikelyFoodIngredient(name)) {
+    throw new Error("UNKNOWN_INGREDIENT");
+  }
 
   const custom: Ingredient = {
     id: `ing-custom-${Date.now()}`,
     name: name.trim(),
     normalizedName: query,
     aliases: [name.trim()],
-    category: "سفارشی",
+    category: "عمومی",
     popularity: 1,
   };
   customIngredients.push(custom);

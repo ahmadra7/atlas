@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { ApiSessionBootstrap } from "@/components/auth/ApiSessionBootstrap";
+import { InstantNav } from "@/components/navigation/InstantNav";
 import { MobileHardNav } from "@/components/navigation/MobileHardNav";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 
@@ -18,9 +19,7 @@ const themeInitScript = `
   try {
     var key = 'atlas-theme';
     var stored = localStorage.getItem(key);
-    var theme = stored === 'dark' || stored === 'light'
-      ? stored
-      : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    var theme = stored === 'dark' || stored === 'light' ? stored : 'light';
     var root = document.documentElement;
     if (theme === 'dark') root.classList.add('dark');
     else root.classList.remove('dark');
@@ -54,7 +53,7 @@ export default function RootLayout({
         <ThemeProvider>
           <ApiSessionBootstrap />
           <MobileHardNav />
-          {children}
+          <InstantNav>{children}</InstantNav>
         </ThemeProvider>
       </body>
     </html>

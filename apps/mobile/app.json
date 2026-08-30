@@ -24,10 +24,13 @@
       },
       "package": "com.atlas.mobile",
       "predictiveBackGestureEnabled": false,
+      "usesCleartextTraffic": true,
       "permissions": [
         "RECORD_AUDIO",
         "MODIFY_AUDIO_SETTINGS",
-        "android.permission.RECORD_AUDIO"
+        "android.permission.RECORD_AUDIO",
+        "INTERNET",
+        "ACCESS_NETWORK_STATE"
       ]
     },
     "web": {
@@ -35,7 +38,6 @@
     },
     "plugins": [
       "expo-status-bar",
-      "expo-dev-client",
       [
         "expo-speech-recognition",
         {

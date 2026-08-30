@@ -1,6 +1,8 @@
 # Keep mobile EAS uploads small
 **/node_modules/**
 **/.git/**
+**/android/**
+**/ios/**
 **/android/build/**
 **/ios/build/**
 **/.expo/**

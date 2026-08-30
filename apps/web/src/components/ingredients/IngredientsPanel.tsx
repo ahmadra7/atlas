@@ -2,7 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { Ingredient, InventoryItem } from "@atlas/contracts";
-import { normalizePersian } from "@atlas/shared";
+import {
+  ingredientsLooselyMatch,
+  isLikelyFoodIngredient,
+  isUnusualIngredient,
+  normalizePersian,
+} from "@atlas/shared";
 import { Add, SearchNormal1, TickCircle, Trash } from "iconsax-react";
 import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
@@ -81,7 +86,9 @@ export function IngredientsPanel({
   const canAddCustom =
     Boolean(trimmed) &&
     !selectedNames.has(normalizePersian(trimmed)) &&
-    !exactSuggestion;
+    !exactSuggestion &&
+    (isLikelyFoodIngredient(trimmed) ||
+      suggestions.some((item) => ingredientsLooselyMatch(trimmed, item.name)));
 
   async function addSuggestion(item: Ingredient) {
     if (selectedIds.has(item.id)) return;
@@ -100,6 +107,14 @@ export function IngredientsPanel({
 
   async function addTyped() {
     if (!trimmed) return;
+    if (
+      !isLikelyFoodIngredient(trimmed) &&
+      !exactSuggestion &&
+      !suggestions.some((item) => ingredientsLooselyMatch(trimmed, item.name))
+    ) {
+      setError("مواد اولیه اشتباه است");
+      return;
+    }
     setAdding(true);
     setError(null);
     try {
@@ -107,7 +122,7 @@ export function IngredientsPanel({
       await loadInventory();
       setQuery("");
     } catch {
-      setError("افزودن ماده انجام نشد.");
+      setError("مواد اولیه اشتباه است");
     } finally {
       setAdding(false);
     }
@@ -229,8 +244,8 @@ export function IngredientsPanel({
               </li>
             ) : null}
             {!searching && suggestions.length === 0 && !canAddCustom ? (
-              <li className="px-4 py-3 text-caption text-atlas-ink-muted">
-                پیشنهادی نیست. با دکمه افزودن همان متن را ثبت کنید.
+              <li className="px-4 py-3 text-caption font-medium text-atlas-danger">
+                مواد اولیه اشتباه است
               </li>
             ) : null}
           </ul>
@@ -267,6 +282,7 @@ export function IngredientsPanel({
               <Chip
                 key={item.id}
                 label={item.ingredient.name}
+                unusual={isUnusualIngredient(item.ingredient)}
                 onRemove={() =>
                   void withApiSession(() =>
                     atlasClient.removeInventoryItem(item.id),

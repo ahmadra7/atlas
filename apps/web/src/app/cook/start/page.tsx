@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { CookSkeleton } from "@/components/ui/Skeleton";
 import { StateView } from "@/components/ui/StateView";
+import { instantReplace } from "@/components/navigation/InstantNav";
 import { atlasClient } from "@/lib/client";
 
 function StartCookContent() {
@@ -22,7 +23,9 @@ function StartCookContent() {
     void atlasClient
       .startCookingSession(recipeId)
       .then((session) => {
-        if (!cancelled) router.replace(`/cook/${session.id}`);
+        if (!cancelled) {
+          instantReplace(router, `/cook/${session.id}`);
+        }
       })
       .catch(() => {
         if (!cancelled) setError("شروع پخت ممکن نشد.");

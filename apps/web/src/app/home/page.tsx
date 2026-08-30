@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import type {
   DietMode,
   Difficulty,
@@ -18,6 +18,9 @@ import {
   dishTypeLabelFa,
   formatMinutesFa,
   greetingFa,
+  ingredientsLooselyMatch,
+  isLikelyFoodIngredient,
+  isUnusualIngredient,
   mealLabelFa,
   normalizePersian,
   toPersianDigits,
@@ -26,26 +29,35 @@ import {
   Add,
   ArrowLeft,
   ArrowLeft2,
+  Category,
+  Chart,
   CloseCircle,
+  Coffee,
+  Global,
+  Heart,
+  Like1,
   Microphone2,
   People,
   SearchNormal1,
-  Send2,
   Setting4,
   TickCircle,
   Timer1,
   Trash,
 } from "iconsax-react";
-import { AppShell } from "@/components/layout/AppShell";
+import { AppShell, homeAppTitle } from "@/components/layout/AppShell";
 import { RecipeImage } from "@/components/recipe/RecipeImage";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
 import { SoftTag } from "@/components/ui/SoftTag";
 import { HomeSkeleton } from "@/components/ui/Skeleton";
+import { BottomToast } from "@/components/ui/Toast";
+import { instantPush } from "@/components/navigation/InstantNav";
 import { useIngredientVoiceInput } from "@/hooks/useIngredientVoiceInput";
 import { atlasClient, withApiSession } from "@/lib/client";
+import { partitionSpokenNames } from "@/lib/spokenIngredients";
 import { pageCache } from "@/lib/page-cache";
+import { rememberLoadedImage } from "@/lib/image-cache";
 
 const mealOptions: MealType[] = ["any", "breakfast", "lunch", "dinner", "snack"];
 const timeOptions = [15, 30, 45, 60, 90, 120, 180];
@@ -72,6 +84,21 @@ const cuisineOptions = [
   "مکزیکی",
 ];
 const preferenceOptions = ["گیاهی", "وگان", "بدون گلوتن", "کم‌کالری"];
+
+function SettingsHeading({
+  icon: Icon,
+  children,
+}: {
+  icon: typeof Coffee;
+  children: ReactNode;
+}) {
+  return (
+    <p className="flex items-center gap-1.5 text-caption font-medium text-atlas-ink-faint">
+      <Icon size={16} color="currentColor" variant="Linear" />
+      {children}
+    </p>
+  );
+}
 
 function OptionChips<T extends string>({
   options,
@@ -120,6 +147,15 @@ function OptionChips<T extends string>({
   );
 }
 
+function orderInventoryChips(items: InventoryItem[]): InventoryItem[] {
+  return [...items].sort((a, b) => {
+    const ta = Date.parse(a.createdAt) || 0;
+    const tb = Date.parse(b.createdAt) || 0;
+    if (ta !== tb) return ta - tb;
+    return a.id.localeCompare(b.id);
+  });
+}
+
 export default function HomePage() {
   const router = useRouter();
   const [loading, setLoading] = useState(() => pageCache.inventory === null);
@@ -129,11 +165,14 @@ export default function HomePage() {
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<Ingredient[]>([]);
   const [inventory, setInventory] = useState<InventoryItem[]>(
-    () => pageCache.inventory ?? [],
+    () => orderInventoryChips(pageCache.inventory ?? []),
   );
   const [adding, setAdding] = useState(false);
   const [searching, setSearching] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ title: string; message: string } | null>(
+    null,
+  );
   const [meal, setMeal] = useState<MealType>("any");
   const [maxMinutes, setMaxMinutes] = useState(180);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -155,13 +194,29 @@ export default function HomePage() {
   const [draftPreferences, setDraftPreferences] = useState<string[]>([]);
 
   useEffect(() => {
+    router.prefetch("/recommendations");
+  }, [router]);
+
+  useEffect(() => {
+    rememberLoadedImage("/icons/fridge-mascot.png");
+    rememberLoadedImage("/avatars/chef-cute-3d.png");
+    for (const card of popular) {
+      const src = card.imageUrl?.trim();
+      if (!src) continue;
+      const img = new window.Image();
+      img.onload = () => rememberLoadedImage(src);
+      img.src = src;
+    }
+  }, [popular]);
+
+  useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
         const inv = await withApiSession(() => atlasClient.getInventory());
         if (!cancelled) {
-          pageCache.inventory = inv;
-          setInventory(inv);
+          pageCache.inventory = orderInventoryChips(inv);
+          setInventory(pageCache.inventory);
           setLoading(false);
         }
         const rec = await withApiSession(() =>
@@ -213,8 +268,15 @@ export default function HomePage() {
     [inventory],
   );
   const trimmed = query.trim();
+  const inCatalog = Boolean(
+    trimmed &&
+      (isLikelyFoodIngredient(trimmed) ||
+        suggestions.some((item) => ingredientsLooselyMatch(trimmed, item.name))),
+  );
   const canAdd =
-    Boolean(trimmed) && !selectedNames.has(normalizePersian(trimmed));
+    Boolean(trimmed) &&
+    !selectedNames.has(normalizePersian(trimmed)) &&
+    inCatalog;
 
   const advancedCount = useMemo(() => {
     let n = 0;
@@ -240,38 +302,103 @@ export default function HomePage() {
 
   async function reloadInventory() {
     const inv = await withApiSession(() => atlasClient.getInventory());
-    pageCache.inventory = inv;
-    setInventory(inv);
+    pageCache.inventory = orderInventoryChips(inv);
+    setInventory(pageCache.inventory);
   }
 
-  const voice = useIngredientVoiceInput({
-    onTranscript: async (transcript) => {
-      setAdding(true);
-      setAddError(null);
-      try {
-        await withApiSession(() =>
-          atlasClient.addIngredientsFromSpeech(transcript),
-        );
-        await reloadInventory();
-        setQuery("");
-      } catch {
-        setAddError("افزودن با صدا انجام نشد. اتصال API یا ورود را چک کنید.");
-      } finally {
-        setAdding(false);
+  const showInvalidToast = useCallback(() => {
+    setToast({
+      title: "مواد غذایی اشتباه",
+      message:
+        "این مورد تو فهرست مواد اولیه ما نیست. فقط مواد غذایی مجاز را بگو.",
+    });
+  }, []);
+
+  const addSpokenChips = useCallback(async (names: string[]) => {
+    if (names.length === 0) return;
+
+    setAddError(null);
+    setInventory((prev) => {
+      const seen = new Set(
+        prev.map((item) => normalizePersian(item.ingredient.name)),
+      );
+      const extra = names
+        .filter((name) => !seen.has(normalizePersian(name)))
+        .map((name, index) => ({
+          id: `local-${Date.now()}-${index}`,
+          ingredientId: `local-${normalizePersian(name)}`,
+          ingredient: {
+            id: `local-${normalizePersian(name)}`,
+            name,
+            normalizedName: normalizePersian(name),
+            aliases: [],
+            category: "عمومی",
+            popularity: 0,
+          },
+          createdAt: new Date().toISOString(),
+        }));
+      if (extra.length === 0) return prev;
+      const next = [...prev, ...extra];
+      pageCache.inventory = next;
+      return next;
+    });
+
+    setAdding(true);
+    try {
+      await withApiSession(async () => {
+        for (const name of names) {
+          await atlasClient.addIngredientByName(name);
+        }
+      });
+      const inv = await withApiSession(() => atlasClient.getInventory());
+      if (inv.length > 0) {
+        pageCache.inventory = orderInventoryChips(inv);
+        setInventory(pageCache.inventory);
       }
+      setQuery("");
+    } catch {
+      /* chips already sit under the input */
+    } finally {
+      setAdding(false);
+    }
+  }, []);
+
+  const voice = useIngredientVoiceInput({
+    onHeard: async (transcript) => {
+      const { valid, invalid } = partitionSpokenNames(transcript);
+      if (valid.length === 0) {
+        if (invalid.length > 0) showInvalidToast();
+        return;
+      }
+      if (invalid.length > 0) showInvalidToast();
+      await addSpokenChips(valid);
     },
   });
 
   async function addTyped() {
+    if (!trimmed) return;
+    if (!inCatalog) {
+      setAddError("مواد اولیه اشتباه است");
+      return;
+    }
     if (!canAdd) return;
     setAdding(true);
     setAddError(null);
     try {
-      await withApiSession(() => atlasClient.addIngredientByName(trimmed));
+      const match = suggestions.find(
+        (item) =>
+          normalizePersian(item.name) === normalizePersian(trimmed) ||
+          ingredientsLooselyMatch(trimmed, item.name),
+      );
+      if (match) {
+        await withApiSession(() => atlasClient.addInventoryItem(match.id));
+      } else {
+        await withApiSession(() => atlasClient.addIngredientByName(trimmed));
+      }
       await reloadInventory();
       setQuery("");
     } catch {
-      setAddError("افزودن ماده انجام نشد. اتصال به سرور را چک کنید.");
+      setAddError("مواد اولیه اشتباه است");
     } finally {
       setAdding(false);
     }
@@ -366,14 +493,16 @@ export default function HomePage() {
     if (budgetFriendly) params.set("budgetFriendly", "1");
     if (preferences.length > 0) params.set("tags", preferences.join(","));
     const href = `/recommendations?${params.toString()}`;
-    router.push(href);
+    instantPush(router, href);
   }
 
   return (
     <AppShell
+      title={homeAppTitle}
+      splitTitle
       brandAside={
         <div className="min-w-0 leading-tight">
-          <p className="text-[11px] text-atlas-ink-muted">سلام احمد!</p>
+          <p className="truncate text-[11px] text-atlas-ink-muted">سلام احمد!</p>
           <p className="truncate text-[13px] font-bold text-atlas-ink">
             {greetingFa()} 👋
           </p>
@@ -383,64 +512,72 @@ export default function HomePage() {
       {loading ? (
         <HomeSkeleton />
       ) : (
-      <div className="pb-8 pt-1">
-        <section className="relative z-10 mb-5">
-          <div className="rounded-atlas-xl bg-atlas-surface px-5 pb-6 pt-6 shadow-[0_18px_40px_rgba(17,17,17,0.14),0_6px_14px_rgba(17,17,17,0.08)] dark:shadow-[0_18px_40px_rgba(0,0,0,0.45)]">
-            <div className="relative z-10 flex items-center gap-2.5">
+      <div className="overflow-visible pb-8 pt-8">
+        <section className="relative z-10 mb-5 overflow-visible">
+          <div className="relative flex flex-col gap-5 overflow-visible rounded-atlas-xl bg-atlas-surface px-5 pb-5 shadow-[0_18px_40px_rgba(17,17,17,0.14),0_6px_14px_rgba(17,17,17,0.08)] dark:shadow-[0_18px_40px_rgba(0,0,0,0.45)]">
+            <div className="flex flex-col items-center text-center">
               <img
                 src="/icons/fridge-mascot.png"
                 alt=""
                 width={88}
                 height={88}
-                className="h-[4.6rem] w-[4.6rem] shrink-0 object-contain"
+                className="pointer-events-none -mt-[2.3rem] mb-1 h-[4.6rem] w-[4.6rem] object-contain"
               />
-              <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 text-right">
-                <h3 className="text-[1.45rem] font-extrabold leading-8 tracking-tight text-atlas-ink sm:text-[1.55rem]">
-                  چیا تو یخچال داری ؟!
-                </h3>
-                <p className="truncate text-[12px] leading-4 text-atlas-ink-muted">
-                  هر موادی داری بگو یا تایپ کن تا من بگم چی درست کن
-                </p>
-              </div>
+              <h3 className="text-[1.45rem] font-extrabold leading-8 tracking-tight text-atlas-ink sm:text-[1.55rem]">
+                چیا تو یخچال داری ؟!
+              </h3>
+              <p className="mt-3 max-w-[20rem] text-[12px] leading-4 text-atlas-ink-muted">
+                هر موادی داری بگو یا تایپ کن تا من بگم چی درست کن
+              </p>
             </div>
 
-            <div className="mt-6 flex flex-col gap-6">
-              <div className="flex flex-col gap-4">
                 <div className="flex flex-col items-center gap-3">
-                  <div className="relative flex h-[5.75rem] w-[5.75rem] items-center justify-center">
-                    {voice.listening ? (
-                      <>
-                        <span
-                          className="pointer-events-none absolute inset-0 rounded-full border-2 border-atlas-primary/35"
-                          style={{ animation: "micRing 1.4s ease-out infinite" }}
-                        />
-                        <span
-                          className="pointer-events-none absolute inset-0 rounded-full border border-atlas-primary/25"
-                          style={{
-                            animation: "micRing 1.4s ease-out infinite 0.35s",
-                          }}
-                        />
-                      </>
-                    ) : null}
+                  <div
+                    className={`relative flex items-center justify-center ${
+                      voice.listening ? "h-[6.4rem] w-[6.4rem]" : "h-[4.5rem] w-[4.5rem]"
+                    }`}
+                  >
+                    {voice.listening
+                      ? Array.from({ length: 48 }, (_, i) => {
+                          const angle = (i / 48) * 360;
+                          const wave =
+                            0.35 +
+                            voice.volume *
+                              (0.3 + 0.4 * Math.abs(Math.sin(i * 1.8)));
+                          return (
+                            <span
+                              key={i}
+                              className="pointer-events-none absolute inset-0"
+                              style={{ transform: `rotate(${angle}deg)` }}
+                            >
+                              <span
+                                className="absolute left-1/2 top-[3px] h-[7px] w-[1.5px] -ml-[0.75px] origin-bottom rounded-full bg-atlas-primary"
+                                style={{
+                                  opacity: 0.4 + wave * 0.45,
+                                  transform: `scaleY(${0.45 + wave * 0.7})`,
+                                  animation: `micBar ${0.7 + (i % 4) * 0.12}s ease-in-out ${i * 0.025}s infinite`,
+                                }}
+                              />
+                            </span>
+                          );
+                        })
+                      : null}
                     <button
                       type="button"
                       onClick={() => {
                         if (voice.processing) return;
                         if (voice.listening) {
-                          voice.cancel();
+                          voice.stop();
                           return;
                         }
                         voice.start();
                       }}
-                      disabled={adding && !voice.listening}
                       aria-label={
-                        voice.listening
-                          ? "لغو ضبط"
-                          : "افزودن مواد با صدا"
+                        voice.listening ? "لغو ضبط" : "افزودن مواد با صدا"
                       }
                       className={`relative z-10 inline-flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-full text-white transition active:scale-95 disabled:opacity-50 ${
                         voice.listening
-                          ? "scale-110 bg-[#E11D2E] shadow-[0_12px_32px_rgba(225,29,46,0.45)]"
+                          ? "bg-[#E11D2E] shadow-[0_12px_32px_rgba(225,29,46,0.45)]"
                           : "bg-atlas-primary shadow-[0_10px_28px_rgba(255,55,55,0.35)]"
                       }`}
                     >
@@ -460,58 +597,17 @@ export default function HomePage() {
                         )}
                       </span>
                     </button>
-                    {voice.listening ? (
-                      <div className="pointer-events-none absolute -bottom-0.5 flex h-5 items-end gap-[3px]">
-                        {[0, 1, 2, 3, 4].map((i) => {
-                          const wave =
-                            0.25 +
-                            voice.volume *
-                              (0.55 + 0.35 * Math.sin(i * 1.4 + voice.volume * 8));
-                          return (
-                            <span
-                              key={i}
-                              className="w-[3px] origin-bottom rounded-full bg-atlas-primary"
-                              style={{
-                                height: `${6 + wave * 14}px`,
-                                opacity: 0.55 + wave * 0.45,
-                                animation:
-                                  voice.engineMode === "native"
-                                    ? undefined
-                                    : `micBar 0.7s ease-in-out ${i * 0.08}s infinite`,
-                              }}
-                            />
-                          );
-                        })}
-                      </div>
-                    ) : null}
                   </div>
-
-                  {voice.listening && voice.engineMode !== "intent" ? (
-                    <button
-                      type="button"
-                      onClick={() => voice.stop()}
-                      disabled={!voice.canSend || voice.processing}
-                      className="inline-flex h-11 items-center gap-2 rounded-full bg-atlas-ink px-5 text-[13px] font-bold text-white transition active:scale-[0.98] disabled:opacity-40"
-                    >
-                      <Send2 size={18} color="currentColor" variant="Bold" />
-                      ارسال
-                    </button>
+                  {voice.listening ? (
+                    <div className="max-w-[17rem] rounded-xl border border-dashed border-atlas-primary/50 bg-atlas-primary/10 px-3.5 py-2 text-center">
+                      <p className="text-[12px] leading-5 text-atlas-ink-muted">
+                        {voice.draft || voice.interim
+                          ? voice.draft || voice.interim
+                          : "دارم گوش می‌دم… بگو"}
+                      </p>
+                    </div>
                   ) : null}
                 </div>
-
-                <p className="min-h-[1.1rem] text-center text-[12px] font-medium text-atlas-ink-faint">
-                  {voice.errorMessage
-                    ? voice.errorMessage
-                    : voice.listening && voice.engineMode === "intent"
-                      ? "دارم گوش می‌دم…"
-                      : voice.listening && voice.draft
-                      ? voice.draft
-                      : voice.listening
-                        ? "دارم گوش می‌دم… بعد بزن ارسال"
-                        : voice.processing
-                          ? "…"
-                          : "یا"}
-                </p>
 
                 <div className="flex items-start gap-2">
                   <div className="relative min-w-0 flex-1">
@@ -520,7 +616,10 @@ export default function HomePage() {
                     </span>
                     <input
                       value={query}
-                      onChange={(e) => setQuery(e.target.value)}
+                      onChange={(e) => {
+                        setQuery(e.target.value);
+                        if (addError) setAddError(null);
+                      }}
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
                           e.preventDefault();
@@ -528,7 +627,7 @@ export default function HomePage() {
                         }
                       }}
                       placeholder="مثلا گوجه، تخم‌مرغ، عدس…"
-                      className={`h-11 w-full border border-atlas-border bg-atlas-surface py-2 pr-10 pl-3 text-body text-atlas-ink outline-none focus:border-atlas-primary ${
+                      className={`h-12 w-full border border-atlas-border bg-atlas-surface py-2 pr-10 pl-3 text-body text-atlas-ink outline-none focus:border-atlas-primary ${
                         trimmed
                           ? "rounded-t-atlas rounded-b-none border-b-transparent"
                           : "rounded-atlas"
@@ -579,7 +678,16 @@ export default function HomePage() {
                           ) : null}
                           {!searching &&
                           suggestions.length === 0 &&
-                          !canAdd ? (
+                          trimmed &&
+                          !inCatalog ? (
+                            <li className="px-3 py-3 text-caption font-medium text-atlas-danger">
+                              مواد اولیه اشتباه است
+                            </li>
+                          ) : null}
+                          {!searching &&
+                          suggestions.length === 0 &&
+                          !canAdd &&
+                          inCatalog ? (
                             <li className="px-3 py-3 text-caption text-atlas-ink-faint">
                               موردی پیدا نشد
                             </li>
@@ -593,9 +701,9 @@ export default function HomePage() {
                     type="button"
                     onClick={openMoreSettings}
                     aria-label="تنظیمات"
-                    className="relative inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-atlas border border-atlas-border bg-atlas-surface text-atlas-ink-muted transition hover:border-atlas-border-strong hover:bg-atlas-surface-muted hover:text-atlas-ink"
+                    className="relative inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-atlas border border-atlas-border bg-atlas-surface text-atlas-ink-muted transition hover:border-atlas-border-strong hover:bg-atlas-surface-muted hover:text-atlas-ink"
                   >
-                    <Setting4 size={20} color="currentColor" variant="Outline" />
+                    <Setting4 size={22} color="currentColor" variant="Outline" />
                     {advancedCount > 0 ? (
                       <span className="absolute -left-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-atlas-primary px-1 text-[10px] font-bold leading-none text-white">
                         {toPersianDigits(advancedCount)}
@@ -607,35 +715,48 @@ export default function HomePage() {
                 {addError ? (
                   <p className="text-caption text-atlas-danger">{addError}</p>
                 ) : null}
-              </div>
 
               {inventory.length > 0 ? (
-                <div className="flex items-start gap-2">
-                  <div className="flex min-w-0 flex-1 flex-wrap gap-2">
+                <div
+                  dir="rtl"
+                  className="flex w-full flex-wrap items-center justify-start gap-2"
+                >
                     {inventory.map((item) => (
                       <Chip
                         key={item.id}
+                        ink
                         label={item.ingredient.name}
-                        onRemove={() =>
+                        unusual={isUnusualIngredient(item.ingredient)}
+                        onRemove={() => {
+                          setInventory((prev) => {
+                            const next = prev.filter((row) => row.id !== item.id);
+                            pageCache.inventory = next;
+                            return next;
+                          });
+                          if (item.id.startsWith("local-")) return;
                           void withApiSession(() =>
                             atlasClient.removeInventoryItem(item.id),
-                          ).then(reloadInventory)
-                        }
+                          ).then(reloadInventory);
+                        }}
                       />
                     ))}
-                  </div>
-                  {inventory.length > 1 ? (
-                    <button
-                      type="button"
-                      aria-label="پاک کردن همه مواد"
-                      title="پاک کردن همه"
-                      disabled={adding}
-                      onClick={() => void clearAllIngredients()}
-                      className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-atlas-ink-faint transition hover:bg-atlas-surface-muted hover:text-atlas-danger disabled:opacity-50"
-                    >
-                      <Trash size={16} color="currentColor" variant="Bold" />
-                    </button>
-                  ) : null}
+                    {inventory.length > 1 ? (
+                      <button
+                        type="button"
+                        aria-label="حذف همه مواد"
+                        disabled={adding}
+                        onClick={() => void clearAllIngredients()}
+                        className="inline-flex flex-row items-center gap-1 rounded-xl px-2.5 py-2 text-caption font-semibold text-atlas-danger transition hover:bg-atlas-danger-soft disabled:opacity-50"
+                        dir="ltr"
+                      >
+                        <CloseCircle
+                          size={16}
+                          color="currentColor"
+                          variant="Bold"
+                        />
+                        <span dir="rtl">حذف همه</span>
+                      </button>
+                    ) : null}
                 </div>
               ) : null}
 
@@ -648,7 +769,6 @@ export default function HomePage() {
               >
                 بزن بریم
               </Button>
-            </div>
           </div>
         </section>
 
@@ -656,7 +776,7 @@ export default function HomePage() {
         <Link
           href="/search"
           prefetch
-          className="flex h-11 items-center gap-2 rounded-atlas border border-atlas-border bg-atlas-surface px-4 text-[13px] text-atlas-ink-faint"
+          className="flex h-12 items-center gap-2 rounded-atlas border border-atlas-border bg-atlas-surface px-4 text-[13px] text-atlas-ink-faint"
         >
           <SearchNormal1 size={18} color="currentColor" />
           جستجوی غذا
@@ -733,7 +853,7 @@ export default function HomePage() {
               onClick={applyMoreSettings}
               icon={<TickCircle size={18} color="currentColor" variant="Bold" />}
             >
-              اعمال تنظیمات
+              تایید
             </Button>
             <Button
               variant="tertiary"
@@ -748,7 +868,7 @@ export default function HomePage() {
       >
         <div className="space-y-5 pb-2">
           <div className="space-y-2">
-            <p className="text-caption font-semibold text-atlas-ink-faint">وعده</p>
+            <SettingsHeading icon={Coffee}>وعده</SettingsHeading>
             <OptionChips
               options={mealOptions}
               value={draftMeal}
@@ -758,9 +878,7 @@ export default function HomePage() {
           </div>
 
           <div className="space-y-2">
-            <p className="text-caption font-semibold text-atlas-ink-faint">
-              زمان در دسترس (دقیقه)
-            </p>
+            <SettingsHeading icon={Timer1}>زمان در دسترس (دقیقه)</SettingsHeading>
             <div className="flex flex-wrap gap-2">
               {timeOptions.map((mins) => (
                 <button
@@ -780,7 +898,7 @@ export default function HomePage() {
           </div>
 
           <div className="space-y-2">
-            <p className="text-caption font-semibold text-atlas-ink-faint">رژیم غذایی</p>
+            <SettingsHeading icon={Heart}>رژیم غذایی</SettingsHeading>
             <OptionChips
               options={dietModes}
               value={draftDietMode}
@@ -790,7 +908,7 @@ export default function HomePage() {
           </div>
 
           <div className="space-y-2">
-            <p className="text-caption font-semibold text-atlas-ink-faint">نوع غذا</p>
+            <SettingsHeading icon={Category}>نوع غذا</SettingsHeading>
             <OptionChips
               options={dishTypes}
               value={draftDishType}
@@ -800,7 +918,7 @@ export default function HomePage() {
           </div>
 
           <div className="space-y-2">
-            <p className="text-caption font-semibold text-atlas-ink-faint">سختی پخت</p>
+            <SettingsHeading icon={Chart}>سختی پخت</SettingsHeading>
             <OptionChips
               options={difficulties}
               value={draftDifficulty}
@@ -810,7 +928,7 @@ export default function HomePage() {
           </div>
 
           <div className="space-y-2">
-            <p className="text-caption font-semibold text-atlas-ink-faint">سبک آشپزی</p>
+            <SettingsHeading icon={Global}>سبک آشپزی</SettingsHeading>
             <OptionChips
               options={cuisineOptions}
               value={draftCuisine}
@@ -820,7 +938,7 @@ export default function HomePage() {
           </div>
 
           <div className="space-y-2">
-            <p className="text-caption font-semibold text-atlas-ink-faint">ترجیحات</p>
+            <SettingsHeading icon={Like1}>ترجیحات</SettingsHeading>
             <div className="flex flex-wrap gap-2">
               {preferenceOptions.map((tag) => {
                 const active = draftPreferences.includes(tag);
@@ -854,6 +972,12 @@ export default function HomePage() {
           </div>
         </div>
       </BottomSheet>
+      <BottomToast
+        open={Boolean(toast)}
+        title={toast?.title ?? ""}
+        message={toast?.message ?? ""}
+        onClose={() => setToast(null)}
+      />
     </AppShell>
   );
 }

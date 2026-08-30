@@ -24,7 +24,6 @@ export default function RecipeDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [favorited, setFavorited] = useState(false);
-  const [starting, setStarting] = useState(false);
   const [toggling, setToggling] = useState(false);
 
   useEffect(() => {
@@ -142,17 +141,13 @@ export default function RecipeDetailPage() {
             <Button
               size="lg"
               className="w-full"
-              disabled={starting}
               icon={<PotIcon size={20} color="currentColor" />}
               onClick={() => {
-                setStarting(true);
-                appNavigateSoftOrHard(
-                  `/cook/start?recipeId=${encodeURIComponent(recipe.id)}`,
-                  (h) => router.push(h),
-                );
+                const href = `/cook/start?recipeId=${encodeURIComponent(recipe.id)}`;
+                appNavigateSoftOrHard(href, (h) => router.push(h));
               }}
             >
-              {starting ? "در حال شروع…" : "بزن بریم برای پخت"}
+              بزن بریم برای پخت
             </Button>
           </BottomBar>
         </div>

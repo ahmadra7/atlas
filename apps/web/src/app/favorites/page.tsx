@@ -10,6 +10,7 @@ import { RecipeImage } from "@/components/recipe/RecipeImage";
 import { Button } from "@/components/ui/Button";
 import { FavoritesSkeleton } from "@/components/ui/Skeleton";
 import { StateView } from "@/components/ui/StateView";
+import { instantPush } from "@/components/navigation/InstantNav";
 import { atlasClient } from "@/lib/client";
 import { pageCache } from "@/lib/page-cache";
 
@@ -45,7 +46,7 @@ export default function FavoritesPage() {
             title="هنوز چیزی ذخیره نشده"
             description="از صفحه دستور، روی قلب بالای صفحه بزنید."
             actionLabel="رفتن به خانه"
-            onAction={() => router.push("/home")}
+            onAction={() => instantPush(router, "/home")}
           />
         ) : null}
         {items.map((item) => (

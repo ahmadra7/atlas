@@ -64,7 +64,7 @@ export function BottomSheet({
         aria-modal="true"
         aria-label={title}
         className={`relative z-10 flex w-full max-w-md flex-col rounded-t-atlas-xl border border-atlas-border bg-atlas-surface shadow-atlas transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
-          tall ? "h-[92vh] max-h-[98vh]" : "max-h-[88vh]"
+          tall ? "h-[75vh] max-h-[75vh]" : "max-h-[88vh]"
         } ${entered ? "translate-y-0" : "translate-y-full"}`}
       >
         <div className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-zinc-300" />

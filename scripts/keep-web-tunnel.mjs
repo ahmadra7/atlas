@@ -1,36 +1,61 @@
 /**
- * Keeps a public tunnel to local :3000 alive.
- * On reconnect (or URL change), updates apps/mobile/src/webUrl.ts so Expo HMR
- * reloads the WebView without a manual scan.
+ * Keeps a public HTTPS tunnel to local :3000 alive.
+ *
+ * Phone-facing: localhost.run (SSH). Cloudflare quick tunnels often 1033 on
+ * Iranian phones, so they are not used as the primary URL.
+ *
+ * A dedicated SSH key (not nokey@) keeps the same free domain across reconnects
+ * for longer. Anonymous nokey tunnels rotate and idle-timeout.
+ *
+ * HTTP pings through the public URL stop localhost.run's inactivity timeout.
+ * If SSH drops, this process reconnects. If the host rotates the domain in
+ * the same session, URL files are rewritten immediately.
  */
 import { spawn } from "node:child_process";
-import { writeFileSync, mkdirSync } from "node:fs";
+import { homedir } from "node:os";
+import { writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const WEB_URL_FILE = join(ROOT, "apps/mobile/src/webUrl.ts");
 const QR_URL_FILE = join(ROOT, "apps/mobile/web-public-url.txt");
+const REPO_URL_FILE = join(ROOT, "HOME-URL.txt");
+const DESKTOP_URL_FILE = join(homedir(), "Desktop", "Atlas-Home-URL.txt");
+const SSH_KEY = join(homedir(), ".ssh", "atlas_localhost_run");
 const LOCAL = "http://127.0.0.1:3000/home";
-const HEALTH_MS = 12_000;
-const RESTART_DELAY_MS = 2_500;
+const RESTART_DELAY_MS = 2_000;
+const PING_MS = 20_000;
 
 let currentUrl = "";
 let child = null;
 let stopping = false;
+let pingTimer = null;
 
 function log(...args) {
   console.log(`[tunnel] ${new Date().toLocaleTimeString()}`, ...args);
 }
 
-function writeMobileUrl(baseUrl) {
-  const home = `${baseUrl.replace(/\/$/, "")}/home`;
-  if (home === currentUrl) return;
-  currentUrl = home;
-  const body = `/** Updated automatically by \`npm run tunnel:web\` — do not edit by hand. */\nexport const WEB_APP_URL = ${JSON.stringify(home)};\n`;
+function writeUrlFiles(homeUrl) {
+  if (homeUrl === currentUrl) return;
+  currentUrl = homeUrl;
+  const body = `/** Updated automatically by \`npm run tunnel:web\` — do not edit by hand. */\nexport const WEB_APP_URL = ${JSON.stringify(homeUrl)};\n`;
   writeFileSync(WEB_URL_FILE, body, "utf8");
-  writeFileSync(QR_URL_FILE, home, "utf8");
-  log("mobile URL →", home);
+  writeFileSync(QR_URL_FILE, homeUrl, "utf8");
+  const note = [
+    homeUrl,
+    "",
+    "این فایل همیشه آخرین لینک باز را دارد.",
+    "لپ‌تاپ باید روشن بماند و npm run tunnel:web در حال اجرا باشد.",
+    "",
+  ].join("\n");
+  writeFileSync(REPO_URL_FILE, note, "utf8");
+  try {
+    writeFileSync(DESKTOP_URL_FILE, note, "utf8");
+  } catch {
+    /* desktop may be missing */
+  }
+  log("public URL →", homeUrl);
 }
 
 async function localWebUp() {
@@ -42,76 +67,101 @@ async function localWebUp() {
   }
 }
 
-async function publicHealthy(url) {
-  try {
-    const res = await fetch(url, { redirect: "follow" });
-    return res.status === 200;
-  } catch {
-    return false;
+function stopPing() {
+  if (pingTimer != null) {
+    clearInterval(pingTimer);
+    pingTimer = null;
   }
 }
 
+function startPing() {
+  stopPing();
+  pingTimer = setInterval(() => {
+    const url = currentUrl;
+    if (!url) return;
+    void fetch(url, { redirect: "follow", cache: "no-store" }).catch(() => {
+      /* idle ping — do not kill the tunnel if this PC cannot fetch */
+    });
+  }, PING_MS);
+}
+
 function killChild() {
+  stopPing();
   if (!child || child.killed) return;
   try {
-    child.kill("SIGTERM");
+    child.kill();
   } catch {
     /* ignore */
   }
   child = null;
 }
 
-function startSshTunnel() {
-  return new Promise((resolve) => {
-    log("starting localhost.run …");
-    const proc = spawn(
-      "ssh",
-      [
-        "-o",
-        "StrictHostKeyChecking=accept-new",
-        "-o",
-        "ServerAliveInterval=15",
-        "-o",
-        "ServerAliveCountMax=3",
-        "-o",
-        "ExitOnForwardFailure=yes",
-        "-R",
-        "80:127.0.0.1:3000",
-        "nokey@localhost.run",
-      ],
-      { stdio: ["ignore", "pipe", "pipe"], windowsHide: true },
-    );
-    child = proc;
-    let buf = "";
+function grabUrl(text) {
+  const lhr = text.match(/https:\/\/[a-z0-9]+\.lhr\.(?:life|rocks)/i);
+  if (lhr) return `${lhr[0].replace(/\/$/, "")}/home`;
+  const random = text.match(/https:\/\/[a-f0-9]{8,}\.localhost\.run/i);
+  if (random) return `${random[0].replace(/\/$/, "")}/home`;
+  return null;
+}
 
+function startSsh(useKey) {
+  const args = [
+    "-o",
+    "StrictHostKeyChecking=accept-new",
+    "-o",
+    "ServerAliveInterval=20",
+    "-o",
+    "ServerAliveCountMax=4",
+    "-o",
+    "TCPKeepAlive=yes",
+    "-o",
+    "ExitOnForwardFailure=yes",
+    "-R",
+    "80:127.0.0.1:3000",
+  ];
+  if (useKey && existsSync(SSH_KEY)) {
+    args.push(
+      "-i",
+      SSH_KEY,
+      "-o",
+      "IdentitiesOnly=yes",
+      "-o",
+      "PreferredAuthentications=publickey",
+      "localhost.run",
+    );
+    log("starting localhost.run with SSH key …");
+  } else {
+    args.push("nokey@localhost.run");
+    log("starting localhost.run as nokey …");
+  }
+  return startProcess("ssh", args);
+}
+
+function startProcess(command, args) {
+  return new Promise((resolve) => {
+    const proc = spawn(command, args, {
+      stdio: ["ignore", "pipe", "pipe"],
+      windowsHide: true,
+    });
+    child = proc;
     const onChunk = (chunk) => {
       const text = chunk.toString();
       process.stdout.write(text);
-      buf += text;
-      const match = buf.match(/https:\/\/[a-z0-9]+\.lhr\.life/i);
-      if (match) writeMobileUrl(match[0]);
+      const url = grabUrl(text);
+      if (url) {
+        writeUrlFiles(url);
+        startPing();
+      }
     };
-
     proc.stdout.on("data", onChunk);
     proc.stderr.on("data", onChunk);
     proc.on("exit", (code) => {
-      log("ssh exited", code);
+      log("tunnel exited", code);
+      stopPing();
       if (child === proc) child = null;
       resolve(code);
     });
   });
-}
-
-async function healthLoop() {
-  while (!stopping) {
-    await sleep(HEALTH_MS);
-    if (!currentUrl || !child) continue;
-    const ok = await publicHealthy(currentUrl);
-    if (!ok) {
-      log("public URL unhealthy (503/timeout) — restarting tunnel");
-      killChild();
-    }
-  }
 }
 
 function sleep(ms) {
@@ -120,19 +170,24 @@ function sleep(ms) {
 
 async function main() {
   mkdirSync(join(ROOT, "apps/mobile/src"), { recursive: true });
+  mkdirSync(join(homedir(), ".ssh"), { recursive: true });
   log("watching local web at", LOCAL);
+  log("SSH key", existsSync(SSH_KEY) ? SSH_KEY : "missing");
 
-  healthLoop();
+  let preferKey = existsSync(SSH_KEY);
 
   while (!stopping) {
     if (!(await localWebUp())) {
       log("local :3000 down — waiting (run npm run dev:web)");
-      writeMobileUrl("http://127.0.0.1:3000");
       await sleep(4000);
       continue;
     }
-    await startSshTunnel();
+    const code = await startSsh(preferKey);
     if (stopping) break;
+    if (preferKey && code === 255) {
+      log("key auth failed — next attempt uses nokey");
+      preferKey = false;
+    }
     currentUrl = "";
     log(`reconnect in ${RESTART_DELAY_MS}ms`);
     await sleep(RESTART_DELAY_MS);

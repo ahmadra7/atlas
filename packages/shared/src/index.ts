@@ -5,6 +5,9 @@ import type {
   MatchTier,
   MealType,
 } from "@atlas/contracts";
+import { FOOD_NAMES } from "./foodIngredients";
+
+export { FOOD_NAMES } from "./foodIngredients";
 
 /** Persian ingredient normalization per content spec. */
 export function normalizePersian(input: string): string {
@@ -186,4 +189,28 @@ export function formatDurationClock(totalSeconds: number): string {
   return `${toPersianDigits(String(m).padStart(2, "0"))}:${toPersianDigits(
     String(s).padStart(2, "0"),
   )}`;
+}
+
+const FOOD_KEYS = new Set(
+  FOOD_NAMES.map((name) => normalizePersian(name)).filter((n) => n.length >= 2),
+);
+
+export function isLikelyFoodIngredient(name: string): boolean {
+  const n = normalizePersian(name);
+  if (!n || n.length < 2) return false;
+  if (isPantryStaple(name)) return true;
+  if (FOOD_KEYS.has(n)) return true;
+  for (const food of FOOD_KEYS) {
+    if (ingredientsLooselyMatch(n, food)) return true;
+  }
+  return false;
+}
+
+/** Custom chips that do not look like food (e.g. random voice words). */
+export function isUnusualIngredient(ingredient: {
+  name: string;
+  category?: string;
+}): boolean {
+  if (ingredient.category && ingredient.category !== "سفارشی") return false;
+  return !isLikelyFoodIngredient(ingredient.name);
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { instantReplace } from "@/components/navigation/InstantNav";
 import { BrandMark } from "@/components/brand/BrandMark";
 
 export default function SplashPage() {
@@ -12,7 +13,7 @@ export default function SplashPage() {
     const done = localStorage.getItem("atlas-onboarding-done");
     const leaveAt = window.setTimeout(() => setLeaving(true), 2200);
     const goAt = window.setTimeout(() => {
-      router.replace(done ? "/home" : "/onboarding");
+      instantReplace(router, done ? "/home" : "/onboarding");
     }, 2800);
     return () => {
       window.clearTimeout(leaveAt);
