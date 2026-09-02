@@ -46,6 +46,7 @@ import {
   Trash,
 } from "iconsax-react";
 import { AppShell, homeAppTitle } from "@/components/layout/AppShell";
+import { BrandMark } from "@/components/brand/BrandMark";
 import { RecipeImage } from "@/components/recipe/RecipeImage";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button } from "@/components/ui/Button";
@@ -232,8 +233,7 @@ export default function HomePage() {
   }, [router]);
 
   useEffect(() => {
-    rememberLoadedImage("/icons/fridge-mascot.png");
-    rememberLoadedImage("/avatars/chef-cute-3d.png");
+    rememberLoadedImage("/avatars/chef-app.png");
     for (const card of popular) {
       const src = card.imageUrl?.trim();
       if (!src) continue;
@@ -559,13 +559,9 @@ export default function HomePage() {
         <section className="relative z-10 mb-5 overflow-visible">
           <div className="relative flex flex-col gap-5 overflow-visible rounded-atlas-xl bg-atlas-surface px-5 pb-5 shadow-[0_18px_40px_rgba(17,17,17,0.14),0_6px_14px_rgba(17,17,17,0.08)] dark:shadow-[0_18px_40px_rgba(0,0,0,0.45)]">
             <div className="flex flex-col items-center text-center">
-              <img
-                src="/icons/fridge-mascot.png"
-                alt=""
-                width={88}
-                height={88}
-                className="pointer-events-none -mt-[2.3rem] mb-5 h-[4.6rem] w-[4.6rem] object-contain"
-              />
+              <div className="pointer-events-none -mt-[2.7rem] mb-2">
+                <BrandMark size={112} />
+              </div>
               <h3 className="text-[1.45rem] font-extrabold leading-8 text-atlas-ink sm:text-[1.55rem]">
                 چیا تو یخچال داری ؟!
               </h3>

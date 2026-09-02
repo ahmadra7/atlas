@@ -4,7 +4,6 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Clock, Heart, Logout, Award, Moon, Profile, Sun1, User } from "iconsax-react";
 import { toPersianDigits } from "@atlas/shared";
-import { BrandMark } from "@/components/brand/BrandMark";
 import { instantPush } from "@/components/navigation/InstantNav";
 import { useTheme } from "@/components/theme/ThemeProvider";
 import { IosSwitch } from "@/components/ui/IosSwitch";
@@ -78,13 +77,9 @@ export function AvatarMenu() {
         aria-label="منوی حساب"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className="relative inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-atlas-primary-soft shadow-[0_6px_16px_rgba(212,2,47,0.18)] ring-2 ring-white transition hover:scale-105 active:scale-95 dark:ring-atlas-surface"
+        className="relative inline-flex h-7 w-7 shrink-0 items-center justify-center overflow-visible bg-transparent transition hover:scale-105 active:scale-95"
       >
-        <BrandMark size={44} className="h-11 w-11" />
-        <span
-          aria-hidden
-          className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-atlas-surface"
-        />
+        <ChefHatAvatar />
       </button>
 
       {open ? (
@@ -162,6 +157,31 @@ export function AvatarMenu() {
         </>
       ) : null}
     </div>
+  );
+}
+
+function ChefHatAvatar() {
+  const size = 28;
+  const dot = 8;
+  return (
+    <span className="relative inline-flex shrink-0" style={{ width: size, height: size }}>
+      <span className="absolute inset-0 flex items-center justify-center overflow-hidden rounded-[0.5rem] bg-white shadow-[0_3px_10px_rgba(17,17,17,0.14)] ring-1 ring-black/10 dark:ring-white/20">
+        <svg viewBox="0 0 24 24" width={16} height={16} fill="#111111" aria-hidden>
+          <path d="M12 3.1c-1.7 0-3.15.95-3.85 2.35A3.55 3.55 0 0 0 4.4 8.9c0 1.25.65 2.35 1.65 3v5.35c0 .45.4.8.9.8h10.1c.5 0 .9-.35.9-.8V11.9c1-.65 1.65-1.75 1.65-3 0-1.9-1.45-3.45-3.3-3.55C15.6 4.05 14 3.1 12 3.1Z" />
+          <rect x="6.35" y="17.85" width="11.3" height="2.35" rx="1.05" />
+        </svg>
+      </span>
+      <span
+        aria-hidden
+        className="pointer-events-none absolute z-10 rounded-full bg-emerald-500 ring-2 ring-white"
+        style={{
+          width: dot,
+          height: dot,
+          bottom: -dot * 0.28,
+          right: -dot * 0.28,
+        }}
+      />
+    </span>
   );
 }
 
