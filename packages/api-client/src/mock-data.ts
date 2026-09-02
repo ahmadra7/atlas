@@ -13,365 +13,18 @@ import type {
 import {
   ingredientsLooselyMatch,
   isLikelyFoodIngredient,
+  isPantryStaple,
   normalizePersian,
 } from "@atlas/shared";
+import { PERSIAN_INGREDIENTS } from "./catalog/ingredients";
+import { PERSIAN_RECIPES } from "./catalog/persianRecipes";
 
-export const MOCK_INGREDIENTS: Ingredient[] = [
-  {
-    id: "ing-egg",
-    name: "تخم‌مرغ",
-    normalizedName: "تخم مرغ",
-    aliases: ["تخم مرغ", "تخم‌مرغ", "تخممرغ", "egg"],
-    category: "لبنیات و پروتئین",
-    popularity: 98,
-  },
-  {
-    id: "ing-onion",
-    name: "پیاز",
-    normalizedName: "پیاز",
-    aliases: ["پیاز"],
-    category: "سبزیجات",
-    popularity: 95,
-  },
-  {
-    id: "ing-tomato",
-    name: "گوجه‌فرنگی",
-    normalizedName: "گوجه فرنگی",
-    aliases: ["گوجه", "گوجه فرنگی", "گوجه‌فرنگی", "گوجهفرنگي", "گوجهفرنگى"],
-    category: "سبزیجات",
-    popularity: 94,
-  },
-  {
-    id: "ing-potato",
-    name: "سیب‌زمینی",
-    normalizedName: "سیب زمینی",
-    aliases: ["سیب زمینی", "سیب‌زمینی", "سیبزمینی", "سیب زمينى"],
-    category: "سبزیجات",
-    popularity: 92,
-  },
-  {
-    id: "ing-rice",
-    name: "برنج",
-    normalizedName: "برنج",
-    aliases: ["برنج ایرانی", "برنج"],
-    category: "غلات",
-    popularity: 97,
-  },
-  {
-    id: "ing-chicken",
-    name: "مرغ",
-    normalizedName: "مرغ",
-    aliases: ["سینه مرغ", "ران مرغ", "مرغ"],
-    category: "پروتئین",
-    popularity: 90,
-  },
-  {
-    id: "ing-oil",
-    name: "روغن",
-    normalizedName: "روغن",
-    aliases: ["روغن مایع", "روغن"],
-    category: "خشکبار و روغن",
-    popularity: 88,
-  },
-  {
-    id: "ing-salt",
-    name: "نمک",
-    normalizedName: "نمک",
-    aliases: ["نمک"],
-    category: "ادویه",
-    popularity: 99,
-  },
-  {
-    id: "ing-pepper",
-    name: "فلفل سیاه",
-    normalizedName: "فلفل سیاه",
-    aliases: ["فلفل", "فلفل سیاه"],
-    category: "ادویه",
-    popularity: 85,
-  },
-  {
-    id: "ing-garlic",
-    name: "سیر",
-    normalizedName: "سیر",
-    aliases: ["سیر"],
-    category: "سبزیجات",
-    popularity: 86,
-  },
-  {
-    id: "ing-yogurt",
-    name: "ماست",
-    normalizedName: "ماست",
-    aliases: ["ماست"],
-    category: "لبنیات",
-    popularity: 84,
-  },
-  {
-    id: "ing-lentil",
-    name: "عدس",
-    normalizedName: "عدس",
-    aliases: ["عدس"],
-    category: "حبوبات",
-    popularity: 80,
-  },
-  {
-    id: "ing-bread",
-    name: "نان",
-    normalizedName: "نان",
-    aliases: ["نان لواش", "نان سنگک", "نان"],
-    category: "نان",
-    popularity: 89,
-  },
-  {
-    id: "ing-butter",
-    name: "کره",
-    normalizedName: "کره",
-    aliases: ["کره"],
-    category: "لبنیات",
-    popularity: 78,
-  },
-  {
-    id: "ing-cucumber",
-    name: "خیار",
-    normalizedName: "خیار",
-    aliases: ["خیار"],
-    category: "سبزیجات",
-    popularity: 82,
-  },
-];
-
-const omeletteSteps = [
-  {
-    id: "step-om-1",
-    order: 1,
-    instruction: "تخم‌مرغ‌ها را در کاسه بشکنید و با نمک و فلفل هم بزنید.",
-    tip: "هم زدن زیاد باعث پف بیشتر املت می‌شود.",
-    timerSeconds: null,
-    imageUrl:
-      "https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=480&q=40&fm=webp",
-  },
-  {
-    id: "step-om-2",
-    order: 2,
-    instruction: "پیاز خردشده را در کمی روغن تفت دهید تا طلایی شود.",
-    tip: "حرارت متوسط نگه دارید تا پیاز نسوزد.",
-    timerSeconds: 180,
-    imageUrl:
-      "https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=480&q=40&fm=webp",
-  },
-  {
-    id: "step-om-3",
-    order: 3,
-    instruction: "مخلوط تخم‌مرغ را اضافه کنید و تا بسته شدن سطح، بپزید.",
-    tip: "در صورت تمایل گوجه حلقه‌ای روی املت بگذارید.",
-    timerSeconds: 240,
-    imageUrl:
-      "https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=480&q=40&fm=webp",
-  },
-];
-
-export const MOCK_RECIPES: Recipe[] = [
-  {
-    id: "rec-omelette",
-    slug: "persian-omelette",
-    title: "املت گوجه‌فرنگی",
-    description: "صبحانه سریع و آشنا با مواد رایج آشپزخانه ایرانی.",
-    category: "صبحانه",
-    meal: "breakfast",
-    cuisine: "ایرانی",
-    region: "عمومی",
-    difficulty: "easy",
-    prepMinutes: 5,
-    cookMinutes: 10,
-    totalMinutes: 15,
-    servings: 2,
-    imageUrl:
-      "https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=480&q=40&fm=webp",
-    dietaryTags: ["گیاهی-اختیاری"],
-    budgetFriendly: true,
-    versionId: "rv-omelette-1",
-    ingredients: [
-      { ingredientId: "ing-egg", name: "تخم‌مرغ", quantity: "۳", unit: "عدد" },
-      { ingredientId: "ing-tomato", name: "گوجه‌فرنگی", quantity: "۲", unit: "عدد" },
-      { ingredientId: "ing-onion", name: "پیاز", quantity: "۱", unit: "عدد کوچک" },
-      { ingredientId: "ing-oil", name: "روغن", quantity: "۱", unit: "قاشق" },
-      { ingredientId: "ing-salt", name: "نمک", quantity: null, unit: null },
-      { ingredientId: "ing-pepper", name: "فلفل سیاه", quantity: null, unit: null },
-    ],
-    steps: omeletteSteps,
-  },
-  {
-    id: "rec-potato-eggs",
-    slug: "potato-egg-skillet",
-    title: "سیب‌زمینی و تخم‌مرغ تابه‌ای",
-    description: "غذای سریع با مواد موجود؛ مناسب ناهار سبک.",
-    category: "غذای سریع",
-    meal: "lunch",
-    cuisine: "ایرانی",
-    difficulty: "easy",
-    prepMinutes: 10,
-    cookMinutes: 20,
-    totalMinutes: 30,
-    servings: 2,
-    imageUrl:
-      "https://images.unsplash.com/photo-1506084868230-bb9d95c24759?auto=format&fit=crop&w=480&q=40&fm=webp",
-    dietaryTags: [],
-    budgetFriendly: true,
-    versionId: "rv-potato-1",
-    ingredients: [
-      { ingredientId: "ing-potato", name: "سیب‌زمینی", quantity: "۲", unit: "عدد" },
-      { ingredientId: "ing-egg", name: "تخم‌مرغ", quantity: "۲", unit: "عدد" },
-      { ingredientId: "ing-onion", name: "پیاز", quantity: "۱", unit: "عدد" },
-      { ingredientId: "ing-oil", name: "روغن", quantity: "۲", unit: "قاشق" },
-      { ingredientId: "ing-salt", name: "نمک", quantity: null, unit: null },
-    ],
-    steps: [
-      {
-        id: "step-pe-1",
-        order: 1,
-        instruction: "سیب‌زمینی‌ها را خلالی خرد کنید و کمی نمک بزنید.",
-        tip: "خلال‌ها را یکدست کنید تا همزمان بپزند.",
-        timerSeconds: null,
-        imageUrl:
-          "https://images.unsplash.com/photo-1506084868230-bb9d95c24759?auto=format&fit=crop&w=480&q=40&fm=webp",
-      },
-      {
-        id: "step-pe-2",
-        order: 2,
-        instruction: "در تابه با روغن تفت دهید تا طلایی و نرم شوند.",
-        tip: "در صورت نیاز کمی آب اضافه کنید و در تابه را بگذارید.",
-        timerSeconds: 720,
-        imageUrl:
-          "https://images.unsplash.com/photo-1506084868230-bb9d95c24759?auto=format&fit=crop&w=480&q=40&fm=webp",
-      },
-      {
-        id: "step-pe-3",
-        order: 3,
-        instruction: "تخم‌مرغ‌ها را روی سیب‌زمینی بشکنید و تا پخت کامل صبر کنید.",
-        tip: "زرده را نیم‌پز یا کامل بپزید؛ هر دو قابل قبول است.",
-        timerSeconds: 300,
-        imageUrl:
-          "https://images.unsplash.com/photo-1506084868230-bb9d95c24759?auto=format&fit=crop&w=480&q=40&fm=webp",
-      },
-    ],
-  },
-  {
-    id: "rec-adasi",
-    slug: "adasi",
-    title: "عدسی",
-    description: "عدسی مقوی برای صبحانه یا شام سبک.",
-    category: "آش و عدسی",
-    meal: "breakfast",
-    cuisine: "ایرانی",
-    difficulty: "easy",
-    prepMinutes: 10,
-    cookMinutes: 35,
-    totalMinutes: 45,
-    servings: 3,
-    imageUrl:
-      "https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&w=480&q=40&fm=webp",
-    dietaryTags: ["گیاهی", "رژیمی", "کم‌کالری"],
-    budgetFriendly: true,
-    versionId: "rv-adasi-1",
-    ingredients: [
-      { ingredientId: "ing-lentil", name: "عدس", quantity: "۱", unit: "لیوان" },
-      { ingredientId: "ing-onion", name: "پیاز", quantity: "۱", unit: "عدد" },
-      { ingredientId: "ing-potato", name: "سیب‌زمینی", quantity: "۱", unit: "عدد" },
-      { ingredientId: "ing-oil", name: "روغن", quantity: "۱", unit: "قاشق" },
-      { ingredientId: "ing-salt", name: "نمک", quantity: null, unit: null },
-      { ingredientId: "ing-bread", name: "نان", quantity: null, unit: null, optional: true },
-    ],
-    steps: [
-      {
-        id: "step-ad-1",
-        order: 1,
-        instruction: "عدس را بشویید و با آب روی حرارت ملایم بپزید.",
-        tip: "کف روی عدس را در ابتدا بگیرید.",
-        timerSeconds: 1200,
-        imageUrl:
-          "https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&w=480&q=40&fm=webp",
-      },
-      {
-        id: "step-ad-2",
-        order: 2,
-        instruction: "پیاز و سیب‌زمینی خردشده را اضافه کنید.",
-        tip: "نمک را نزدیک پایان پخت بریزید.",
-        timerSeconds: 900,
-        imageUrl:
-          "https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&w=480&q=40&fm=webp",
-      },
-      {
-        id: "step-ad-3",
-        order: 3,
-        instruction: "با نان تازه سرو کنید.",
-        tip: "در صورت تمایل کمی کره روی عدسی داغ بگذارید.",
-        timerSeconds: null,
-        imageUrl:
-          "https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&w=480&q=40&fm=webp",
-      },
-    ],
-  },
-  {
-    id: "rec-chicken-rice",
-    slug: "simple-chicken-rice",
-    title: "مرغ و برنج ساده",
-    description: "شام کامل با پخت مرحله‌به‌مرحله و زمان‌بندی واضح.",
-    category: "غذای اصلی",
-    meal: "dinner",
-    cuisine: "ایرانی",
-    difficulty: "medium",
-    prepMinutes: 15,
-    cookMinutes: 45,
-    totalMinutes: 60,
-    servings: 4,
-    imageUrl:
-      "https://images.unsplash.com/photo-1598103442097-8b74394b95c6?auto=format&fit=crop&w=480&q=40&fm=webp",
-    dietaryTags: [],
-    budgetFriendly: false,
-    versionId: "rv-chicken-1",
-    ingredients: [
-      { ingredientId: "ing-chicken", name: "مرغ", quantity: "۵۰۰", unit: "گرم" },
-      { ingredientId: "ing-rice", name: "برنج", quantity: "۳", unit: "لیوان" },
-      { ingredientId: "ing-onion", name: "پیاز", quantity: "۱", unit: "عدد" },
-      { ingredientId: "ing-garlic", name: "سیر", quantity: "۲", unit: "حبه" },
-      { ingredientId: "ing-oil", name: "روغن", quantity: "۲", unit: "قاشق" },
-      { ingredientId: "ing-salt", name: "نمک", quantity: null, unit: null },
-      { ingredientId: "ing-yogurt", name: "ماست", quantity: "۲", unit: "قاشق", optional: true },
-    ],
-    steps: [
-      {
-        id: "step-cr-1",
-        order: 1,
-        instruction: "مرغ را با پیاز، سیر، نمک و کمی روغن تفت دهید.",
-        tip: "تا تغییر رنگ سطح مرغ ادامه دهید.",
-        timerSeconds: 600,
-        imageUrl:
-          "https://images.unsplash.com/photo-1598103442097-8b74394b95c6?auto=format&fit=crop&w=480&q=40&fm=webp",
-      },
-      {
-        id: "step-cr-2",
-        order: 2,
-        instruction: "برنج را آبکش کنید و برای دم‌کردن آماده کنید.",
-        tip: "آب برنج باید کمی شور باشد.",
-        timerSeconds: 600,
-        imageUrl:
-          "https://images.unsplash.com/photo-1516684669134-de6f7c473a2a?auto=format&fit=crop&w=480&q=40&fm=webp",
-      },
-      {
-        id: "step-cr-3",
-        order: 3,
-        instruction: "مرغ را کنار برنج بچینید و با حرارت ملایم دم کنید.",
-        tip: "در پایان ۱۰ دقیقه حرارت را خیلی کم کنید.",
-        timerSeconds: 1200,
-        imageUrl:
-          "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?auto=format&fit=crop&w=480&q=40&fm=webp",
-      },
-    ],
-  },
-];
+export const MOCK_INGREDIENTS: Ingredient[] = PERSIAN_INGREDIENTS;
+export const MOCK_RECIPES: Recipe[] = PERSIAN_RECIPES;
 
 export const MOCK_PROFILE: UserProfile = {
   id: "user-demo",
-  displayName: "کاربر آزمایشی",
+  displayName: "احمد رضایی",
   dietaryPreferences: [],
   defaultMaxMinutes: 45,
   locale: "fa",
@@ -633,7 +286,9 @@ function buildCard(
   recipe: Recipe,
   ownedIds: Set<string>,
 ): RecommendationCard {
-  const required = recipe.ingredients.filter((i) => !i.optional);
+  const required = recipe.ingredients.filter(
+    (i) => !i.optional && !isPantryStaple(i.name),
+  );
   const missing = required.filter((i) => !ownedIds.has(i.ingredientId));
   const matched = required.filter((i) => ownedIds.has(i.ingredientId));
   const missingCount = missing.length;
@@ -715,12 +370,21 @@ export async function getRecommendations(
   }
   if (filters.dishType && filters.dishType !== "any") {
     const dishMap: Record<string, string[]> = {
-      main: ["غذای اصلی"],
+      main: [
+        "غذای اصلی",
+        "خورشت",
+        "پلو",
+        "کباب",
+        "خوراک",
+        "کوکو",
+        "غذای شمالی",
+        "آبگوشت",
+      ],
       appetizer: ["پیش‌غذا"],
-      soup: ["سوپ و آش", "آش و عدسی"],
+      soup: ["سوپ", "آش", "آش و عدسی", "آبگوشت"],
       salad: ["سالاد"],
       dessert: ["دسر"],
-      sweet: ["شیرینی"],
+      sweet: ["دسر"],
       drink: ["نوشیدنی"],
       side: ["مخلفات", "صبحانه"],
       fast: ["فست‌فود", "غذای سریع"],

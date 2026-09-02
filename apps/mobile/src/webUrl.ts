@@ -1,2 +1,2 @@
-/** LAN — same Wi-Fi as the phone. No public tunnel. */
-export const WEB_APP_URL = "http://10.222.65.131:3000/home";
+/** Tailscale Funnel — works on 4G / any Wi-Fi. Laptop must stay on. */
+export const WEB_APP_URL = "https://ahmad.tail4cb55d.ts.net/home";

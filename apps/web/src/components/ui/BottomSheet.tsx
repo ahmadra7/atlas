@@ -9,6 +9,7 @@ const ANIM_MS = 320;
 export function BottomSheet({
   open,
   title,
+  titleClassName,
   onClose,
   children,
   footer,
@@ -16,6 +17,7 @@ export function BottomSheet({
 }: {
   open: boolean;
   title: string;
+  titleClassName?: string;
   onClose: () => void;
   children: ReactNode;
   footer?: ReactNode;
@@ -50,7 +52,7 @@ export function BottomSheet({
   if (!mounted) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center">
+    <div className="fixed inset-0 z-[200] flex items-end justify-center">
       <button
         type="button"
         aria-label="بستن"
@@ -69,7 +71,11 @@ export function BottomSheet({
       >
         <div className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-zinc-300" />
         <div className="relative flex items-center justify-center px-5 pb-2 pt-3">
-          <h2 className="text-center text-h3 text-atlas-ink">{title}</h2>
+          <h2
+            className={`text-center text-atlas-ink ${titleClassName ?? "text-h3"}`}
+          >
+            {title}
+          </h2>
           <button
             type="button"
             onClick={onClose}

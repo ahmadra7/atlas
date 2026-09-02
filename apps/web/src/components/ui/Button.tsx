@@ -11,7 +11,7 @@ type Size = "sm" | "md" | "lg";
 
 const variants: Record<Variant, string> = {
   primary:
-    "bg-atlas-primary text-white hover:bg-atlas-primary-hover disabled:bg-atlas-border disabled:text-atlas-ink-faint shadow-sm",
+    "bg-atlas-primary text-white hover:bg-atlas-primary-hover disabled:bg-atlas-border disabled:text-atlas-ink-faint shadow-sm disabled:shadow-none",
   secondary:
     "border border-atlas-ink bg-atlas-surface text-atlas-ink hover:bg-atlas-surface-muted disabled:opacity-50",
   tertiary:

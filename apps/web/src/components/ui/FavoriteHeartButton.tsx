@@ -22,7 +22,7 @@ export function FavoriteHeartButton({
     >
       <Heart
         size={22}
-        color={active ? "#FF3737" : "#A1A1AA"}
+        color={active ? "#D4022F" : "#A1A1AA"}
         variant={active ? "Bold" : "Linear"}
       />
     </button>

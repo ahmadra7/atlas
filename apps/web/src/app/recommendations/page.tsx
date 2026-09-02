@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import type {
   DietMode,
@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/Button";
 import { RecommendationsSkeleton } from "@/components/ui/Skeleton";
 import { StateView } from "@/components/ui/StateView";
 import { atlasClient, withApiSession } from "@/lib/client";
+import { pageCache, recommendationCacheKey } from "@/lib/page-cache";
 
 const meals: MealType[] = ["any", "breakfast", "lunch", "dinner", "snack"];
 const dietModes: DietMode[] = ["any", "diet", "regular"];
@@ -73,27 +74,46 @@ function parseFilters(searchParams: URLSearchParams): RecommendationFilters {
 }
 
 function RecommendationsContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const [filters, setFilters] = useState<RecommendationFilters>(() =>
-    parseFilters(searchParams),
+  const initialFilters = parseFilters(searchParams);
+  const initialKey = recommendationCacheKey(initialFilters);
+  const cached =
+    pageCache.recommendationKey === initialKey
+      ? pageCache.recommendations
+      : null;
+  const [filters, setFilters] = useState<RecommendationFilters>(
+    () => initialFilters,
   );
-  const [result, setResult] = useState<RecommendationResult | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [result, setResult] = useState<RecommendationResult | null>(
+    () => cached,
+  );
+  const [loading, setLoading] = useState(() => cached === null);
   const [error, setError] = useState<string | null>(null);
 
   async function load(next = filters) {
-    setLoading(true);
+    const key = recommendationCacheKey(next);
+    const hit =
+      pageCache.recommendationKey === key ? pageCache.recommendations : null;
+    if (!hit) setLoading(true);
     setError(null);
     try {
-      setResult(
-        await withApiSession(() => atlasClient.getRecommendations(next)),
+      const data = await withApiSession(() =>
+        atlasClient.getRecommendations(next),
       );
+      pageCache.recommendations = data;
+      pageCache.recommendationKey = key;
+      setResult(data);
     } catch {
       setError("دریافت پیشنهادها ممکن نشد.");
     } finally {
       setLoading(false);
     }
   }
+
+  useEffect(() => {
+    router.prefetch("/home");
+  }, [router]);
 
   useEffect(() => {
     const next = parseFilters(searchParams);

@@ -1,8 +1,17 @@
-import { FOOD_NAMES, isLikelyFoodIngredient, normalizePersian } from "@atlas/shared";
+import {
+  FOOD_NAMES,
+  ingredientsLooselyMatch,
+  isLikelyFoodIngredient,
+  normalizePersian,
+} from "@atlas/shared";
 
 const COMPOUNDS = [...FOOD_NAMES]
   .filter((name) => /[\s\u200c]/.test(name))
   .sort((a, b) => b.length - a.length);
+
+const FOOD_BY_KEY = new Map(
+  FOOD_NAMES.map((name) => [normalizePersian(name), name] as const),
+);
 
 const STOP = new Set(
   [
@@ -36,6 +45,23 @@ const STOP = new Set(
   ].map((w) => normalizePersian(w)),
 );
 
+function resolveFoodName(raw: string): string | null {
+  const key = normalizePersian(raw);
+  if (!key || key.length < 2 || STOP.has(key) || /^\d+$/.test(key)) return null;
+  const exact = FOOD_BY_KEY.get(key);
+  if (exact) return exact;
+  for (const name of FOOD_NAMES) {
+    if (ingredientsLooselyMatch(raw, name)) return name;
+  }
+  if (key.length < 3) return null;
+  for (const name of FOOD_NAMES) {
+    const food = normalizePersian(name);
+    if (food.length < 3) continue;
+    if (food.includes(key) || key.includes(food)) return name;
+  }
+  return null;
+}
+
 export function namesFromSpeech(transcript: string): string[] {
   let text = normalizePersian(transcript)
     .replace(/[?!.;:…]/g, " ")
@@ -49,13 +75,13 @@ export function namesFromSpeech(transcript: string): string[] {
   const names: string[] = [];
   const seen = new Set<string>();
   const take = (raw: string) => {
-    const name = raw.trim();
-    const key = normalizePersian(name);
+    const resolved = resolveFoodName(raw) ?? raw.trim();
+    const key = normalizePersian(resolved);
     if (key.length < 2 || STOP.has(key) || seen.has(key) || /^\d+$/.test(key)) {
       return;
     }
     seen.add(key);
-    names.push(name);
+    names.push(resolved);
   };
 
   for (const phrase of COMPOUNDS) {

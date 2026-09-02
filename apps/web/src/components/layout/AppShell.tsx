@@ -1,11 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
-import { BrandMark } from "@/components/brand/BrandMark";
+import { AvatarMenu } from "@/components/layout/AvatarMenu";
 import { navTabs, shouldHideNav } from "@/components/layout/BottomNav";
-import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { BackButton } from "@/components/ui/BackButton";
 
 export const homeAppTitle = (
@@ -24,7 +22,7 @@ export function AppShell({
   backHref,
   headerAction,
   brandAside,
-  showBrand = true,
+  showBrand = false,
   lockScroll = false,
 }: {
   children: ReactNode;
@@ -37,7 +35,7 @@ export function AppShell({
   headerAction?: ReactNode;
   /** Optional content shown beside the brand mark (or alone when brand is hidden). */
   brandAside?: ReactNode;
-  /** When false, hides the app-bar brand avatar. */
+  /** When true, shows the home avatar menu. */
   showBrand?: boolean;
   /** Keep shell to viewport height; only children manage internal scroll. */
   lockScroll?: boolean;
@@ -48,7 +46,6 @@ export function AppShell({
   const showHeader = Boolean(
     title || showBack || headerAction || brandAside || showBrand,
   );
-  const showThemeToggle = pathname === "/home";
 
   useEffect(() => {
     for (const tab of navTabs) router.prefetch(tab.href);
@@ -57,33 +54,23 @@ export function AppShell({
   return (
     <div
       className={`atlas-phone relative flex flex-col ${
-        lockScroll ? "h-dvh max-h-dvh overflow-hidden" : "min-h-screen"
+        lockScroll ? "h-svh max-h-svh overflow-hidden" : "min-h-screen"
       }`}
     >
       {showHeader ? (
-        <header className="sticky top-0 z-30 shrink-0 border-b border-atlas-border/70 bg-atlas-surface/80 px-4 py-3 backdrop-blur-xl dark:border-white/15">
+        <header className="sticky top-0 z-30 shrink-0 overflow-visible border-b border-atlas-border/70 bg-atlas-surface/80 px-4 py-3 backdrop-blur-xl dark:border-white/15">
           <div className="grid min-h-11 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1">
             <div className="z-10 flex min-w-0 items-center gap-2">
-              {showBrand ? (
-                <Link
-                  href="/profile"
-                  aria-label="پروفایل"
-                  className="relative inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-atlas-primary-soft shadow-[0_6px_16px_rgba(255,55,55,0.18)] ring-2 ring-white transition hover:scale-105 active:scale-95 dark:ring-atlas-surface"
-                >
-                  <BrandMark size={44} className="h-11 w-11" />
-                  <span
-                    aria-hidden
-                    className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-atlas-surface"
-                  />
-                </Link>
-              ) : null}
+              {showBrand ? <AvatarMenu /> : null}
               {brandAside}
             </div>
 
             {title ? (
               <h1
-                className={`text-center font-bold text-atlas-ink ${
-                  splitTitle ? "text-[16px] leading-[1.2]" : "text-h3"
+                className={`text-center font-medium text-atlas-ink ${
+                  splitTitle
+                    ? "text-[15px] leading-[1.25]"
+                    : "text-[14px] leading-tight"
                 }`}
               >
                 {title}
@@ -93,7 +80,6 @@ export function AppShell({
             )}
 
             <div className="z-10 flex items-center justify-end gap-1">
-              {showThemeToggle ? <ThemeToggle /> : null}
               {headerAction}
               {showBack ? <BackButton href={backHref} /> : null}
             </div>

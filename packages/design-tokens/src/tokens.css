@@ -1,8 +1,8 @@
 :root {
-  /* سرآشپز هوشمند — Red / Black / Gray */
-  --atlas-primary: #ff3737;
-  --atlas-primary-hover: #e62e2e;
-  --atlas-primary-soft: #ffe5e5;
+  /* سرآشپز هوشمند — brand red from identity */
+  --atlas-primary: #d4022f;
+  --atlas-primary-hover: #b80128;
+  --atlas-primary-soft: #fbe6ea;
   --atlas-secondary: #1a1a1a;
   --atlas-secondary-soft: #f3f4f6;
   --atlas-accent: #6b7280;
@@ -22,7 +22,7 @@
   --atlas-surface: #ffffff;
   --atlas-surface-muted: #f4f4f5;
   --atlas-background: #fafafa;
-  --atlas-focus: #ff3737;
+  --atlas-focus: #d4022f;
   --atlas-chip-active: #111111;
   --atlas-chip-active-text: #ffffff;
   --atlas-radius-sm: 8px;
@@ -46,9 +46,9 @@
 
 /* Dark theme — charcoal + brand red */
 .dark {
-  --atlas-primary: #ff4d4d;
-  --atlas-primary-hover: #ff6b6b;
-  --atlas-primary-soft: #3a1518;
+  --atlas-primary: #e81a42;
+  --atlas-primary-hover: #ff3d5c;
+  --atlas-primary-soft: #3a1018;
   --atlas-secondary: #f4f4f5;
   --atlas-secondary-soft: #232328;
   --atlas-accent: #a1a1aa;
@@ -68,8 +68,8 @@
   --atlas-surface: #17171c;
   --atlas-surface-muted: #222228;
   --atlas-background: #0c0c10;
-  --atlas-focus: #ff4d4d;
+  --atlas-focus: #e81a42;
   --atlas-chip-active: #f4f4f5;
   --atlas-chip-active-text: #111111;
-  --atlas-shadow: 0 8px 28px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 77, 77, 0.04);
+  --atlas-shadow: 0 8px 28px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(212, 2, 47, 0.08);
 }

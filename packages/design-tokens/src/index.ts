@@ -1,7 +1,7 @@
 export const colors = {
-  primary: "#FF3737",
-  primaryHover: "#E62E2E",
-  primarySoft: "#FFE5E5",
+  primary: "#D4022F",
+  primaryHover: "#B80128",
+  primarySoft: "#FBE6EA",
   secondary: "#1A1A1A",
   secondarySoft: "#F3F4F6",
   accent: "#6B7280",
@@ -21,7 +21,7 @@ export const colors = {
   surface: "#FFFFFF",
   surfaceMuted: "#F4F4F5",
   background: "#FAFAFA",
-  focus: "#FF3737",
+  focus: "#D4022F",
   chipActive: "#111111",
   chipActiveText: "#FFFFFF",
 } as const;
@@ -45,8 +45,8 @@ export const radii = {
 } as const;
 
 export const typography = {
-  fontFamily: "IRANSans, Vazirmatn, Tahoma, sans-serif",
-  fontFamilyLatin: "Inter, IRANSans, sans-serif",
+  fontFamily: "Dana, sans-serif",
+  fontFamilyLatin: "Dana, sans-serif",
   sizes: {
     h1: "30px",
     h2: "24px",
@@ -55,8 +55,16 @@ export const typography = {
     caption: "14px",
   },
   weights: {
+    thin: 100,
+    ultralight: 200,
+    light: 300,
     regular: 400,
-    semibold: 600,
+    medium: 500,
+    demibold: 600,
     bold: 700,
+    extrabold: 800,
+    heavy: 850,
+    black: 900,
+    extrablack: 950,
   },
 } as const;

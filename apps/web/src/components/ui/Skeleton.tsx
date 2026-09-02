@@ -55,12 +55,11 @@ export function PageSkeleton({ children }: { children: ReactNode }) {
 export function HomeSkeleton() {
   return (
     <PageSkeleton>
-      <div className="overflow-visible pt-8">
-        <div className="relative flex flex-col gap-5 overflow-visible rounded-atlas-xl bg-atlas-surface px-5 pb-5 shadow-[0_18px_40px_rgba(17,17,17,0.08)]">
-          <div className="flex flex-col items-center">
-            <Skeleton className="-mt-[2.3rem] mb-1 h-[4.6rem] w-[4.6rem] rounded-2xl" />
+      <div className="overflow-visible">
+        <div className="relative flex flex-col gap-5 overflow-hidden rounded-atlas-xl bg-atlas-surface px-5 pb-5 pt-5 shadow-[0_18px_40px_rgba(17,17,17,0.08)]">
+          <div className="flex flex-col items-center gap-2">
             <Skeleton className="h-7 w-[68%]" />
-            <Skeleton className="mt-1 h-3 w-[52%]" />
+            <Skeleton className="h-3 w-[52%]" />
           </div>
           <div className="flex justify-center">
             <Skeleton className="h-[4.5rem] w-[4.5rem] !rounded-full" />
@@ -99,7 +98,7 @@ export function HomeSkeleton() {
 
 export function RecipeSkeleton() {
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3 pb-[5.75rem] animate-[splashUp_0.35s_ease-out_both]">
+    <div className="flex min-h-0 flex-1 flex-col gap-3 animate-[splashUp_0.35s_ease-out_both]">
       <Skeleton className="h-40 w-full rounded-atlas-xl" />
       <div className="flex items-start gap-2">
         <Skeleton className="h-7 flex-1" />
@@ -109,7 +108,7 @@ export function RecipeSkeleton() {
         <Skeleton className="h-6 w-20 rounded-md" />
         <Skeleton className="h-6 w-14 rounded-md" />
       </div>
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-atlas-xl border border-atlas-border/50 bg-atlas-surface p-4">
+      <div className="-mx-4 flex min-h-0 flex-1 flex-col overflow-hidden rounded-t-[2rem] rounded-b-none border-0 bg-atlas-surface px-4 pt-4">
         <div className="mb-3 flex items-center justify-between">
           <Skeleton className="h-5 w-20" />
           <Skeleton className="h-6 w-14 rounded-md" />
@@ -123,7 +122,7 @@ export function RecipeSkeleton() {
           ))}
         </div>
       </div>
-      <div className="fixed bottom-0 left-1/2 z-40 w-full max-w-md -translate-x-1/2 border-t border-atlas-border/80 bg-atlas-surface/95 px-4 pb-4 pt-3 backdrop-blur">
+      <div className="fixed bottom-0 left-1/2 z-40 w-full max-w-md -translate-x-1/2 bg-gradient-to-t from-atlas-surface from-35% to-transparent px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-10">
         <Skeleton className="h-12 w-full rounded-atlas" />
       </div>
     </div>
@@ -161,7 +160,7 @@ export function RecommendationsSkeleton() {
 export function ProfileSkeleton() {
   return (
     <PageSkeleton>
-      <div className="rounded-atlas-xl bg-atlas-primary px-4 pb-5 pt-5 shadow-[0_14px_32px_rgba(255,55,55,0.28)]">
+      <div className="rounded-atlas-xl bg-atlas-primary px-4 pb-5 pt-5 shadow-[0_14px_32px_rgba(212,2,47,0.28)]">
         <div className="flex items-center gap-3">
           <div className="relative shrink-0">
             <Skeleton className="h-16 w-16 shrink-0 rounded-full bg-white/30 before:via-white/50" />

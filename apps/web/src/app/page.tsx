@@ -39,7 +39,7 @@ export default function SplashPage() {
           </div>
         </div>
 
-        <h1 className="animate-[splashUp_0.7s_0.15s_both] text-[1.85rem] font-extrabold tracking-tight text-white">
+        <h1 className="animate-[splashUp_0.7s_0.15s_both] text-[1.85rem] font-extrabold text-white">
           سرآشپز هوشمند
         </h1>
         <p className="mt-3 max-w-[16rem] animate-[splashUp_0.7s_0.28s_both] text-body leading-7 text-white/85">

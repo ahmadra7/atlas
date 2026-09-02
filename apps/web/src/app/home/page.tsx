@@ -24,6 +24,7 @@ import {
   mealLabelFa,
   normalizePersian,
   toPersianDigits,
+  FOOD_NAMES,
 } from "@atlas/shared";
 import {
   Add,
@@ -93,7 +94,7 @@ function SettingsHeading({
   children: ReactNode;
 }) {
   return (
-    <p className="flex items-center gap-1.5 text-caption font-medium text-atlas-ink-faint">
+    <p className="flex items-center gap-1.5 text-caption font-normal text-atlas-ink-faint">
       <Icon size={16} color="currentColor" variant="Linear" />
       {children}
     </p>
@@ -156,6 +157,39 @@ function orderInventoryChips(items: InventoryItem[]): InventoryItem[] {
   });
 }
 
+function MicListenRing() {
+  return (
+    <>
+      <svg
+        className="pointer-events-none absolute inset-0 text-atlas-primary"
+        viewBox="0 0 80 80"
+        aria-hidden
+      >
+        <circle
+          cx="40"
+          cy="40"
+          r="36"
+          fill="none"
+          stroke="currentColor"
+          strokeOpacity="0.18"
+          strokeWidth="3.2"
+        />
+      </svg>
+      <div
+        className="pointer-events-none absolute inset-0 animate-[micOrbit_1.12s_linear_infinite] rounded-full"
+        style={{
+          background:
+            "conic-gradient(from 0deg, transparent 0%, var(--atlas-primary) 100%)",
+          WebkitMask:
+            "radial-gradient(farthest-side, transparent calc(100% - 3.2px), #000 calc(100% - 3.2px))",
+          mask: "radial-gradient(farthest-side, transparent calc(100% - 3.2px), #000 calc(100% - 3.2px))",
+        }}
+        aria-hidden
+      />
+    </>
+  );
+}
+
 export default function HomePage() {
   const router = useRouter();
   const [loading, setLoading] = useState(() => pageCache.inventory === null);
@@ -213,26 +247,31 @@ export default function HomePage() {
     let cancelled = false;
     void (async () => {
       try {
-        const inv = await withApiSession(() => atlasClient.getInventory());
-        if (!cancelled) {
-          pageCache.inventory = orderInventoryChips(inv);
-          setInventory(pageCache.inventory);
+        if (pageCache.inventory !== null) {
           setLoading(false);
         }
+
+        const inv = await withApiSession(() => atlasClient.getInventory());
+        if (cancelled) return;
+        pageCache.inventory = orderInventoryChips(inv);
+        setInventory(pageCache.inventory);
+        setLoading(false);
+
+        if (pageCache.popular !== null) return;
+
         const rec = await withApiSession(() =>
           atlasClient.getRecommendations({
             meal: "any",
             maxMinutes: 60,
           }),
         );
-        if (!cancelled) {
-          const cards = [...rec.exact, ...rec.near, ...rec.discovery].slice(
-            0,
-            4,
-          );
-          pageCache.popular = cards;
-          setPopular(cards);
-        }
+        if (cancelled) return;
+        const cards = [...rec.exact, ...rec.near, ...rec.discovery].slice(
+          0,
+          4,
+        );
+        pageCache.popular = cards;
+        setPopular(cards);
       } catch {
         if (!cancelled) setLoading(false);
       }
@@ -364,10 +403,11 @@ export default function HomePage() {
   }, []);
 
   const voice = useIngredientVoiceInput({
+    contextualStrings: FOOD_NAMES.slice(0, 80),
     onHeard: async (transcript) => {
       const { valid, invalid } = partitionSpokenNames(transcript);
       if (valid.length === 0) {
-        if (invalid.length > 0) showInvalidToast();
+        showInvalidToast();
         return;
       }
       if (invalid.length > 0) showInvalidToast();
@@ -500,10 +540,13 @@ export default function HomePage() {
     <AppShell
       title={homeAppTitle}
       splitTitle
+      showBrand
       brandAside={
         <div className="min-w-0 leading-tight">
-          <p className="truncate text-[11px] text-atlas-ink-muted">سلام احمد!</p>
-          <p className="truncate text-[13px] font-bold text-atlas-ink">
+          <p className="truncate text-[11px] font-thin text-atlas-ink-muted">
+            سلام احمد!
+          </p>
+          <p className="truncate text-[13px] font-semibold text-atlas-ink">
             {greetingFa()} 👋
           </p>
         </div>
@@ -521,47 +564,26 @@ export default function HomePage() {
                 alt=""
                 width={88}
                 height={88}
-                className="pointer-events-none -mt-[2.3rem] mb-1 h-[4.6rem] w-[4.6rem] object-contain"
+                className="pointer-events-none -mt-[2.3rem] mb-5 h-[4.6rem] w-[4.6rem] object-contain"
               />
-              <h3 className="text-[1.45rem] font-extrabold leading-8 tracking-tight text-atlas-ink sm:text-[1.55rem]">
+              <h3 className="text-[1.45rem] font-extrabold leading-8 text-atlas-ink sm:text-[1.55rem]">
                 چیا تو یخچال داری ؟!
               </h3>
-              <p className="mt-3 max-w-[20rem] text-[12px] leading-4 text-atlas-ink-muted">
-                هر موادی داری بگو یا تایپ کن تا من بگم چی درست کن
+              <p
+                className="mt-1 max-w-[20rem] text-[13px] font-normal leading-5 text-atlas-ink"
+                style={{ opacity: 0.6 }}
+              >
+                هر موادی داری بگو تا بگم چی درست کنی!
               </p>
             </div>
 
                 <div className="flex flex-col items-center gap-3">
                   <div
                     className={`relative flex items-center justify-center ${
-                      voice.listening ? "h-[6.4rem] w-[6.4rem]" : "h-[4.5rem] w-[4.5rem]"
+                      voice.listening ? "h-[5.35rem] w-[5.35rem]" : "h-[4.5rem] w-[4.5rem]"
                     }`}
                   >
-                    {voice.listening
-                      ? Array.from({ length: 48 }, (_, i) => {
-                          const angle = (i / 48) * 360;
-                          const wave =
-                            0.35 +
-                            voice.volume *
-                              (0.3 + 0.4 * Math.abs(Math.sin(i * 1.8)));
-                          return (
-                            <span
-                              key={i}
-                              className="pointer-events-none absolute inset-0"
-                              style={{ transform: `rotate(${angle}deg)` }}
-                            >
-                              <span
-                                className="absolute left-1/2 top-[3px] h-[7px] w-[1.5px] -ml-[0.75px] origin-bottom rounded-full bg-atlas-primary"
-                                style={{
-                                  opacity: 0.4 + wave * 0.45,
-                                  transform: `scaleY(${0.45 + wave * 0.7})`,
-                                  animation: `micBar ${0.7 + (i % 4) * 0.12}s ease-in-out ${i * 0.025}s infinite`,
-                                }}
-                              />
-                            </span>
-                          );
-                        })
-                      : null}
+                    {voice.listening ? <MicListenRing /> : null}
                     <button
                       type="button"
                       onClick={() => {
@@ -578,15 +600,16 @@ export default function HomePage() {
                       className={`relative z-10 inline-flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-full text-white transition active:scale-95 disabled:opacity-50 ${
                         voice.listening
                           ? "bg-[#E11D2E] shadow-[0_12px_32px_rgba(225,29,46,0.45)]"
-                          : "bg-atlas-primary shadow-[0_10px_28px_rgba(255,55,55,0.35)]"
+                          : "bg-atlas-primary shadow-[0_10px_28px_rgba(212,2,47,0.35)]"
                       }`}
                     >
                       <span className="relative z-10">
                         {voice.listening ? (
-                          <CloseCircle
-                            size={30}
-                            color="currentColor"
+                          <Add
+                            size={28}
+                            color="#ffffff"
                             variant="Bold"
+                            className="rotate-45"
                           />
                         ) : (
                           <Microphone2
@@ -672,7 +695,7 @@ export default function HomePage() {
                                 <span className="text-body font-semibold text-atlas-ink">
                                   افزودن «{trimmed}»
                                 </span>
-                                <Add size={18} color="#FF3737" variant="Bold" />
+                                <Add size={18} color="#D4022F" variant="Bold" />
                               </button>
                             </li>
                           ) : null}
@@ -705,7 +728,7 @@ export default function HomePage() {
                   >
                     <Setting4 size={22} color="currentColor" variant="Outline" />
                     {advancedCount > 0 ? (
-                      <span className="absolute -left-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-atlas-primary px-1 text-[10px] font-bold leading-none text-white">
+                      <span className="absolute -left-1.5 -top-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-atlas-primary px-0.5 text-[11px] font-medium leading-none text-white">
                         {toPersianDigits(advancedCount)}
                       </span>
                     ) : null}
@@ -762,9 +785,9 @@ export default function HomePage() {
 
               <Button
                 size="lg"
-                className="w-full"
+                className="w-full text-[14px] font-medium"
                 disabled={inventory.length === 0}
-                icon={<ArrowLeft size={20} color="currentColor" />}
+                icon={<ArrowLeft size={18} color="currentColor" />}
                 onClick={goToFoodList}
               >
                 بزن بریم
@@ -773,18 +796,9 @@ export default function HomePage() {
         </section>
 
         <div className="space-y-5">
-        <Link
-          href="/search"
-          prefetch
-          className="flex h-12 items-center gap-2 rounded-atlas border border-atlas-border bg-atlas-surface px-4 text-[13px] text-atlas-ink-faint"
-        >
-          <SearchNormal1 size={18} color="currentColor" />
-          جستجوی غذا
-        </Link>
-
         <section className="space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-[1.05rem] font-bold text-atlas-ink">دستورهای محبوب</h3>
+            <h3 className="text-[15px] font-normal text-atlas-ink">دستورهای محبوب</h3>
             <Link
               href="/recommendations"
               dir="ltr"
@@ -844,6 +858,7 @@ export default function HomePage() {
       <BottomSheet
         open={moreOpen}
         title="تنظیمات"
+        titleClassName="text-[15px] font-medium"
         tall
         onClose={() => setMoreOpen(false)}
         footer={

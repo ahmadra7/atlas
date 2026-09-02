@@ -239,7 +239,7 @@ export function IngredientsPanel({
                       همین عبارت را به‌عنوان ماده جدید ثبت کن
                     </p>
                   </div>
-                  <Add size={20} color="#FF3737" variant="Bold" />
+                  <Add size={20} color="#D4022F" variant="Bold" />
                 </button>
               </li>
             ) : null}

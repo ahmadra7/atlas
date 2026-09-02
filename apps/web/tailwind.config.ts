@@ -56,14 +56,18 @@ export default {
         7: "48px",
       },
       fontSize: {
-        h1: ["30px", { lineHeight: "1.35", fontWeight: "700" }],
+        h1: ["30px", { lineHeight: "1.35", fontWeight: "800" }],
         h2: ["24px", { lineHeight: "1.4", fontWeight: "700" }],
         h3: ["19px", { lineHeight: "1.45", fontWeight: "600" }],
         body: ["16px", { lineHeight: "1.7", fontWeight: "400" }],
-        caption: ["14px", { lineHeight: "1.55", fontWeight: "400" }],
+        caption: ["14px", { lineHeight: "1.55", fontWeight: "500" }],
+      },
+      fontWeight: {
+        heavy: "850",
+        extrablack: "950",
       },
       fontFamily: {
-        sans: ["IRANSans", "Vazirmatn", "Tahoma", "sans-serif"],
+        sans: ["Dana", "sans-serif"],
       },
     },
   },

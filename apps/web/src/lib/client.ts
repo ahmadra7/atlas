@@ -16,9 +16,19 @@ export function setAccessToken(token: string | null) {
 const mode =
   process.env.NEXT_PUBLIC_ATLAS_API_MODE === "http" ? "http" : "mock";
 
+function atlasApiBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_ATLAS_API_URL) {
+    return process.env.NEXT_PUBLIC_ATLAS_API_URL;
+  }
+  if (typeof window !== "undefined") {
+    return window.location.origin;
+  }
+  return "http://127.0.0.1:4000";
+}
+
 export const atlasClient = createAtlasClient({
   mode,
-  baseUrl: process.env.NEXT_PUBLIC_ATLAS_API_URL ?? "http://localhost:4000",
+  baseUrl: atlasApiBaseUrl(),
   getAccessToken,
 });
 

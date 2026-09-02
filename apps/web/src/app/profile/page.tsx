@@ -23,6 +23,7 @@ import {
 import { AppShell } from "@/components/layout/AppShell";
 import { BrandMark } from "@/components/brand/BrandMark";
 import { useTheme } from "@/components/theme/ThemeProvider";
+import { IosSwitch } from "@/components/ui/IosSwitch";
 import { ProfileSkeleton } from "@/components/ui/Skeleton";
 import { atlasClient } from "@/lib/client";
 import { pageCache } from "@/lib/page-cache";
@@ -71,7 +72,7 @@ function MenuRow({
           {title}
         </span>
         {subtitle ? (
-          <span className="mt-0.5 block text-caption text-atlas-ink-faint">
+          <span className="mt-0.5 block text-[12px] font-normal text-atlas-ink-faint">
             {subtitle}
           </span>
         ) : null}
@@ -97,6 +98,10 @@ function MenuRow({
     );
   }
 
+  if (!onClick) {
+    return <div className={className}>{content}</div>;
+  }
+
   return (
     <button type="button" onClick={onClick} className={className}>
       {content}
@@ -105,7 +110,7 @@ function MenuRow({
 }
 
 export default function ProfilePage() {
-  const { theme, toggleTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
   const [profile, setProfile] = useState<UserProfile | null>(
     () => pageCache.profile,
   );
@@ -134,8 +139,6 @@ export default function ProfilePage() {
     })();
   }, []);
 
-  const themeLabel = theme === "dark" ? "تیره" : "روشن";
-
   return (
     <AppShell title="پروفایل">
       <div className="space-y-4 pb-8">
@@ -143,7 +146,7 @@ export default function ProfilePage() {
 
         {profile ? (
           <>
-            <section className="overflow-hidden rounded-atlas-xl bg-atlas-primary px-4 pb-5 pt-5 text-white shadow-[0_14px_32px_rgba(255,55,55,0.28)]">
+            <section className="overflow-hidden rounded-atlas-xl bg-atlas-primary px-4 pb-5 pt-5 text-white shadow-[0_14px_32px_rgba(212,2,47,0.28)]">
               <div className="flex items-center gap-3">
                 <div className="relative shrink-0">
                   <div className="relative h-16 w-16 overflow-hidden rounded-full bg-white shadow-md">
@@ -155,7 +158,7 @@ export default function ProfilePage() {
                   <h2 className="truncate text-h3 text-white">
                     {profile.displayName}
                   </h2>
-                  <p className="mt-1 text-caption text-white/80">مهمان</p>
+                  <p className="mt-1 text-[12px] font-normal text-white/80">مهمان</p>
                 </div>
                 <Link
                   href="/auth"
@@ -235,7 +238,6 @@ export default function ProfilePage() {
                 }
               />
               <MenuRow
-                onClick={toggleTheme}
                 icon={
                   theme === "dark" ? (
                     <Moon size={18} color="currentColor" />
@@ -248,9 +250,11 @@ export default function ProfilePage() {
                   theme === "dark" ? "تم تیره فعال است" : "تم روشن فعال است"
                 }
                 trailing={
-                  <span className="rounded-full bg-atlas-surface-muted px-2.5 py-1 text-[11px] font-semibold text-atlas-ink">
-                    {themeLabel}
-                  </span>
+                  <IosSwitch
+                    checked={theme === "light"}
+                    onChange={(on) => setTheme(on ? "light" : "dark")}
+                    ariaLabel="تم روشن"
+                  />
                 }
               />
               <MenuRow
@@ -325,7 +329,7 @@ export default function ProfilePage() {
                         <p className="truncate text-body font-semibold text-atlas-ink">
                           {item.title}
                         </p>
-                        <p className="mt-0.5 text-caption text-atlas-ink-faint">
+                        <p className="mt-0.5 text-[12px] font-normal text-atlas-ink-faint">
                           {statusFa[item.status]}
                         </p>
                       </div>

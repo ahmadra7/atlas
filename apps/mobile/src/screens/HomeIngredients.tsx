@@ -60,7 +60,7 @@ export function HomeScreen({ navigation }: TabProps<"Home">) {
             <View style={styles.heroTextBlock}>
               <Text style={styles.heroTitle}>چیا تو یخچال داری ؟!</Text>
               <Text style={styles.heroBody}>
-                هر موادی داری بگو تا من بگم چی درست کن
+                هر موادی داری بگو تا بگم چی درست کنی!
               </Text>
             </View>
             <Pressable

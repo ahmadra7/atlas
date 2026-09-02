@@ -1,3 +1,4 @@
+@import "./fonts.css";
 @import "@atlas/design-tokens/css";
 
 @tailwind base;
@@ -7,19 +8,31 @@
 @layer base {
   html {
     direction: rtl;
+    font-family: "Dana", sans-serif;
+  }
+
+  html,
+  body,
+  button,
+  input,
+  textarea,
+  select {
+    font-family: "Dana", sans-serif;
+    font-synthesis: none;
   }
 
   body {
-    @apply bg-atlas-background text-atlas-ink antialiased;
-    font-family: IRANSans, Vazirmatn, Tahoma, sans-serif;
+    @apply bg-atlas-background text-atlas-ink;
+    font-family: "Dana", sans-serif;
     font-size: var(--atlas-body);
+    font-weight: 400;
     min-height: 100vh;
     transition: background-color 0.3s ease, color 0.3s ease;
   }
 
   h1 {
     font-size: var(--atlas-h1);
-    font-weight: 700;
+    font-weight: 800;
     line-height: 1.35;
   }
 
@@ -114,13 +127,9 @@
   }
 }
 
-@keyframes micBar {
-  0%,
-  100% {
-    transform: scaleY(0.35);
-  }
-  50% {
-    transform: scaleY(1);
+@keyframes micOrbit {
+  to {
+    transform: rotate(360deg);
   }
 }
 
@@ -147,14 +156,25 @@
   }
 }
 
-@keyframes toastDown {
-  0% {
+@keyframes toastIn {
+  from {
     opacity: 0;
-    transform: translateY(-14px) scale(0.96);
+    transform: translateY(-22px);
   }
-  100% {
+  to {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translateY(0);
+  }
+}
+
+@keyframes toastOut {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-22px);
   }
 }
 
@@ -169,6 +189,7 @@
 
   .atlas-caption {
     font-size: var(--atlas-caption);
+    font-weight: 300;
     color: var(--atlas-ink-muted);
   }
 

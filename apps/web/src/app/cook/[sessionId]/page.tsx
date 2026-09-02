@@ -50,6 +50,8 @@ export default function CookingPage() {
   const [sending, setSending] = useState(false);
   const [filledStars, setFilledStars] = useState(0);
   const [ratingLocked, setRatingLocked] = useState(false);
+  const [askReason, setAskReason] = useState(false);
+  const [reasonText, setReasonText] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -166,76 +168,111 @@ export default function CookingPage() {
       for (let i = 1; i <= n; i += 1) {
         window.setTimeout(() => setFilledStars(i), i * 140);
       }
+      const low = n <= 3;
       window.setTimeout(() => {
+        if (low) {
+          setAskReason(true);
+          return;
+        }
         finishAndGoHome();
-      }, n * 140 + 2200);
+      }, n * 140 + (low ? 400 : 2200));
     }
 
     return (
-      <AppShell hideNav showBack backHref="/home" title="اتمام پخت">
-        <div className="flex min-h-[70vh] flex-col items-center px-2 pb-8 pt-8 text-center">
-          <div className="mx-auto flex h-28 w-28 items-center justify-center rounded-full bg-gradient-to-b from-amber-50 to-orange-50 text-5xl shadow-[0_8px_24px_rgba(245,158,11,0.18)] ring-1 ring-amber-100">
-            🎉
-          </div>
-          <h1 className="mt-6 text-h1 text-atlas-ink">پخت تمام شد!</h1>
-          <p className="mt-2 max-w-xs text-body leading-7 text-atlas-ink-muted">
-            «{session.recipeTitle}» آماده است.
-            <br />
-            به نظرت چطور از آب دراومد؟
-          </p>
+      <AppShell hideNav showBack backHref="/home" title="اتمام پخت" lockScroll>
+        <div className="flex min-h-0 flex-1 flex-col">
+          <div className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto px-2 pt-2 text-center">
+            <div
+              className={`mx-auto flex items-center justify-center rounded-full bg-gradient-to-b from-amber-50 to-orange-50 shadow-[0_8px_24px_rgba(245,158,11,0.18)] ring-1 ring-amber-100 ${
+                askReason ? "h-16 w-16 text-3xl" : "h-24 w-24 text-5xl"
+              }`}
+            >
+              🎉
+            </div>
+            <h1
+              className={`text-atlas-ink ${askReason ? "mt-3 text-h2" : "mt-5 text-h1"}`}
+            >
+              پخت تمام شد!
+            </h1>
+            {askReason ? null : (
+              <p className="mt-2 max-w-xs text-body leading-7 text-atlas-ink-muted">
+                «{session.recipeTitle}» آماده است.
+                <br />
+                به نظرت چطور از آب دراومد؟
+              </p>
+            )}
 
-          <div className="mt-8 flex items-center justify-center gap-3">
-            {[1, 2, 3, 4, 5].map((n) => {
-              const on = filledStars >= n;
-              return (
-                <button
-                  key={n}
-                  type="button"
-                  disabled={ratingLocked}
-                  onClick={() => handleRate(n)}
-                  aria-label={`${toPersianDigits(n)} ستاره`}
-                  className={`transition-all duration-300 ease-out disabled:cursor-default ${
-                    on
-                      ? "scale-125 opacity-100 drop-shadow-[0_6px_10px_rgba(245,158,11,0.45)]"
-                      : ratingLocked
-                        ? "scale-95 opacity-25"
-                        : "scale-100 opacity-40 hover:scale-105 hover:opacity-70"
-                  }`}
-                >
-                  <svg
-                    width="42"
-                    height="42"
-                    viewBox="0 0 24 24"
-                    aria-hidden
-                    className={`transition-[fill,stroke,transform] duration-300 ease-out ${
-                      on ? "animate-[starPop_0.35s_ease-out]" : ""
+            <div
+              className={`flex items-center justify-center gap-3 ${askReason ? "mt-4" : "mt-7"}`}
+            >
+              {[1, 2, 3, 4, 5].map((n) => {
+                const on = filledStars >= n;
+                return (
+                  <button
+                    key={n}
+                    type="button"
+                    disabled={ratingLocked}
+                    onClick={() => handleRate(n)}
+                    aria-label={`${toPersianDigits(n)} ستاره`}
+                    className={`transition-all duration-300 ease-out disabled:cursor-default ${
+                      on
+                        ? "scale-125 opacity-100 drop-shadow-[0_6px_10px_rgba(245,158,11,0.45)]"
+                        : ratingLocked
+                          ? "scale-95 opacity-25"
+                          : "scale-100 opacity-40 hover:scale-105 hover:opacity-70"
                     }`}
                   >
-                    <path
-                      d="M12 3.1c.28 0 .52.16.63.42l1.72 4.1c.2.48.64.82 1.16.9l4.4.5c.66.07.93.9.43 1.34l-3.35 2.95c-.4.35-.58.9-.45 1.4l1.02 4.3c.15.64-.54 1.14-1.1.8l-3.72-2.3a1.35 1.35 0 0 0-1.48 0l-3.72 2.3c-.56.34-1.25-.16-1.1-.8l1.02-4.3c.13-.5-.05-1.05-.45-1.4L3.66 10.36c-.5-.44-.23-1.27.43-1.34l4.4-.5c.52-.08.96-.42 1.16-.9l1.72-4.1A.7.7 0 0 1 12 3.1Z"
-                      fill={on ? "#FBBF24" : "#E4E4E7"}
-                      stroke={on ? "#F59E0B" : "#D4D4D8"}
-                      strokeWidth="1.2"
-                      strokeLinejoin="round"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                </button>
-              );
-            })}
+                    <svg
+                      width="42"
+                      height="42"
+                      viewBox="0 0 24 24"
+                      aria-hidden
+                      className={`transition-[fill,stroke,transform] duration-300 ease-out ${
+                        on ? "animate-[starPop_0.35s_ease-out]" : ""
+                      }`}
+                    >
+                      <path
+                        d="M12 3.1c.28 0 .52.16.63.42l1.72 4.1c.2.48.64.82 1.16.9l4.4.5c.66.07.93.9.43 1.34l-3.35 2.95c-.4.35-.58.9-.45 1.4l1.02 4.3c.15.64-.54 1.14-1.1.8l-3.72-2.3a1.35 1.35 0 0 0-1.48 0l-3.72 2.3c-.56.34-1.25-.16-1.1-.8l1.02-4.3c.13-.5-.05-1.05-.45-1.4L3.66 10.36c-.5-.44-.23-1.27.43-1.34l4.4-.5c.52-.08.96-.42 1.16-.9l1.72-4.1A.7.7 0 0 1 12 3.1Z"
+                        fill={on ? "#FBBF24" : "#E4E4E7"}
+                        stroke={on ? "#F59E0B" : "#D4D4D8"}
+                        strokeWidth="1.2"
+                        strokeLinejoin="round"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                  </button>
+                );
+              })}
+            </div>
+
+            {askReason ? (
+              <div className="mt-5 w-full max-w-sm pb-3">
+                <p className="text-center text-[16px] font-medium leading-7 text-atlas-ink">
+                  مشکل چی بود؟
+                </p>
+                <textarea
+                  value={reasonText}
+                  onChange={(e) => setReasonText(e.target.value)}
+                  rows={3}
+                  className="mt-3 w-full resize-none rounded-atlas border border-atlas-border bg-atlas-surface p-3 text-center text-body text-atlas-ink outline-none focus:border-atlas-primary dark:bg-atlas-surface-muted"
+                  placeholder="مثلاً طعم، زمان پخت، مراحل…"
+                />
+                <Button className="mt-3 w-full" onClick={finishAndGoHome}>
+                  ثبت
+                </Button>
+              </div>
+            ) : ratingLocked ? (
+              <p className="mt-4 text-caption font-medium text-amber-700">
+                ممنون از امتیازت!
+              </p>
+            ) : null}
           </div>
 
-          {ratingLocked ? (
-            <p className="mt-4 text-caption font-medium text-amber-700">
-              ممنون از امتیازت!
-            </p>
-          ) : null}
-
-          <div className="mt-auto w-full pt-10">
+          <div className="shrink-0 bg-atlas-background px-2 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
             <Button
               variant="tertiary"
               className="mx-auto w-full max-w-xs font-medium"
-              disabled={ratingLocked}
+              disabled={ratingLocked && !askReason}
               iconEnd
               icon={<Home2 size={18} color="currentColor" />}
               onClick={finishAndGoHome}
@@ -300,7 +337,7 @@ export default function CookingPage() {
         </div>
 
         <div className="relative z-10 mt-10 flex flex-1 flex-col items-center justify-end px-2 pb-2 text-center">
-          <p className="max-w-[22rem] text-[1.75rem] font-extrabold leading-[2.35rem] tracking-tight text-black sm:text-[2rem] sm:leading-[2.6rem]">
+          <p className="max-w-[22rem] text-[17px] font-medium leading-8 text-atlas-ink">
             {step.instruction}
           </p>
           {step.tip ? (
@@ -376,12 +413,16 @@ export default function CookingPage() {
         <div className="grid grid-cols-2 gap-2">
           <Button
             size="lg"
-            iconEnd
+            iconEnd={step.order < session.totalSteps}
             icon={
               step.order >= session.totalSteps ? (
                 <TickCircle size={18} color="currentColor" />
               ) : (
-                <ArrowLeft2 size={18} color="currentColor" />
+                <ArrowLeft2
+                  size={18}
+                  color="currentColor"
+                  className="-scale-x-100"
+                />
               )
             }
             onClick={() => void goNext()}
@@ -392,7 +433,13 @@ export default function CookingPage() {
             variant="secondary"
             size="lg"
             disabled={step.order <= 1}
-            icon={<ArrowRight2 size={18} color="currentColor" />}
+            icon={
+              <ArrowRight2
+                size={18}
+                color="currentColor"
+                className="-scale-x-100"
+              />
+            }
             onClick={() => void goPrev()}
           >
             مرحله قبل

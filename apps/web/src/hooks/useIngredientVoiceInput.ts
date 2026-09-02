@@ -141,7 +141,20 @@ export function useIngredientVoiceInput(options: {
       [...finalsRef.current, interimRef.current].filter(Boolean).join(" "),
     );
     const fromDraft = primaryTranscript(draftRef.current);
-    return fromRefs.length >= fromDraft.length ? fromRefs : fromDraft;
+    const primary = fromRefs.length >= fromDraft.length ? fromRefs : fromDraft;
+    const candidates = [primary, ...alternativesRef.current]
+      .map((t) => primaryTranscript(t))
+      .filter(Boolean);
+    let best = primary;
+    let bestCount = namesFromSpeech(primary).length;
+    for (const candidate of candidates) {
+      const count = namesFromSpeech(candidate).length;
+      if (count > bestCount) {
+        best = candidate;
+        bestCount = count;
+      }
+    }
+    return best;
   }, []);
 
   const clearFlushTimer = useCallback(() => {
@@ -356,28 +369,47 @@ export function useIngredientVoiceInput(options: {
         if (emitIfIngredient(text)) return;
         emitHeard(text);
         closeMic();
-      }, 700);
+      }, 450);
     };
 
     recognition.onresult = (event) => {
       const finals: string[] = [];
       let interimChunk = "";
+      const alts: string[] = [];
       for (let i = 0; i < event.results.length; i += 1) {
         const result = event.results[i];
         if (!result) continue;
+        for (let a = 0; a < result.length; a += 1) {
+          const t = result[a]?.transcript?.trim();
+          if (t) alts.push(t);
+        }
         const best = result[0]?.transcript?.trim() ?? "";
         if (!best) continue;
         if (result.isFinal) finals.push(best);
         else interimChunk += (interimChunk ? " " : "") + best;
       }
       finalsRef.current = finals;
+      alternativesRef.current = alts;
       syncDraft(finals, interimChunk);
       setVolume(interimChunk || finals.length ? 0.85 : 0.4);
       armCommit();
     };
 
     recognition.onerror = (event) => {
-      if (event.error === "aborted" || event.error === "no-speech") return;
+      if (event.error === "aborted") return;
+      if (event.error === "no-speech") {
+        window.setTimeout(() => {
+          if (!listeningRef.current || recognitionRef.current !== recognition) {
+            return;
+          }
+          try {
+            recognition.start();
+          } catch {
+            /* already started */
+          }
+        }, 160);
+        return;
+      }
     };
 
     recognition.onend = () => {

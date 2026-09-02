@@ -13,6 +13,7 @@ import {
   RecommendationsSkeleton,
   SearchSkeleton,
 } from "@/components/ui/Skeleton";
+import { hasWarmPageCache } from "@/lib/page-cache";
 
 let pendingHref: string | null = null;
 const listeners = new Set<(href: string | null) => void>();
@@ -90,7 +91,7 @@ function pendingScreen(href: string) {
   }
   if (path.startsWith("/home")) {
     return (
-      <AppShell title={homeAppTitle} splitTitle>
+      <AppShell title={homeAppTitle} splitTitle showBrand>
         <HomeSkeleton />
       </AppShell>
     );
@@ -188,11 +189,12 @@ export function InstantNav({ children }: { children: ReactNode }) {
 
   const overlayPath = pending?.split("?")[0] ?? null;
   const overlayCoversNav = overlayPath ? shouldHideNav(overlayPath) : true;
+  const skipOverlay = overlayPath ? hasWarmPageCache(overlayPath) : false;
 
   return (
     <>
       {children}
-      {pending && overlayPath ? (
+      {pending && overlayPath && !skipOverlay ? (
         <div className="pointer-events-none fixed inset-y-0 left-1/2 z-[80] w-full max-w-md -translate-x-1/2 bg-atlas-background">
           <div
             className={`overflow-y-auto ${

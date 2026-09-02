@@ -54,74 +54,97 @@ export function ingredientsLooselyMatch(a: string, b: string): boolean {
   return longer === shorter || longer.startsWith(`${shorter} `);
 }
 
+const FRESH_PEPPER_HINTS = [
+  "فلفل دلمه",
+  "فلفل سبز",
+  "فلفل تازه",
+  "فلفل کبابی",
+  "هالوپینو",
+];
+
+/** Dry spices / salt / pepper — never count these as missing in recommendations. */
+const SPICE_PHRASES = [
+  "نمک",
+  "ادویه",
+  "فلفل سیاه",
+  "فلفل سفید",
+  "فلفل قرمز",
+  "فلفل شیرین",
+  "فلفل تند",
+  "فلفل چیلی",
+  "پودر فلفل",
+  "زردچوبه",
+  "زعفران",
+  "دارچین",
+  "چوب دارچین",
+  "زیره",
+  "سماق",
+  "پاپریکا",
+  "میخک",
+  "هل",
+  "وانیل",
+  "بکینگ پودر",
+  "بیکینگ پودر",
+  "بیکینگپودر",
+  "جوش شیرین",
+  "پودر سیر",
+  "پودر پیاز",
+  "آویشن",
+  "پونه",
+  "گلپر",
+  "رازیانه",
+  "پودر کاری",
+  "کاری",
+  "پودر خردل",
+  "دانه خردل",
+  "جوز هندی",
+  "برگ بو",
+  "سیاهدانه",
+  "سیاه دانه",
+  "نعناع خشک",
+  "جعفری خشک",
+  "گشنیز خشک",
+  "سبزی خشک",
+];
+
+const MEASURE_RE =
+  /به مقدار لازم|به میزان لازم|به اندازه لازم|بر حسب ذائقه|برحسب ذائقه|به دلخواه|\d+(?:[./]\d+)?|قاشق(?: چایخوری| غذاخوری)?|نوک قاشق|پیمانه|فنجان|لیوان|گرم|کیلو(?:گرم)?|سی سی|میلی ?لیتر|عدد|بسته|کمی|اندکی|مقداری|کافی/g;
+
+function stripMeasures(n: string): string {
+  return n
+    .replace(MEASURE_RE, " ")
+    .replace(/(^|\s)(یک|دو|سه|چهار|نیم|چند|مقدار)(\s|$)/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+const SPICE_PHRASES_BY_LENGTH = [...SPICE_PHRASES].sort(
+  (a, b) => b.length - a.length,
+);
+
+function phraseHasSpice(phrase: string): boolean {
+  if (!phrase) return false;
+  if (phrase === "فلفل") return true;
+  return SPICE_PHRASES_BY_LENGTH.some((spice) => {
+    if (phrase === spice) return true;
+    if (phrase.startsWith(`${spice} `)) return true;
+    return spice.length >= 4 && phrase.startsWith(spice);
+  });
+}
+
 /** Salt / pepper / common spices — ignore when counting missing ingredients. */
 export function isPantryStaple(name: string): boolean {
   const n = normalizePersian(name);
   if (!n) return false;
+  if (FRESH_PEPPER_HINTS.some((hint) => n.includes(hint))) return false;
 
-  // Fresh peppers / vegetables — not pantry staples
-  if (
-    n.includes("فلفل دلمه") ||
-    n.includes("فلفل سبز") ||
-    n.includes("فلفل تازه") ||
-    n.includes("فلفل کبابی")
-  ) {
-    return false;
-  }
-
-  if (
-    n === "فلفل" ||
-    n.startsWith("فلفل سیاه") ||
-    n.startsWith("فلفل سفید") ||
-    n.startsWith("فلفل قرمز") ||
-    n.startsWith("فلفل شیرین") ||
-    n.includes("پودر فلفل")
-  ) {
-    return true;
-  }
-
-  if (n === "نمک" || n.startsWith("نمک ") || n.startsWith("نمک")) {
-    return true;
-  }
-
-  if (n === "ادویه" || n.startsWith("ادویه")) {
-    return true;
-  }
-
-  const spices = [
-    "زردچوبه",
-    "زعفران",
-    "دارچین",
-    "زیره",
-    "سماق",
-    "پاپریکا",
-    "میخک",
-    "هل",
-    "وانیل",
-    "بکینگ پودر",
-    "بیکینگ پودر",
-    "جوش شیرین",
-    "پودر سیر",
-    "پودر پیاز",
-    "آویشن",
-    "پونه",
-    "گلپر",
-    "رازیانه",
-    "پودر کاری",
-    "کاری",
-    "چوب دارچین",
-    "پودر خردل",
-    "دانه خردل",
-    "میخک سبز",
-    "جوز هندی",
-    "میخک خشک",
-  ];
-
-  return spices.some((s) => {
-    if (n === s || n.startsWith(`${s} `)) return true;
-    // Avoid short false-positives (e.g. هل → هلو)
-    return s.length >= 4 && n.startsWith(s);
-  });
+  const stripped = stripMeasures(n);
+  const chunks = (stripped || n)
+    .split(/\s+و\s+|[،,]/)
+    .map((part) => stripMeasures(part))
+    .filter(Boolean);
+  const parts = chunks.length > 0 ? chunks : [n];
+  return parts.every(phraseHasSpice);
 }
 
 export function toPersianDigits(value: string | number): string {

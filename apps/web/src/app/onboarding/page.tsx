@@ -76,7 +76,7 @@ export default function OnboardingPage() {
         <div className="relative flex h-40 w-40 items-center justify-center">
           <span className="absolute inset-0 rounded-full bg-atlas-primary/15" />
           <span className="absolute inset-3 rounded-full bg-atlas-primary/20" />
-          <div className="relative flex h-28 w-28 items-center justify-center rounded-full bg-atlas-primary shadow-[0_16px_36px_rgba(255,55,55,0.35)]">
+          <div className="relative flex h-28 w-28 items-center justify-center rounded-full bg-atlas-primary shadow-[0_16px_36px_rgba(212,2,47,0.35)]">
             <Icon size={52} color="#FFFFFF" variant="Bold" />
           </div>
         </div>

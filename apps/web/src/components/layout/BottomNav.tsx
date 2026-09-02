@@ -46,7 +46,7 @@ export function BottomNav({
 
   return (
     <nav className="fixed bottom-5 left-1/2 z-[100] w-[calc(100%-2rem)] max-w-[22.5rem] -translate-x-1/2">
-      <div className="overflow-hidden rounded-full border border-atlas-border/70 bg-atlas-surface/80 shadow-[0_8px_24px_rgba(17,17,17,0.08)] backdrop-blur-xl dark:border-white/15 dark:shadow-[0_8px_28px_rgba(0,0,0,0.4)]">
+      <div className="overflow-hidden rounded-full border border-atlas-border/70 bg-white/92 shadow-[0_8px_24px_rgba(17,17,17,0.08)] backdrop-blur-xl dark:border-white/15 dark:bg-atlas-surface/80 dark:shadow-[0_8px_28px_rgba(0,0,0,0.4)]">
         <div className="p-1.5">
           <div className="relative">
             <span

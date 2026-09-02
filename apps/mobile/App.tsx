@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  BackHandler,
   Platform,
   Pressable,
   StyleSheet,
@@ -203,6 +204,17 @@ export default function App() {
                     }
                   }}
                   onMessage={(e) => {
+                    try {
+                      const data = JSON.parse(e.nativeEvent.data) as {
+                        type?: string;
+                      };
+                      if (data?.type === "atlas-app/exit") {
+                        if (Platform.OS === "android") BackHandler.exitApp();
+                        return;
+                      }
+                    } catch {
+                      // non-JSON messages still go to the voice bridge
+                    }
                     void voiceBridgeRef.current?.handleMessage(
                       e.nativeEvent.data,
                     );
