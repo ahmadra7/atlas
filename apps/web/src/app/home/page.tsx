@@ -292,7 +292,7 @@ export default function HomePage() {
   }, [router]);
 
   useEffect(() => {
-    rememberLoadedImage("/avatars/chef-home.png?v=1");
+    rememberLoadedImage("/avatars/home-pot.png");
     rememberLoadedImage("/banners/home-appliances.png");
     rememberLoadedImage("/banners/home-coffee.png");
     for (const card of popular) {
@@ -629,9 +629,9 @@ export default function HomePage() {
                 <BrandMark size={76} />
               </div> */}
               <img
-                src="/avatars/chef-home.png?v=1"
+                src="/avatars/home-pot.png"
                 alt=""
-                className="h-[3.9375rem] w-auto object-contain"
+                className="h-[5rem] w-auto object-contain"
               />
               <div className="text-right">
                 <h3 className="text-[1.45rem] font-extrabold leading-8 text-atlas-ink sm:text-[1.55rem]">
