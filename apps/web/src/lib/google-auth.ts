@@ -6,85 +6,35 @@ export type GoogleProfile = {
   accessToken: string;
 };
 
-type TokenClient = {
-  requestAccessToken: (opts?: { prompt?: string }) => void;
-};
+const GOOGLE_SCOPES = "openid email profile";
 
-declare global {
-  interface Window {
-    google?: {
-      accounts: {
-        oauth2: {
-          initTokenClient: (config: {
-            client_id: string;
-            scope: string;
-            include_granted_scopes?: boolean;
-            prompt?: "" | "none" | "consent" | "select_account";
-            callback: (response: {
-              access_token?: string;
-              expires_in?: number;
-              scope?: string;
-              error?: string;
-              error_description?: string;
-            }) => void;
-            error_callback?: (error: { type?: string; message?: string }) => void;
-          }) => TokenClient;
-        };
-      };
-    };
-  }
-}
+let cachedClientId: string | null = null;
 
-const GOOGLE_SCOPES = [
-  "openid",
-  "email",
-  "profile",
-  "https://www.googleapis.com/auth/userinfo.email",
-  "https://www.googleapis.com/auth/userinfo.profile",
-].join(" ");
-
-let gsiLoader: Promise<void> | null = null;
-
-export function googleClientId() {
+export function googleClientIdFromEnv() {
   return process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID?.trim() ?? "";
 }
 
-function loadGsi(): Promise<void> {
-  if (typeof window === "undefined") {
-    return Promise.reject(new Error("GOOGLE_UNAVAILABLE"));
+export async function resolveGoogleClientId(): Promise<string> {
+  if (cachedClientId) return cachedClientId;
+  const fromEnv = googleClientIdFromEnv();
+  if (fromEnv) {
+    cachedClientId = fromEnv;
+    return fromEnv;
   }
-  if (window.google?.accounts?.oauth2) return Promise.resolve();
-  if (gsiLoader) return gsiLoader;
-  gsiLoader = new Promise((resolve, reject) => {
-    const existing = document.querySelector<HTMLScriptElement>(
-      "script[data-atlas-gsi]",
-    );
-    if (existing) {
-      if (window.google?.accounts?.oauth2) {
-        resolve();
-        return;
+  try {
+    const res = await fetch("/api/auth/google/config", { cache: "no-store" });
+    if (res.ok) {
+      const data = (await res.json()) as { clientId?: string };
+      const id = data.clientId?.trim() ?? "";
+      if (id) {
+        cachedClientId = id;
+        return id;
       }
-      existing.addEventListener("load", () => resolve(), { once: true });
-      existing.addEventListener(
-        "error",
-        () => reject(new Error("GOOGLE_SDK")),
-        { once: true },
-      );
-      return;
     }
-    const script = document.createElement("script");
-    script.src = "https://accounts.google.com/gsi/client";
-    script.async = true;
-    script.defer = true;
-    script.dataset.atlasGsi = "1";
-    script.onload = () => resolve();
-    script.onerror = () => {
-      gsiLoader = null;
-      reject(new Error("GOOGLE_SDK"));
-    };
-    document.head.appendChild(script);
-  });
-  return gsiLoader;
+  } catch {
+    /* API may be down */
+  }
+  return "";
 }
 
 async function googleJson<T>(url: string, accessToken: string): Promise<T | null> {
@@ -95,10 +45,58 @@ async function googleJson<T>(url: string, accessToken: string): Promise<T | null
   return (await res.json()) as T;
 }
 
+export function readGoogleRedirectToken(): string | null {
+  if (typeof window === "undefined") return null;
+  const hash = window.location.hash.replace(/^#/, "");
+  if (!hash) return null;
+  const params = new URLSearchParams(hash);
+  const error = params.get("error")?.trim();
+  if (error && error !== "none") return null;
+  return params.get("access_token")?.trim() || null;
+}
+
+export function clearGoogleRedirectHash() {
+  if (typeof window === "undefined") return;
+  if (!window.location.hash) return;
+  const url = `${window.location.pathname}${window.location.search}`;
+  window.history.replaceState(null, "", url);
+}
+
+const PUBLIC_APP_ORIGIN = "https://ahmad.tail4cb55d.ts.net";
+
+export function googleRedirectOrigin() {
+  const fromEnv = process.env.NEXT_PUBLIC_APP_ORIGIN?.trim();
+  if (fromEnv) return fromEnv.replace(/\/$/, "");
+  const origin = window.location.origin;
+  if (origin.includes("localhost") || origin.includes("127.0.0.1")) {
+    return PUBLIC_APP_ORIGIN;
+  }
+  return origin;
+}
+
+/** Opens Google's real account chooser on the public app URL, then returns to /auth. */
+export function startGoogleRedirect(clientId: string) {
+  const redirectUri = `${googleRedirectOrigin()}/auth`;
+  const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
+  url.searchParams.set("client_id", clientId);
+  url.searchParams.set("redirect_uri", redirectUri);
+  url.searchParams.set("response_type", "token");
+  url.searchParams.set("scope", GOOGLE_SCOPES);
+  url.searchParams.set("prompt", "select_account");
+  url.searchParams.set("include_granted_scopes", "true");
+  window.location.assign(url.toString());
+}
+
+export async function beginGoogleLogin(): Promise<void> {
+  const clientId = await resolveGoogleClientId();
+  if (!clientId) throw new Error("GOOGLE_NOT_CONFIGURED");
+  startGoogleRedirect(clientId);
+}
+
 export async function fetchGoogleProfile(
   accessToken: string,
 ): Promise<Omit<GoogleProfile, "accessToken">> {
-  const [tokenInfo, userInfo, people] = await Promise.all([
+  const [tokenInfo, userInfo] = await Promise.all([
     fetch(
       `https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${encodeURIComponent(accessToken)}`,
     ).then(async (res) =>
@@ -106,7 +104,6 @@ export async function fetchGoogleProfile(
         ? ((await res.json()) as {
             sub?: string;
             email?: string;
-            email_verified?: string | boolean;
             aud?: string;
           })
         : null,
@@ -118,78 +115,22 @@ export async function fetchGoogleProfile(
       given_name?: string;
       picture?: string;
     }>("https://www.googleapis.com/oauth2/v3/userinfo", accessToken),
-    googleJson<{
-      names?: Array<{ displayName?: string; givenName?: string }>;
-      emailAddresses?: Array<{ value?: string }>;
-      photos?: Array<{ url?: string }>;
-    }>(
-      "https://people.googleapis.com/v1/people/me?personFields=names,emailAddresses,photos",
-      accessToken,
-    ),
   ]);
 
-  const expectedAud = googleClientId();
+  const expectedAud = cachedClientId || googleClientIdFromEnv();
   if (expectedAud && tokenInfo?.aud && tokenInfo.aud !== expectedAud) {
     throw new Error("GOOGLE_TOKEN");
   }
 
   const googleId = userInfo?.sub?.trim() || tokenInfo?.sub?.trim() || "";
-  const email = (
-    userInfo?.email ||
-    people?.emailAddresses?.[0]?.value ||
-    tokenInfo?.email ||
-    ""
-  )
-    .trim()
-    .toLowerCase();
+  const email = (userInfo?.email || tokenInfo?.email || "").trim().toLowerCase();
   if (!googleId || !email) throw new Error("GOOGLE_PROFILE");
 
-  const photo = people?.photos?.[0]?.url?.replace(/=s\d+([?-]|$)/, "=s256$1");
   return {
     googleId,
     email,
     displayName:
-      people?.names?.[0]?.displayName?.trim() ||
-      userInfo?.name?.trim() ||
-      userInfo?.given_name?.trim() ||
-      people?.names?.[0]?.givenName?.trim() ||
-      "",
-    avatarUrl: photo?.trim() || userInfo?.picture?.trim() || null,
+      userInfo?.name?.trim() || userInfo?.given_name?.trim() || "",
+    avatarUrl: userInfo?.picture?.trim() || null,
   };
-}
-
-export async function signInWithGoogle(): Promise<GoogleProfile> {
-  const clientId = googleClientId();
-  if (!clientId) throw new Error("GOOGLE_NOT_CONFIGURED");
-  await loadGsi();
-  const oauth = window.google?.accounts?.oauth2;
-  if (!oauth) throw new Error("GOOGLE_SDK");
-
-  const accessToken = await new Promise<string>((resolve, reject) => {
-    const client = oauth.initTokenClient({
-      client_id: clientId,
-      scope: GOOGLE_SCOPES,
-      include_granted_scopes: true,
-      prompt: "select_account",
-      callback: (response) => {
-        if (response.access_token) {
-          resolve(response.access_token);
-          return;
-        }
-        reject(new Error(response.error || "GOOGLE_CANCELLED"));
-      },
-      error_callback: (error) => {
-        const type = error?.type ?? "";
-        if (type === "popup_closed" || type === "popup_failed_to_open") {
-          reject(new Error("GOOGLE_CANCELLED"));
-          return;
-        }
-        reject(new Error(error?.message || "GOOGLE_FAILED"));
-      },
-    });
-    client.requestAccessToken({ prompt: "select_account" });
-  });
-
-  const profile = await fetchGoogleProfile(accessToken);
-  return { ...profile, accessToken };
 }

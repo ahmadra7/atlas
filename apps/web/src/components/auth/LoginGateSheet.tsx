@@ -40,7 +40,7 @@ export function LoginGateSheet({
         <button
           type="button"
           onClick={onClose}
-          className="mt-3 h-11 w-full text-[13px] font-normal text-atlas-ink-muted"
+          className="mt-3 h-12 w-full text-[13px] font-normal text-atlas-ink-muted"
         >
           بعداً
         </button>

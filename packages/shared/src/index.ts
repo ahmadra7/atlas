@@ -5,9 +5,9 @@ import type {
   MatchTier,
   MealType,
 } from "@atlas/contracts";
-import { FOOD_NAMES } from "./foodIngredients";
+import { FOOD_ALIASES, FOOD_NAMES } from "./foodIngredients";
 
-export { FOOD_NAMES } from "./foodIngredients";
+export { FOOD_ALIASES, FOOD_NAMES } from "./foodIngredients";
 
 /** Persian ingredient normalization per content spec. */
 export function normalizePersian(input: string): string {
@@ -26,11 +26,20 @@ export function normalizePersian(input: string): string {
  * Loose equivalence for pantry matching:
  * «گوجه» ≈ «گوجه فرنگی», but not «رب گوجه فرنگی» / «سس گوجه».
  */
+export function compactPersian(input: string): string {
+  return normalizePersian(input).replace(/\s+/g, "");
+}
+
+/**
+ * Loose equivalence for pantry matching:
+ * «گوجه» ≈ «گوجه فرنگی», but not «رب گوجه فرنگی» / «سس گوجه».
+ */
 export function ingredientsLooselyMatch(a: string, b: string): boolean {
   const na = normalizePersian(a);
   const nb = normalizePersian(b);
   if (!na || !nb) return false;
   if (na === nb) return true;
+  if (compactPersian(na) === compactPersian(nb)) return true;
 
   const shorter = na.length <= nb.length ? na : nb;
   const longer = na.length > nb.length ? na : nb;
@@ -218,15 +227,47 @@ const FOOD_KEYS = new Set(
   FOOD_NAMES.map((name) => normalizePersian(name)).filter((n) => n.length >= 2),
 );
 
+const FOOD_COMPACT = new Map<string, string>();
+for (const name of FOOD_NAMES) {
+  const compact = compactPersian(name);
+  if (compact.length >= 2 && !FOOD_COMPACT.has(compact)) {
+    FOOD_COMPACT.set(compact, name);
+  }
+}
+
+const ALIAS_TO_FOOD = new Map<string, string>();
+for (const [canonical, aliases] of Object.entries(FOOD_ALIASES)) {
+  for (const alias of [canonical, ...aliases]) {
+    const key = normalizePersian(alias);
+    const compact = compactPersian(alias);
+    if (key) ALIAS_TO_FOOD.set(key, canonical);
+    if (compact) ALIAS_TO_FOOD.set(compact, canonical);
+  }
+}
+
+/** Map a spoken/typed phrase to a catalog food name, or null. */
+export function canonicalFoodName(raw: string): string | null {
+  const key = normalizePersian(raw);
+  const compact = compactPersian(raw);
+  if (!key || key.length < 2) return null;
+  const fromAlias = ALIAS_TO_FOOD.get(key) ?? ALIAS_TO_FOOD.get(compact);
+  if (fromAlias) return fromAlias;
+  if (FOOD_KEYS.has(key)) {
+    return FOOD_NAMES.find((n) => normalizePersian(n) === key) ?? key;
+  }
+  const fromCompact = FOOD_COMPACT.get(compact);
+  if (fromCompact) return fromCompact;
+  for (const food of FOOD_NAMES) {
+    if (ingredientsLooselyMatch(raw, food)) return food;
+  }
+  return null;
+}
+
 export function isLikelyFoodIngredient(name: string): boolean {
   const n = normalizePersian(name);
   if (!n || n.length < 2) return false;
   if (isPantryStaple(name)) return true;
-  if (FOOD_KEYS.has(n)) return true;
-  for (const food of FOOD_KEYS) {
-    if (ingredientsLooselyMatch(n, food)) return true;
-  }
-  return false;
+  return canonicalFoodName(name) !== null;
 }
 
 /** Custom chips that do not look like food (e.g. random voice words). */

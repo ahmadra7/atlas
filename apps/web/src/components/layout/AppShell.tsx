@@ -12,9 +12,15 @@ import { greetingFirstName } from "@/lib/phone";
 
 export const homeAppTitle = "چی بپزم ؟!";
 
+function isMainNavPath(path: string) {
+  return navTabs.some(
+    (tab) => path === tab.href || path.startsWith(`${tab.href}/`),
+  );
+}
+
 function HeaderGreeting() {
-  const { isAuthenticated, user } = useAuth();
-  const firstName = isAuthenticated ? greetingFirstName(user?.displayName) : null;
+  const { user } = useAuth();
+  const firstName = greetingFirstName(user?.displayName);
 
   return (
     <div className="min-w-0 leading-tight">
@@ -58,6 +64,7 @@ export function AppShell({
   showBrand = false,
   hideBrand = false,
   lockScroll = false,
+  routePath,
 }: {
   children: ReactNode;
   hideNav?: boolean;
@@ -75,15 +82,20 @@ export function AppShell({
   hideBrand?: boolean;
   /** Keep shell to viewport height; only children manage internal scroll. */
   lockScroll?: boolean;
+  /** Overlay/skeleton destination path. Identity follows this, not the stale live route. */
+  routePath?: string;
 }) {
   const pathname = usePathname();
   const router = useRouter();
   const { isAuthenticated } = useAuth();
-  const showNav = hideNav === undefined ? !shouldHideNav(pathname) : !hideNav;
+  const path = routePath ?? pathname;
+  const showNav = hideNav === undefined ? !shouldHideNav(path) : !hideNav;
   const showHeader = Boolean(
     title || showBack || headerAction || brandAside || showBrand,
   );
-  const showIdentity = showHeader && !hideBrand;
+  const onMainNav = isMainNavPath(path);
+  const showIdentity = showHeader && !hideBrand && showNav && onMainNav;
+  const showAccount = showIdentity && isAuthenticated;
 
   useEffect(() => {
     for (const tab of navTabs) router.prefetch(tab.href);
@@ -101,7 +113,8 @@ export function AppShell({
         <header className="sticky top-0 z-30 shrink-0 overflow-visible border-b border-atlas-border/70 bg-atlas-surface/80 px-4 py-3 backdrop-blur-xl dark:border-white/15">
           <div className="grid min-h-11 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1">
             <div className="z-10 flex min-w-0 items-center gap-1 ps-2">
-              {showIdentity ? (
+              {showIdentity && !isAuthenticated ? <LoginEntryButton /> : null}
+              {showAccount ? (
                 <>
                   <AvatarMenu />
                   <HeaderGreeting />
@@ -125,7 +138,6 @@ export function AppShell({
             )}
 
             <div className="z-10 flex items-center justify-end gap-1">
-              {showIdentity && !isAuthenticated ? <LoginEntryButton /> : null}
               {headerAction}
               {showBack ? <BackButton href={backHref} /> : null}
             </div>

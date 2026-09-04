@@ -7,10 +7,11 @@ export class RecipesController {
 
   @Get()
   list(@Query("q") q?: string, @Query("limit") limit?: string) {
+    const take = limit ? Number(limit) : undefined;
     if (q?.trim()) {
-      return this.recipes.search(q, limit ? Number(limit) : 40);
+      return this.recipes.search(q, take ?? 40);
     }
-    return this.recipes.listPublished();
+    return this.recipes.listForRecommend({}, take && take > 0 ? take : 80);
   }
 
   @Get(":slug")

@@ -1,4 +1,4 @@
-import { Body, Controller, Post } from "@nestjs/common";
+import { Body, Controller, Get, Post } from "@nestjs/common";
 import { IsEmail, IsOptional, IsString, Matches, MinLength } from "class-validator";
 import { AuthService } from "./auth.service";
 
@@ -79,6 +79,17 @@ export class AuthController {
   @Post("otp/verify")
   verifyOtp(@Body() body: VerifyOtpDto) {
     return this.auth.verifyOtp(body.phone, body.code);
+  }
+
+  @Get("google/config")
+  googleConfig() {
+    return {
+      clientId: (
+        process.env.GOOGLE_CLIENT_ID ||
+        process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
+        ""
+      ).trim(),
+    };
   }
 
   @Post("google")

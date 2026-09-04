@@ -20,17 +20,18 @@ export function SignOutConfirmSheet({
       onClose={onClose}
     >
       <div className="pb-2 pt-1 text-center">
-        <p className="text-[16px] font-semibold text-atlas-ink">
-          آیا مطمئن هستید؟
-        </p>
-        <p className="mt-2 text-[13px] font-normal leading-6 text-atlas-ink-muted">
-          با خروج، به‌صورت مهمان ادامه می‌دهید و برای پخت باید دوباره وارد شوید.
+        <p className="text-[13px] font-normal leading-6 text-atlas-ink-muted">
+          آیا از خروج مطمئن هستید؟
         </p>
         <div className="mt-6 flex gap-2">
           <Button className="flex-1" onClick={onConfirm}>
             تأیید
           </Button>
-          <Button variant="secondary" className="flex-1" onClick={onClose}>
+          <Button
+            variant="tertiary"
+            className="flex-1 border border-atlas-primary text-atlas-primary"
+            onClick={onClose}
+          >
             انصراف
           </Button>
         </div>

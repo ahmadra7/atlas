@@ -116,9 +116,9 @@ export function createVoiceBridge(webRef: RefObject<WebView | null>) {
     iosTaskHint: "dictation" as const,
     androidIntentOptions: {
       EXTRA_LANGUAGE_MODEL: "web_search",
-      EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS: 15000,
-      EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS: 12000,
-      EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS: 2000,
+      EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS: 4000,
+      EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS: 4000,
+      EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS: 400,
     },
     volumeChangeEventOptions: {
       enabled: true,

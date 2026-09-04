@@ -9,7 +9,12 @@ import { instantReplace } from "@/components/navigation/InstantNav";
 import { BackButton } from "@/components/ui/BackButton";
 import { atlasClient } from "@/lib/client";
 import { persistAuthSession, safeNextPath } from "@/lib/auth-session";
-import { signInWithGoogle } from "@/lib/google-auth";
+import {
+  beginGoogleLogin,
+  fetchGoogleProfile,
+  readGoogleRedirectToken,
+  clearGoogleRedirectHash,
+} from "@/lib/google-auth";
 import { formatIranMobile, normalizeIranMobile } from "@/lib/phone";
 
 function GoogleMark() {
@@ -46,7 +51,7 @@ function authErrorFa(err: unknown): string {
     return "تعداد تلاش بیش از حد بود. دوباره کد بگیرید.";
   if (code.includes("OTP_NOT_FOUND")) return "ابتدا کد تأیید را دریافت کنید.";
   if (code.includes("GOOGLE_NOT_CONFIGURED"))
-    return "ورود گوگل هنوز پیکربندی نشده است.";
+    return "گوگل هنوز این اپ را نمی‌شناسد، برای همین صفحه جیمیل باز نمی‌شود.";
   if (code.includes("GOOGLE_CANCELLED")) return "ورود گوگل لغو شد.";
   if (code.includes("GOOGLE")) return "ورود با گوگل انجام نشد. دوباره تلاش کنید.";
   return "مشکلی پیش آمد. دوباره تلاش کنید.";
@@ -98,6 +103,29 @@ function AuthScreen() {
     instantReplace(router, nextPath);
   }
 
+  async function completeGoogle(accessToken: string) {
+    const profile = await fetchGoogleProfile(accessToken);
+    const result = await atlasClient.loginWithGoogle({
+      accessToken,
+      googleId: profile.googleId,
+      email: profile.email,
+      displayName: profile.displayName,
+      avatarUrl: profile.avatarUrl,
+    });
+    await finishLogin(result.accessToken, result.user);
+  }
+
+  useEffect(() => {
+    const token = readGoogleRedirectToken();
+    if (!token) return;
+    clearGoogleRedirectHash();
+    setGoogleBusy(true);
+    void completeGoogle(token)
+      .catch((err) => setError(authErrorFa(err)))
+      .finally(() => setGoogleBusy(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function sendCode() {
     if (!normalized || busy) return;
     setBusy(true);
@@ -137,18 +165,9 @@ function AuthScreen() {
     setGoogleBusy(true);
     setError(null);
     try {
-      const profile = await signInWithGoogle();
-      const result = await atlasClient.loginWithGoogle({
-        accessToken: profile.accessToken,
-        googleId: profile.googleId,
-        email: profile.email,
-        displayName: profile.displayName,
-        avatarUrl: profile.avatarUrl,
-      });
-      await finishLogin(result.accessToken, result.user);
+      await beginGoogleLogin();
     } catch (err) {
       setError(authErrorFa(err));
-    } finally {
       setGoogleBusy(false);
     }
   }
@@ -206,7 +225,7 @@ function AuthScreen() {
         <div className="flex shrink-0 flex-col items-center text-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/avatars/chef-character.png?v=2"
+            src="/avatars/chef-character.png?v=4"
             alt=""
             className="h-[5rem] w-auto object-contain drop-shadow-[0_5px_12px_rgba(20,40,80,0.10)]"
           />
@@ -232,7 +251,7 @@ function AuthScreen() {
               <span className="mb-2 block text-[12px] font-medium text-atlas-ink-muted">
                 شماره موبایل
               </span>
-              <span className="flex items-center gap-2 rounded-2xl border border-atlas-border bg-atlas-surface px-3 py-1.5 focus-within:border-atlas-primary dark:border-white/15">
+              <span className="flex h-12 items-center gap-2 rounded-2xl border border-atlas-border bg-atlas-surface px-3 focus-within:border-atlas-primary dark:border-white/15">
                 <Call size={18} color="currentColor" className="text-atlas-ink-muted" />
                 <input
                   dir="ltr"
@@ -241,7 +260,7 @@ function AuthScreen() {
                   placeholder="0912 000 0000"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="h-11 w-full bg-transparent text-left text-[16px] font-medium tracking-wide text-atlas-ink outline-none"
+                  className="h-full w-full bg-transparent text-left text-[16px] font-medium tracking-wide text-atlas-ink outline-none"
                 />
               </span>
             </label>
@@ -279,7 +298,7 @@ function AuthScreen() {
                   value={digit}
                   onChange={(e) => onOtpChange(index, e.target.value)}
                   onKeyDown={(e) => onOtpKeyDown(index, e.key)}
-                  className="h-14 w-12 rounded-2xl border border-atlas-border bg-atlas-surface text-center text-[22px] font-bold text-atlas-ink outline-none focus:border-atlas-primary dark:border-white/15"
+                  className="h-12 w-12 rounded-2xl border border-atlas-border bg-atlas-surface text-center text-[22px] font-bold text-atlas-ink outline-none focus:border-atlas-primary dark:border-white/15"
                 />
               ))}
             </div>

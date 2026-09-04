@@ -105,7 +105,7 @@ export function RecipeCard({ card }: { card: RecommendationCard }) {
             type="button"
             dir="ltr"
             onClick={() => setShopOpen(true)}
-            className="flex h-11 w-full items-center justify-center gap-2 rounded-atlas bg-atlas-primary text-body font-bold text-white shadow-sm transition hover:bg-atlas-primary-hover active:scale-[0.99]"
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-atlas bg-atlas-primary text-body font-bold text-white shadow-sm transition hover:bg-atlas-primary-hover active:scale-[0.99]"
           >
             <ShoppingCart size={18} color="currentColor" variant="Bold" />
             <span dir="rtl">برام تهیه کن</span>

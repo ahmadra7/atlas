@@ -81,7 +81,7 @@ export default function SearchPage() {
               if (e.key === "Enter") submit(query);
             }}
             placeholder="جستجوی غذا"
-            className={`h-11 w-full rounded-atlas border border-atlas-border bg-atlas-surface py-2 pr-4 text-body outline-none focus:border-atlas-primary ${
+            className={`h-12 w-full rounded-atlas border border-atlas-border bg-atlas-surface py-2 pr-4 text-body outline-none focus:border-atlas-primary ${
               query ? "pl-11" : "pl-4"
             }`}
           />

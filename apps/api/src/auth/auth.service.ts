@@ -142,76 +142,50 @@ export class AuthService {
     displayName?: string;
     avatarUrl?: string | null;
   }) {
-    let googleId = input.googleId?.trim();
-    let email = input.email?.trim().toLowerCase();
-    let displayName = input.displayName?.trim() ?? "";
-    let avatarUrl = input.avatarUrl ?? null;
+    const token = input.accessToken?.trim();
+    if (!token) throw new UnauthorizedException("GOOGLE_TOKEN");
 
-    if (input.accessToken) {
-      const token = input.accessToken;
-      const [tokenInfoRes, userInfoRes, peopleRes] = await Promise.all([
-        fetch(
-          `https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${encodeURIComponent(token)}`,
-        ),
-        fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch(
-          "https://people.googleapis.com/v1/people/me?personFields=names,emailAddresses,photos",
-          { headers: { Authorization: `Bearer ${token}` } },
-        ),
-      ]);
+    const [tokenInfoRes, userInfoRes] = await Promise.all([
+      fetch(
+        `https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${encodeURIComponent(token)}`,
+      ),
+      fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+    ]);
 
-      if (!userInfoRes.ok) throw new UnauthorizedException("GOOGLE_PROFILE");
-      const info = (await userInfoRes.json()) as {
+    if (!userInfoRes.ok) throw new UnauthorizedException("GOOGLE_PROFILE");
+    const info = (await userInfoRes.json()) as {
+      sub?: string;
+      email?: string;
+      name?: string;
+      given_name?: string;
+      picture?: string;
+    };
+
+    if (tokenInfoRes.ok) {
+      const tokenInfo = (await tokenInfoRes.json()) as {
+        aud?: string;
         sub?: string;
         email?: string;
-        name?: string;
-        given_name?: string;
-        picture?: string;
       };
-
-      if (tokenInfoRes.ok) {
-        const tokenInfo = (await tokenInfoRes.json()) as {
-          aud?: string;
-          sub?: string;
-          email?: string;
-        };
-        const expectedAud = process.env.GOOGLE_CLIENT_ID?.trim();
-        if (expectedAud && tokenInfo.aud && tokenInfo.aud !== expectedAud) {
-          throw new UnauthorizedException("GOOGLE_TOKEN");
-        }
-        googleId = tokenInfo.sub?.trim() || googleId;
-        email = tokenInfo.email?.trim().toLowerCase() || email;
+      const expectedAud = (
+        process.env.GOOGLE_CLIENT_ID ||
+        process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
+        ""
+      ).trim();
+      if (expectedAud && tokenInfo.aud && tokenInfo.aud !== expectedAud) {
+        throw new UnauthorizedException("GOOGLE_TOKEN");
       }
-
-      let peopleName = "";
-      let peoplePhoto: string | null = null;
-      let peopleEmail = "";
-      if (peopleRes.ok) {
-        const people = (await peopleRes.json()) as {
-          names?: Array<{ displayName?: string; givenName?: string }>;
-          emailAddresses?: Array<{ value?: string }>;
-          photos?: Array<{ url?: string }>;
-        };
-        peopleName =
-          people.names?.[0]?.displayName?.trim() ||
-          people.names?.[0]?.givenName?.trim() ||
-          "";
-        peopleEmail = people.emailAddresses?.[0]?.value?.trim().toLowerCase() || "";
-        peoplePhoto =
-          people.photos?.[0]?.url?.replace(/=s\d+([?-]|$)/, "=s256$1")?.trim() ||
-          null;
-      }
-
-      googleId = info.sub?.trim() || googleId;
-      email = info.email?.trim().toLowerCase() || peopleEmail || email;
-      displayName =
-        peopleName || info.name?.trim() || info.given_name?.trim() || displayName;
-      avatarUrl = peoplePhoto || info.picture?.trim() || avatarUrl;
     }
 
+    const googleId = info.sub?.trim();
+    const email = info.email?.trim().toLowerCase();
     if (!googleId || !email) throw new UnauthorizedException("GOOGLE_PROFILE");
+
+    const displayName =
+      info.name?.trim() || info.given_name?.trim() || input.displayName?.trim() || "";
+    const avatarUrl = info.picture?.trim() || input.avatarUrl || null;
 
     const byGoogle = await this.users.findByGoogleId(googleId);
     if (byGoogle) {

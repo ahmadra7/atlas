@@ -1,7 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { namesFromSpeech } from "@/lib/spokenIngredients";
+import {
+  namesFromSpeech,
+  shouldHoldTrailingFood,
+} from "@/lib/spokenIngredients";
+import { normalizePersian } from "@atlas/shared";
 import {
   isAtlasNativeApp,
   postToNative,
@@ -9,7 +13,7 @@ import {
   type NativeVoiceMode,
 } from "@/lib/voiceBridgeClient";
 
-const SILENCE_MS = 8000;
+const SILENCE_MS = 4000;
 
 type SpeechRecognitionLike = {
   lang: string;
@@ -22,6 +26,9 @@ type SpeechRecognitionLike = {
   onresult: ((event: SpeechRecognitionEventLike) => void) | null;
   onerror: ((event: { error: string }) => void) | null;
   onend: (() => void) | null;
+  onspeechstart: (() => void) | null;
+  onsoundstart: (() => void) | null;
+  onspeechend: (() => void) | null;
 };
 
 type SpeechRecognitionEventLike = {
@@ -71,7 +78,7 @@ function primaryTranscript(text: string): string {
 
 /**
  * Voice capture for ingredients.
- * First recognized item is emitted and the mic closes — tap again for the next.
+ * Each recognized food is added immediately. Cancels after 4s of silence.
  */
 export function useIngredientVoiceInput(options: {
   onHeard: (transcript: string) => void | Promise<void>;
@@ -95,6 +102,7 @@ export function useIngredientVoiceInput(options: {
   const heardTimerRef = useRef<number | null>(null);
   const silenceTimerRef = useRef<number | null>(null);
   const openedAtRef = useRef(0);
+  const emittedNamesRef = useRef<Set<string>>(new Set());
 
   const [phase, setPhase] = useState<VoicePhase>("idle");
   const [interim, setInterim] = useState("");
@@ -118,6 +126,9 @@ export function useIngredientVoiceInput(options: {
     rec.onresult = null;
     rec.onerror = null;
     rec.onend = null;
+    rec.onspeechstart = null;
+    rec.onsoundstart = null;
+    rec.onspeechend = null;
     recognitionRef.current = null;
   }, []);
 
@@ -145,6 +156,7 @@ export function useIngredientVoiceInput(options: {
     finalsRef.current = [];
     alternativesRef.current = [];
     interimRef.current = "";
+    emittedNamesRef.current = new Set();
   }, []);
 
   const draftRef = useRef("");
@@ -184,6 +196,24 @@ export function useIngredientVoiceInput(options: {
     void Promise.resolve(onHeardRef.current(composed));
   }, []);
 
+  const flushNewIngredients = useCallback(
+    (text: string, holdLast = false) => {
+      const composed = primaryTranscript(text);
+      if (!composed) return;
+      let names = namesFromSpeech(composed);
+      if (holdLast && names.length > 0 && shouldHoldTrailingFood(composed)) {
+        names = names.slice(0, -1);
+      }
+      for (const name of names) {
+        const key = normalizePersian(name);
+        if (!key || emittedNamesRef.current.has(key)) continue;
+        emittedNamesRef.current.add(key);
+        emitHeard(name);
+      }
+    },
+    [emitHeard],
+  );
+
   const closeMic = useCallback(() => {
     if (heardTimerRef.current != null) {
       window.clearTimeout(heardTimerRef.current);
@@ -212,6 +242,7 @@ export function useIngredientVoiceInput(options: {
     finalsRef.current = [];
     alternativesRef.current = [];
     interimRef.current = "";
+    emittedNamesRef.current = new Set();
     setInterim("");
     setDraft("");
     setVolume(0);
@@ -224,35 +255,10 @@ export function useIngredientVoiceInput(options: {
     silenceTimerRef.current = window.setTimeout(() => {
       silenceTimerRef.current = null;
       if (!listeningRef.current) return;
+      flushNewIngredients(capturedText(), false);
       closeMic();
     }, SILENCE_MS);
-  }, [clearSilenceTimer, closeMic]);
-
-  const emitIfIngredient = useCallback(
-    (text: string) => {
-      const composed = primaryTranscript(text);
-      if (!composed) return false;
-      if (namesFromSpeech(composed).length === 0) return false;
-      closeMic();
-      emitHeard(composed);
-      return true;
-    },
-    [closeMic, emitHeard],
-  );
-
-  const submitTranscript = useCallback(async (text: string) => {
-    const composed = primaryTranscript(text);
-    if (!composed) return;
-    emitHeard(composed);
-  }, [emitHeard]);
-
-  const flushAndSubmit = useCallback(() => {
-    clearFlushTimer();
-    if (submittingRef.current) return;
-    const text = capturedText();
-    if (text) void submitTranscript(text);
-    else resetIdle("چیزی نشنیدم. دوباره بگو.");
-  }, [capturedText, clearFlushTimer, resetIdle, submitTranscript]);
+  }, [capturedText, clearSilenceTimer, closeMic, flushNewIngredients]);
 
   useEffect(() => {
     if (!isAtlasNativeApp()) return;
@@ -286,14 +292,20 @@ export function useIngredientVoiceInput(options: {
         syncDraft(finalsRef.current, msg.transcript);
         setPhase("listening");
         listeningRef.current = true;
-        if (msg.transcript.trim()) armSilenceTimer();
+        if (msg.transcript.trim()) {
+          flushNewIngredients(
+            [...finalsRef.current, msg.transcript].join(" "),
+            true,
+          );
+          armSilenceTimer();
+        }
         return;
       }
 
       if (msg.type === "atlas-voice/final") {
         if (msg.transcript.trim()) {
           finalsRef.current = [...finalsRef.current, msg.transcript.trim()];
-          if (emitIfIngredient(msg.transcript)) return;
+          flushNewIngredients(finalsRef.current.join(" "), false);
           armSilenceTimer();
         }
         if (msg.alternatives?.length) {
@@ -325,8 +337,7 @@ export function useIngredientVoiceInput(options: {
       if (msg.type === "atlas-voice/ended") {
         if (submittingRef.current) return;
         if (nativeModeRef.current === "intent") {
-          const spoken = capturedText();
-          if (spoken) emitHeard(spoken);
+          flushNewIngredients(capturedText(), false);
           clearSilenceTimer();
           setPhase("idle");
           setVolume(0);
@@ -337,7 +348,6 @@ export function useIngredientVoiceInput(options: {
           engineRef.current = null;
           return;
         }
-        // Native bridge auto-restarts; only finalize when user pressed Send.
         if (!userStoppingRef.current) {
           if (listeningRef.current) {
             setPhase("listening");
@@ -347,12 +357,8 @@ export function useIngredientVoiceInput(options: {
           setVolume(0);
           return;
         }
-        const text = capturedText();
-        if (text) {
-          void submitTranscript(text);
-        } else {
-          resetIdle();
-        }
+        flushNewIngredients(capturedText(), false);
+        closeMic();
       }
     });
 
@@ -362,10 +368,10 @@ export function useIngredientVoiceInput(options: {
     armSilenceTimer,
     capturedText,
     clearSilenceTimer,
+    closeMic,
     emitHeard,
-    emitIfIngredient,
+    flushNewIngredients,
     resetIdle,
-    submitTranscript,
     syncDraft,
   ]);
 
@@ -380,6 +386,7 @@ export function useIngredientVoiceInput(options: {
     finalsRef.current = [];
     alternativesRef.current = [];
     interimRef.current = "";
+    emittedNamesRef.current = new Set();
     setInterim("");
     setDraft("");
     setErrorMessage(null);
@@ -397,17 +404,15 @@ export function useIngredientVoiceInput(options: {
     recognition.interimResults = true;
     recognition.maxAlternatives = 5;
 
-    const armCommit = () => {
-      if (heardTimerRef.current != null) {
-        window.clearTimeout(heardTimerRef.current);
-      }
-      heardTimerRef.current = window.setTimeout(() => {
-        const text = capturedText();
-        if (!text) return;
-        if (emitIfIngredient(text)) return;
-        emitHeard(text);
-        closeMic();
-      }, 450);
+    recognition.onspeechstart = () => {
+      armSilenceTimer();
+    };
+    recognition.onsoundstart = () => {
+      armSilenceTimer();
+    };
+    recognition.onspeechend = () => {
+      flushNewIngredients(capturedText(), false);
+      armSilenceTimer();
     };
 
     recognition.onresult = (event) => {
@@ -430,8 +435,11 @@ export function useIngredientVoiceInput(options: {
       alternativesRef.current = alts;
       syncDraft(finals, interimChunk);
       setVolume(interimChunk || finals.length ? 0.85 : 0.4);
-      if (interimChunk || finals.length) armSilenceTimer();
-      armCommit();
+      const spoken = [...finals, interimChunk].filter(Boolean).join(" ");
+      if (spoken) {
+        flushNewIngredients(spoken, Boolean(interimChunk));
+        armSilenceTimer();
+      }
     };
 
     recognition.onerror = (event) => {
@@ -455,15 +463,6 @@ export function useIngredientVoiceInput(options: {
       if (submittingRef.current || userStoppingRef.current) {
         cleanupWebRecognition();
         engineRef.current = null;
-        if (userStoppingRef.current) flushAndSubmit();
-        return;
-      }
-
-      const leftover = capturedText();
-      if (leftover) {
-        if (emitIfIngredient(leftover)) return;
-        emitHeard(leftover);
-        closeMic();
         return;
       }
 
@@ -502,10 +501,7 @@ export function useIngredientVoiceInput(options: {
     armSilenceTimer,
     capturedText,
     cleanupWebRecognition,
-    closeMic,
-    emitHeard,
-    emitIfIngredient,
-    flushAndSubmit,
+    flushNewIngredients,
     syncDraft,
   ]);
 
@@ -517,6 +513,7 @@ export function useIngredientVoiceInput(options: {
     finalsRef.current = [];
     alternativesRef.current = [];
     interimRef.current = "";
+    emittedNamesRef.current = new Set();
     setInterim("");
     setDraft("");
     setErrorMessage(null);
@@ -572,6 +569,7 @@ export function useIngredientVoiceInput(options: {
     finalsRef.current = [];
     alternativesRef.current = [];
     interimRef.current = "";
+    emittedNamesRef.current = new Set();
     setInterim("");
     setDraft("");
     setVolume(0);
@@ -604,23 +602,15 @@ export function useIngredientVoiceInput(options: {
     }
 
     const text = capturedText();
-    if (text) {
-      void submitTranscript(text);
-      return;
-    }
-
-    clearFlushTimer();
-    flushTimerRef.current = window.setTimeout(() => {
-      flushAndSubmit();
-    }, 420);
+    flushNewIngredients(text, false);
+    closeMic();
   }, [
     capturedText,
     cleanupWebRecognition,
-    clearFlushTimer,
     clearSilenceTimer,
-    flushAndSubmit,
+    closeMic,
+    flushNewIngredients,
     phase,
-    submitTranscript,
   ]);
 
   useEffect(() => {

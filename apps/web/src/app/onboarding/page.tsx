@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/Button";
 
 const slides = [
   {
-    title: "چیا تو یخچال داری؟",
+    title: "چیا تو خونه داری؟",
     body: "مواد موجودت رو بگو تا برات بهترین غذاها رو پیشنهاد بدم؛ دقیق، سریع و بدون سردرگمی.",
     Icon: Cup,
     eyebrow: "گام ۱ از ۳",

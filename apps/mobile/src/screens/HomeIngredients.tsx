@@ -58,7 +58,7 @@ export function HomeScreen({ navigation }: TabProps<"Home">) {
           />
           <View style={styles.heroCard}>
             <View style={styles.heroTextBlock}>
-              <Text style={styles.heroTitle}>چیا تو یخچال داری ؟!</Text>
+              <Text style={styles.heroTitle}>چیا تو خونه داری ؟!</Text>
               <Text style={styles.heroBody}>
                 هر موادی داری بگو تا بگم چی درست کنی!
               </Text>
@@ -424,8 +424,8 @@ const styles = StyleSheet.create({
     textAlign: "right",
   },
   heroBody: {
-    fontSize: 13,
-    lineHeight: 20,
+    fontSize: 12,
+    lineHeight: 18,
     color: "#52525B",
     textAlign: "right",
   },
@@ -442,7 +442,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   searchBar: {
-    height: 44,
+    height: 48,
     borderRadius: theme.radius.md,
     borderWidth: 1,
     borderColor: theme.colors.border,

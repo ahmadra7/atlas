@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { CloseCircle } from "iconsax-react";
 
 const ANIM_MS = 320;
@@ -26,6 +27,11 @@ export function BottomSheet({
 }) {
   const [mounted, setMounted] = useState(open);
   const [entered, setEntered] = useState(false);
+  const [portalReady, setPortalReady] = useState(false);
+
+  useEffect(() => {
+    setPortalReady(true);
+  }, []);
 
   useEffect(() => {
     if (open) {
@@ -49,10 +55,10 @@ export function BottomSheet({
     };
   }, [mounted]);
 
-  if (!mounted) return null;
+  if (!mounted || !portalReady) return null;
 
-  return (
-    <div className="fixed inset-0 z-[200] flex items-end justify-center">
+  return createPortal(
+    <div className="fixed inset-0 z-[500] flex items-end justify-center">
       <button
         type="button"
         aria-label="بستن"
@@ -66,7 +72,7 @@ export function BottomSheet({
         aria-modal="true"
         aria-label={title}
         className={`relative z-10 flex w-full max-w-md flex-col rounded-t-atlas-xl border border-atlas-border bg-atlas-surface shadow-atlas transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
-          tall ? "h-[75vh] max-h-[75vh]" : "max-h-[88vh]"
+          tall ? "h-[75vh] max-h-[75vh]" : "max-h-[88vh] shrink-0"
         } ${entered ? "translate-y-0" : "translate-y-full"}`}
       >
         <div className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-zinc-300" />
@@ -85,13 +91,20 @@ export function BottomSheet({
             <CloseCircle size={22} color="currentColor" />
           </button>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-4">{children}</div>
+        <div
+          className={`min-h-0 overflow-y-auto px-5 pb-4 ${tall ? "flex-1" : ""}`}
+        >
+          {children}
+        </div>
         {footer ? (
           <div className="shrink-0 border-t border-atlas-border bg-atlas-surface px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
             {footer}
           </div>
-        ) : null}
+        ) : (
+          <div className="shrink-0 pb-[max(0.5rem,env(safe-area-inset-bottom))]" />
+        )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

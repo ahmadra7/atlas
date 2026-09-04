@@ -1,3 +1,5 @@
+import { Add } from "iconsax-react";
+
 interface ChipProps {
   label: string;
   onRemove?: () => void;
@@ -18,15 +20,15 @@ export function Chip({
   return (
     <span
       title={unusual ? "این مورد ماده غذایی به نظر نمی‌رسد" : undefined}
-      className={`inline-flex items-center gap-1.5 border px-3 py-2 text-caption transition ${
+      className={`inline-flex h-7 items-center gap-0.5 border px-2 text-[14px] leading-none transition ${
         ink ? "rounded-xl" : "rounded-lg"
       } ${
         active
           ? "border-atlas-primary bg-atlas-primary font-bold text-white"
           : ink
             ? unusual
-              ? "border-2 border-atlas-danger bg-black font-medium text-atlas-danger dark:border-atlas-danger dark:bg-[#2a2a32]"
-              : "border-black bg-black font-medium text-white dark:border-white/12 dark:bg-[#2a2a32] dark:text-white"
+              ? "border-2 border-atlas-danger bg-black/5 font-medium text-atlas-danger dark:bg-white/5"
+              : "border-transparent bg-black/5 font-medium text-black dark:bg-white/5 dark:text-white"
             : unusual
               ? "border-2 border-atlas-danger bg-zinc-50 font-medium text-atlas-danger dark:bg-atlas-surface-muted"
               : "border-zinc-200/90 bg-zinc-50 font-medium text-atlas-ink dark:border-white/25 dark:bg-atlas-surface-muted"
@@ -44,17 +46,22 @@ export function Chip({
           type="button"
           aria-label={`حذف ${label}`}
           onClick={onRemove}
-          className={`rounded-md px-0.5 text-[15px] leading-none ${
+          className={`inline-flex shrink-0 items-center justify-center ${
             unusual
               ? "text-atlas-danger"
               : active
                 ? "text-white"
                 : ink
-                  ? "text-white"
+                  ? "text-black dark:text-white"
                   : "text-atlas-ink-muted"
           }`}
         >
-          ×
+          <Add
+            size={14}
+            color="currentColor"
+            variant="Linear"
+            className="rotate-45"
+          />
         </button>
       ) : null}
     </span>

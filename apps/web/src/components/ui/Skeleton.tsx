@@ -133,7 +133,7 @@ export function RecommendationsSkeleton() {
   return (
     <PageSkeleton>
       <div className="flex justify-end">
-        <Skeleton className="h-9 w-24 rounded-atlas" />
+        <Skeleton className="h-12 w-24 rounded-atlas" />
       </div>
       {Array.from({ length: 2 }, (_, i) => (
         <div
@@ -212,8 +212,8 @@ export function FavoritesSkeleton() {
             <Skeleton className="h-5 w-[60%]" />
             <Skeleton className="h-3.5 w-24" />
             <div className="flex gap-2 pt-1">
-              <Skeleton className="h-9 w-20 rounded-atlas" />
-              <Skeleton className="h-9 w-16 rounded-atlas" />
+              <Skeleton className="h-12 w-20 rounded-atlas" />
+              <Skeleton className="h-12 w-16 rounded-atlas" />
             </div>
           </div>
         </div>
@@ -269,7 +269,7 @@ export function CookSkeleton() {
 export function SearchSkeleton() {
   return (
     <PageSkeleton>
-      <Skeleton className="h-11 w-full rounded-atlas" />
+      <Skeleton className="h-12 w-full rounded-atlas" />
       <div className="flex flex-wrap gap-2">
         {Array.from({ length: 3 }, (_, i) => (
           <Skeleton key={i} className="h-8 w-16 rounded-md" />

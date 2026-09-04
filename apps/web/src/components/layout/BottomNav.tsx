@@ -17,6 +17,7 @@ const hideNavPrefixes = [
   "/cook",
   "/recipes",
   "/recommendations",
+  "/popular",
 ];
 
 export function shouldHideNav(pathname: string) {
@@ -75,7 +76,7 @@ export function BottomNav({
                       className={`flex w-full flex-col items-center justify-center gap-0.5 rounded-full px-1 py-1.5 text-caption ${
                         active
                           ? "text-atlas-primary"
-                          : "text-atlas-ink-faint hover:text-atlas-ink"
+                          : "text-black/75 hover:text-black dark:text-white/75 dark:hover:text-white"
                       }`}
                     >
                       <span

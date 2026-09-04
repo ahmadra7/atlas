@@ -226,7 +226,7 @@ export function AvatarMenu() {
                   <button
                     type="button"
                     onClick={() => go("/auth")}
-                    className="flex h-11 w-full items-center justify-center gap-2 rounded-[8px] border border-atlas-primary bg-transparent text-[13px] font-semibold text-atlas-primary transition hover:bg-atlas-primary-soft active:scale-[0.99]"
+                    className="flex h-12 w-full items-center justify-center gap-2 rounded-[8px] border border-atlas-primary bg-transparent text-[13px] font-semibold text-atlas-primary transition hover:bg-atlas-primary-soft active:scale-[0.99]"
                   >
                     <Login size={18} color="currentColor" variant="Linear" />
                     ورود / ثبت‌نام

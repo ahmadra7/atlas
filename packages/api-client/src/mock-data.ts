@@ -14,6 +14,8 @@ import type {
   UserProfile,
 } from "@atlas/contracts";
 import {
+  canonicalFoodName,
+  compactPersian,
   ingredientsLooselyMatch,
   isLikelyFoodIngredient,
   isPantryStaple,
@@ -91,7 +93,17 @@ export async function searchIngredients(q: string): Promise<Ingredient[]> {
       const haystack = normalizePersian(
         [item.name, item.normalizedName, ...item.aliases].join(" "),
       );
-      return haystack.includes(query);
+      const compactHay = compactPersian(haystack);
+      const compactQuery = compactPersian(query);
+      return (
+        haystack.includes(query) ||
+        compactHay.includes(compactQuery) ||
+        item.aliases.some(
+          (alias) =>
+            normalizePersian(alias) === query ||
+            compactPersian(alias) === compactQuery,
+        )
+      );
     })
     .slice(0, 10);
 }
@@ -272,7 +284,8 @@ export async function addIngredientsFromSpeech(
 /** Add by free-text name: reuse catalog match or create custom ingredient. */
 export async function addIngredientByName(name: string): Promise<InventoryItem> {
   await delay(0);
-  const query = normalizePersian(name);
+  const resolved = canonicalFoodName(name) ?? name;
+  const query = normalizePersian(resolved);
   if (!query) throw new Error("EMPTY_NAME");
 
   const catalogMatch = [...MOCK_INGREDIENTS, ...customIngredients].find(
@@ -280,7 +293,18 @@ export async function addIngredientByName(name: string): Promise<InventoryItem> 
       const haystack = normalizePersian(
         [item.name, item.normalizedName, ...item.aliases].join(" "),
       );
-      return haystack === query || item.normalizedName === query;
+      const compactHay = compactPersian(haystack);
+      const compactQuery = compactPersian(query);
+      return (
+        haystack === query ||
+        item.normalizedName === query ||
+        compactHay === compactQuery ||
+        item.aliases.some(
+          (alias) =>
+            normalizePersian(alias) === query ||
+            compactPersian(alias) === compactQuery,
+        )
+      );
     },
   );
 
@@ -298,15 +322,15 @@ export async function addIngredientByName(name: string): Promise<InventoryItem> 
   );
   if (byNameInInventory) return byNameInInventory;
 
-  if (!isLikelyFoodIngredient(name)) {
+  if (!isLikelyFoodIngredient(resolved)) {
     throw new Error("UNKNOWN_INGREDIENT");
   }
 
   const custom: Ingredient = {
     id: `ing-custom-${Date.now()}`,
-    name: name.trim(),
+    name: resolved.trim(),
     normalizedName: query,
-    aliases: [name.trim()],
+    aliases: [resolved.trim()],
     category: "عمومی",
     popularity: 1,
   };
@@ -706,15 +730,37 @@ export async function loginWithGoogle(
   input: GoogleAuthInput,
 ): Promise<AuthSessionResponse> {
   await delay(240);
-  const googleId = input.googleId?.trim();
-  const email = input.email?.trim().toLowerCase();
+  let googleId = input.googleId?.trim();
+  let email = input.email?.trim().toLowerCase();
+  let displayName = input.displayName?.trim() || "";
+  let avatarUrl = input.avatarUrl ?? null;
+
+  if (input.accessToken) {
+    const res = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+      headers: { Authorization: `Bearer ${input.accessToken}` },
+    });
+    if (res.ok) {
+      const info = (await res.json()) as {
+        sub?: string;
+        email?: string;
+        name?: string;
+        given_name?: string;
+        picture?: string;
+      };
+      googleId = info.sub?.trim() || googleId;
+      email = info.email?.trim().toLowerCase() || email;
+      displayName = info.name?.trim() || info.given_name?.trim() || displayName;
+      avatarUrl = info.picture?.trim() || avatarUrl;
+    }
+  }
+
   if (!googleId && !email) throw new Error("GOOGLE_PROFILE_MISSING");
   const key = `google:${googleId ?? email}`;
   const existing = mockUsers.get(key);
   const user: UserProfile = {
     id: existing?.id ?? `user-google-${googleId ?? email}`,
-    displayName: input.displayName?.trim() || existing?.displayName || "",
-    avatarUrl: input.avatarUrl ?? existing?.avatarUrl ?? null,
+    displayName: displayName || existing?.displayName || "",
+    avatarUrl: avatarUrl ?? existing?.avatarUrl ?? null,
     email: email ?? existing?.email ?? null,
     phone: existing?.phone ?? null,
     provider: "google",

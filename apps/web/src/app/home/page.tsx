@@ -2,7 +2,15 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState, type ReactNode, type TransitionEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+  type TransitionEvent,
+} from "react";
+import { createPortal } from "react-dom";
 import type {
   DietMode,
   Difficulty,
@@ -13,14 +21,9 @@ import type {
   RecommendationCard,
 } from "@atlas/contracts";
 import {
-  dietModeLabelFa,
-  difficultyLabelFa,
-  dishTypeLabelFa,
-  formatMinutesFa,
   ingredientsLooselyMatch,
   isLikelyFoodIngredient,
   isUnusualIngredient,
-  mealLabelFa,
   normalizePersian,
   toPersianDigits,
   FOOD_NAMES,
@@ -29,125 +32,26 @@ import {
   Add,
   ArrowLeft,
   ArrowLeft2,
-  Category,
-  Chart,
   CloseCircle,
-  Coffee,
-  Global,
   Heart,
-  Like1,
   Microphone2,
-  People,
   SearchNormal1,
   Setting4,
-  TickCircle,
-  Timer1,
-  Trash,
 } from "iconsax-react";
 import { AppShell, homeAppTitle } from "@/components/layout/AppShell";
-// import { BrandMark } from "@/components/brand/BrandMark";
-import { RecipeImage } from "@/components/recipe/RecipeImage";
-import { BottomSheet } from "@/components/ui/BottomSheet";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { PopularRecipeRow } from "@/components/recipe/PopularRecipeRow";
+import { RecipeSettingsSheet } from "@/components/recipe/RecipeSettingsSheet";
 import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
-import { SoftTag } from "@/components/ui/SoftTag";
 import { HomeSkeleton } from "@/components/ui/Skeleton";
 import { BottomToast } from "@/components/ui/Toast";
 import { instantPush } from "@/components/navigation/InstantNav";
-import { AuthLink } from "@/components/auth/AuthLink";
 import { useIngredientVoiceInput } from "@/hooks/useIngredientVoiceInput";
 import { atlasClient, withApiSession } from "@/lib/client";
 import { partitionSpokenNames } from "@/lib/spokenIngredients";
 import { pageCache } from "@/lib/page-cache";
 import { rememberLoadedImage } from "@/lib/image-cache";
-
-const mealOptions: MealType[] = ["any", "breakfast", "lunch", "dinner", "snack"];
-const timeOptions = [15, 30, 45, 60, 90, 120, 180];
-const dietModes: DietMode[] = ["any", "diet", "regular"];
-const dishTypes: DishType[] = [
-  "any",
-  "main",
-  "appetizer",
-  "soup",
-  "salad",
-  "dessert",
-  "sweet",
-  "drink",
-  "side",
-  "fast",
-];
-const difficulties: Array<Difficulty | "any"> = ["any", "easy", "medium", "hard"];
-const cuisineOptions = [
-  "any",
-  "ایرانی",
-  "ایتالیایی",
-  "آسیایی",
-  "مدیترانه‌ای",
-  "مکزیکی",
-];
-const preferenceOptions = ["گیاهی", "وگان", "بدون گلوتن", "کم‌کالری"];
-
-function SettingsHeading({
-  icon: Icon,
-  children,
-}: {
-  icon: typeof Coffee;
-  children: ReactNode;
-}) {
-  return (
-    <p className="flex items-center gap-1.5 text-caption font-normal text-atlas-ink-faint">
-      <Icon size={16} color="currentColor" variant="Linear" />
-      {children}
-    </p>
-  );
-}
-
-function OptionChips<T extends string>({
-  options,
-  value,
-  onChange,
-  labelOf,
-  singleLine = false,
-  primaryActive = false,
-}: {
-  options: T[];
-  value: T;
-  onChange: (next: T) => void;
-  labelOf: (option: T) => string;
-  singleLine?: boolean;
-  primaryActive?: boolean;
-}) {
-  return (
-    <div
-      className={
-        singleLine
-          ? "flex flex-nowrap gap-1"
-          : "flex flex-wrap gap-2"
-      }
-    >
-      {options.map((option) => (
-        <button
-          key={option}
-          type="button"
-          onClick={() => onChange(option)}
-          className={`rounded-lg transition ${
-            singleLine
-              ? "min-w-0 flex-1 truncate px-2 py-[0.45rem] text-[11px] leading-4"
-              : "px-3 py-1.5 text-caption"
-          } ${
-            value === option
-              ? primaryActive
-                ? "bg-atlas-primary font-bold text-white shadow-sm"
-                : "bg-atlas-chip-active font-bold text-atlas-chip-active-text"
-              : "bg-zinc-50 font-medium text-atlas-ink-muted ring-1 ring-zinc-200/90 dark:bg-atlas-surface-muted/40 dark:ring-atlas-border"
-          }`}
-        >
-          {labelOf(option)}
-        </button>
-      ))}
-    </div>
-  );
-}
 
 function orderInventoryChips(items: InventoryItem[]): InventoryItem[] {
   return [...items].sort((a, b) => {
@@ -156,6 +60,52 @@ function orderInventoryChips(items: InventoryItem[]): InventoryItem[] {
     if (ta !== tb) return ta - tb;
     return a.id.localeCompare(b.id);
   });
+}
+
+function IngredientSuggestDropdown({
+  anchor,
+  children,
+}: {
+  anchor: HTMLElement | null;
+  children: ReactNode;
+}) {
+  const [ready, setReady] = useState(false);
+  const [box, setBox] = useState<{
+    top: number;
+    left: number;
+    width: number;
+  } | null>(null);
+
+  useEffect(() => {
+    setReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!anchor) return;
+    const sync = () => {
+      const r = anchor.getBoundingClientRect();
+      setBox({ top: r.bottom - 1, left: r.left, width: r.width });
+    };
+    sync();
+    window.addEventListener("scroll", sync, true);
+    window.addEventListener("resize", sync);
+    return () => {
+      window.removeEventListener("scroll", sync, true);
+      window.removeEventListener("resize", sync);
+    };
+  }, [anchor]);
+
+  if (!ready || !box) return null;
+
+  return createPortal(
+    <div
+      style={{ top: box.top, left: box.left, width: box.width }}
+      className="fixed z-[350] overflow-hidden rounded-b-atlas border border-t-0 border-atlas-border bg-atlas-surface shadow-[0_14px_30px_rgba(17,17,17,0.14),0_4px_10px_rgba(17,17,17,0.06)] dark:shadow-[0_16px_36px_rgba(0,0,0,0.55)]"
+    >
+      {children}
+    </div>,
+    document.body,
+  );
 }
 
 function EarIcon({ size = 16 }: { size?: number }) {
@@ -298,6 +248,10 @@ function HomeBannerSlider() {
 
 export default function HomePage() {
   const router = useRouter();
+  const { isAuthenticated, requestLogin } = useAuth();
+  const [queryInputEl, setQueryInputEl] = useState<HTMLInputElement | null>(
+    null,
+  );
   const [loading, setLoading] = useState(() => pageCache.inventory === null);
   const [popular, setPopular] = useState<RecommendationCard[]>(
     () => pageCache.popular ?? [],
@@ -334,11 +288,11 @@ export default function HomePage() {
   const [draftPreferences, setDraftPreferences] = useState<string[]>([]);
 
   useEffect(() => {
-    router.prefetch("/recommendations");
+    router.prefetch("/popular");
   }, [router]);
 
   useEffect(() => {
-    rememberLoadedImage("/avatars/chef-character.png?v=2");
+    rememberLoadedImage("/avatars/chef-home.png?v=1");
     rememberLoadedImage("/banners/home-appliances.png");
     rememberLoadedImage("/banners/home-coffee.png");
     for (const card of popular) {
@@ -452,14 +406,6 @@ export default function HomePage() {
     setInventory(pageCache.inventory);
   }
 
-  const showInvalidToast = useCallback(() => {
-    setToast({
-      title: "مواد غذایی اشتباه",
-      message:
-        "این مورد تو فهرست مواد اولیه ما نیست. فقط مواد غذایی مجاز را بگو.",
-    });
-  }, []);
-
   const addSpokenChips = useCallback(async (names: string[]) => {
     if (names.length === 0) return;
 
@@ -470,8 +416,8 @@ export default function HomePage() {
       );
       const extra = names
         .filter((name) => !seen.has(normalizePersian(name)))
-        .map((name, index) => ({
-          id: `local-${Date.now()}-${index}`,
+        .map((name) => ({
+          id: `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
           ingredientId: `local-${normalizePersian(name)}`,
           ingredient: {
             id: `local-${normalizePersian(name)}`,
@@ -498,8 +444,32 @@ export default function HomePage() {
       });
       const inv = await withApiSession(() => atlasClient.getInventory());
       if (inv.length > 0) {
-        pageCache.inventory = orderInventoryChips(inv);
-        setInventory(pageCache.inventory);
+        setInventory((prev) => {
+          const serverByKey = new Map(
+            inv.map((item) => [normalizePersian(item.ingredient.name), item]),
+          );
+          const used = new Set<string>();
+          const merged: InventoryItem[] = [];
+          for (const item of prev) {
+            const key = normalizePersian(item.ingredient.name);
+            const serverItem = serverByKey.get(key);
+            if (serverItem) {
+              merged.push(serverItem);
+              used.add(key);
+            } else if (item.id.startsWith("local-")) {
+              merged.push(item);
+            }
+          }
+          for (const item of orderInventoryChips(inv)) {
+            const key = normalizePersian(item.ingredient.name);
+            if (!used.has(key)) {
+              merged.push(item);
+              used.add(key);
+            }
+          }
+          pageCache.inventory = merged;
+          return merged;
+        });
       }
       setQuery("");
     } catch {
@@ -510,14 +480,19 @@ export default function HomePage() {
   }, []);
 
   const voice = useIngredientVoiceInput({
-    contextualStrings: FOOD_NAMES.slice(0, 80),
+    contextualStrings: [
+      "تن ماهی",
+      "تون ماهی",
+      "کنسرو تن",
+      "کنسرو ماهی",
+      "کنسرو ذرت",
+      "کنسرو لوبیا",
+      "کنسرو قارچ",
+      ...FOOD_NAMES,
+    ].slice(0, 180),
     onHeard: async (transcript) => {
-      const { valid, invalid } = partitionSpokenNames(transcript);
-      if (valid.length === 0) {
-        showInvalidToast();
-        return;
-      }
-      if (invalid.length > 0) showInvalidToast();
+      const { valid } = partitionSpokenNames(transcript);
+      if (valid.length === 0) return;
       await addSpokenChips(valid);
     },
   });
@@ -601,12 +576,6 @@ export default function HomePage() {
     setDraftPreferences([]);
   }
 
-  function togglePreference(tag: string) {
-    setDraftPreferences((prev) =>
-      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag],
-    );
-  }
-
   async function clearAllIngredients() {
     if (inventory.length === 0) return;
     const ids = inventory.map((item) => item.id);
@@ -640,6 +609,10 @@ export default function HomePage() {
     if (budgetFriendly) params.set("budgetFriendly", "1");
     if (preferences.length > 0) params.set("tags", preferences.join(","));
     const href = `/recommendations?${params.toString()}`;
+    if (!isAuthenticated) {
+      requestLogin(href);
+      return;
+    }
     instantPush(router, href);
   }
 
@@ -650,22 +623,22 @@ export default function HomePage() {
       ) : (
       <div className="overflow-visible pb-8">
         <section className="relative z-10 mb-4 overflow-visible">
-          <div className="relative flex flex-col gap-5 overflow-hidden rounded-atlas-xl bg-atlas-surface px-5 pb-5 pt-6 shadow-[0_12px_32px_rgba(20,40,80,0.09),0_3px_10px_rgba(20,40,80,0.05)] dark:shadow-[0_14px_32px_rgba(8,16,40,0.32)]">
+          <div className="relative flex flex-col gap-5 overflow-visible rounded-atlas-xl bg-atlas-surface px-5 pb-5 pt-6 shadow-[0_12px_32px_rgba(20,40,80,0.09),0_3px_10px_rgba(20,40,80,0.05)] dark:shadow-[0_14px_32px_rgba(8,16,40,0.32)]">
             <div className="flex items-center justify-center gap-4">
               {/* <div className="pointer-events-none -mt-[1.8rem] mb-2">
                 <BrandMark size={76} />
               </div> */}
               <img
-                src="/avatars/chef-character.png?v=2"
+                src="/avatars/chef-home.png?v=1"
                 alt=""
-                className="h-[4.25rem] w-auto object-contain"
+                className="h-[3.9375rem] w-auto object-contain"
               />
               <div className="text-right">
                 <h3 className="text-[1.45rem] font-extrabold leading-8 text-atlas-ink sm:text-[1.55rem]">
-                  چیا تو یخچال داری ؟!
+                  چیا تو خونه داری ؟!
                 </h3>
                 <p
-                  className="mt-1 max-w-[20rem] text-[13px] font-normal leading-5 text-atlas-ink"
+                  className="mt-1 max-w-[20rem] text-[12px] font-normal leading-5 text-atlas-ink"
                   style={{ opacity: 0.6 }}
                 >
                   هر موادی داری بگو تا بگم چی درست کنی!
@@ -751,6 +724,7 @@ export default function HomePage() {
                       <SearchNormal1 size={18} color="currentColor" />
                     </span>
                     <input
+                      ref={setQueryInputEl}
                       value={query}
                       onChange={(e) => {
                         setQuery(e.target.value);
@@ -770,8 +744,8 @@ export default function HomePage() {
                       }`}
                     />
                     {trimmed ? (
-                      <div className="absolute inset-x-0 top-full z-30 -mt-px overflow-hidden rounded-b-atlas border border-t-0 border-atlas-border bg-atlas-surface shadow-[0_14px_30px_rgba(17,17,17,0.14),0_4px_10px_rgba(17,17,17,0.06)] dark:shadow-[0_16px_36px_rgba(0,0,0,0.55)]">
-                        <ul className="max-h-44 divide-y divide-atlas-border overflow-y-auto">
+                      <IngredientSuggestDropdown anchor={queryInputEl}>
+                        <ul className="max-h-[min(18rem,45vh)] divide-y divide-atlas-border overflow-y-auto">
                           {suggestions.map((item) => {
                             const selected = selectedIds.has(item.id);
                             return (
@@ -829,7 +803,7 @@ export default function HomePage() {
                             </li>
                           ) : null}
                         </ul>
-                      </div>
+                      </IngredientSuggestDropdown>
                     ) : null}
                   </div>
 
@@ -930,7 +904,7 @@ export default function HomePage() {
               <Heart size={11} color="#D4022F" variant="Bold" />
             </div>
             <Link
-              href="/recommendations"
+              href="/popular"
               dir="ltr"
               className="inline-flex items-center gap-1 text-caption text-atlas-primary"
             >
@@ -940,51 +914,15 @@ export default function HomePage() {
           </div>
           <div className="space-y-3">
             {popular.map((card) => (
-              <AuthLink
+              <PopularRecipeRow
                 key={card.recipeId}
                 href={`/recipes/${card.slug}`}
-                className="block w-full text-right"
-              >
-                <div
-                  className="flex w-full items-center gap-3 overflow-hidden rounded-atlas-lg p-2 shadow-[0_12px_32px_rgba(20,40,80,0.09),0_3px_10px_rgba(20,40,80,0.05)] dark:shadow-[0_14px_32px_rgba(8,16,40,0.32)]"
-                  style={{ backgroundColor: "var(--atlas-surface)" }}
-                >
-                <RecipeImage
-                  src={card.imageUrl}
-                  alt={card.title}
-                  className="h-20 w-20 shrink-0 rounded-atlas"
-                  width={160}
-                />
-                <div className="min-w-0 flex-1 py-0.5 pl-1">
-                  <div className="flex min-w-0 items-start justify-between gap-2">
-                    <p className="line-clamp-2 min-w-0 flex-1 text-[15px] font-semibold leading-5 text-atlas-ink">
-                      {card.title}
-                    </p>
-                    <span className="mt-0.5 shrink-0 rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-medium text-sky-700 ring-1 ring-inset ring-sky-200/80 dark:bg-sky-500/15 dark:text-sky-300 dark:ring-sky-400/25">
-                      {card.cuisine}
-                    </span>
-                  </div>
-                  <div className="mt-1.5 flex flex-wrap gap-1.5">
-                    <SoftTag
-                      tone="white"
-                      size="sm"
-                      rounded="md"
-                      iconEnd
-                      icon={<Timer1 size={11} color="currentColor" />}
-                      label={formatMinutesFa(card.totalMinutes)}
-                    />
-                    <SoftTag
-                      tone="white"
-                      size="sm"
-                      rounded="md"
-                      iconEnd
-                      icon={<People size={11} color="currentColor" />}
-                      label={`${toPersianDigits(card.servings)} نفر`}
-                    />
-                  </div>
-                </div>
-                </div>
-              </AuthLink>
+                title={card.title}
+                imageUrl={card.imageUrl}
+                cuisine={card.cuisine}
+                totalMinutes={card.totalMinutes}
+                servings={card.servings}
+              />
             ))}
           </div>
         </section>
@@ -992,138 +930,32 @@ export default function HomePage() {
       </div>
       )}
 
-      <BottomSheet
+      <RecipeSettingsSheet
         open={moreOpen}
-        title="تنظیمات"
-        titleClassName="text-[15px] font-medium"
-        tall
         onClose={() => setMoreOpen(false)}
-        footer={
-          <div className="flex gap-2">
-            <Button
-              className="flex-[1.4]"
-              onClick={applyMoreSettings}
-              icon={<TickCircle size={18} color="currentColor" variant="Bold" />}
-            >
-              تایید
-            </Button>
-            <Button
-              variant="tertiary"
-              className="flex-1"
-              onClick={resetMoreSettings}
-              icon={<Trash size={18} color="currentColor" variant="Bold" />}
-            >
-              پاک کردن
-            </Button>
-          </div>
-        }
-      >
-        <div className="space-y-5 pb-2">
-          <div className="space-y-2">
-            <SettingsHeading icon={Coffee}>وعده</SettingsHeading>
-            <OptionChips
-              options={mealOptions}
-              value={draftMeal}
-              onChange={setDraftMeal}
-              labelOf={(m) => mealLabelFa[m]}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <SettingsHeading icon={Timer1}>زمان در دسترس (دقیقه)</SettingsHeading>
-            <div className="flex flex-wrap gap-2">
-              {timeOptions.map((mins) => (
-                <button
-                  key={mins}
-                  type="button"
-                  onClick={() => setDraftMaxMinutes(mins)}
-                  className={`rounded-lg px-3 py-1.5 text-caption transition ${
-                    draftMaxMinutes === mins
-                      ? "bg-atlas-chip-active font-bold text-atlas-chip-active-text"
-                      : "bg-zinc-50 font-medium text-atlas-ink-muted ring-1 ring-zinc-200/90 dark:bg-atlas-surface-muted/40 dark:ring-atlas-border"
-                  }`}
-                >
-                  {toPersianDigits(mins)}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <SettingsHeading icon={Heart}>رژیم غذایی</SettingsHeading>
-            <OptionChips
-              options={dietModes}
-              value={draftDietMode}
-              onChange={setDraftDietMode}
-              labelOf={(m) => dietModeLabelFa[m]}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <SettingsHeading icon={Category}>نوع غذا</SettingsHeading>
-            <OptionChips
-              options={dishTypes}
-              value={draftDishType}
-              onChange={setDraftDishType}
-              labelOf={(t) => dishTypeLabelFa[t]}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <SettingsHeading icon={Chart}>سختی پخت</SettingsHeading>
-            <OptionChips
-              options={difficulties}
-              value={draftDifficulty}
-              onChange={setDraftDifficulty}
-              labelOf={(d) => (d === "any" ? "همه" : difficultyLabelFa[d])}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <SettingsHeading icon={Global}>سبک آشپزی</SettingsHeading>
-            <OptionChips
-              options={cuisineOptions}
-              value={draftCuisine}
-              onChange={setDraftCuisine}
-              labelOf={(c) => (c === "any" ? "همه" : c)}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <SettingsHeading icon={Like1}>ترجیحات</SettingsHeading>
-            <div className="flex flex-wrap gap-2">
-              {preferenceOptions.map((tag) => {
-                const active = draftPreferences.includes(tag);
-                return (
-                  <button
-                    key={tag}
-                    type="button"
-                    onClick={() => togglePreference(tag)}
-                    className={`rounded-lg px-3 py-1.5 text-caption transition ${
-                      active
-                        ? "bg-atlas-primary font-bold text-white shadow-sm"
-                        : "bg-zinc-50 font-medium text-atlas-ink-muted ring-1 ring-zinc-200/90 dark:bg-atlas-surface-muted/40 dark:ring-atlas-border"
-                    }`}
-                  >
-                    {tag}
-                  </button>
-                );
-              })}
-              <button
-                type="button"
-                onClick={() => setDraftBudgetFriendly((v) => !v)}
-                className={`rounded-lg px-3 py-1.5 text-caption transition ${
-                  draftBudgetFriendly
-                    ? "bg-atlas-primary font-bold text-white shadow-sm"
-                    : "bg-zinc-50 font-medium text-atlas-ink-muted ring-1 ring-zinc-200/90 dark:bg-atlas-surface-muted/40 dark:ring-atlas-border"
-                }`}
-              >
-                اقتصادی
-              </button>
-            </div>
-          </div>
-        </div>
-      </BottomSheet>
+        draft={{
+          meal: draftMeal,
+          maxMinutes: draftMaxMinutes,
+          dietMode: draftDietMode,
+          dishType: draftDishType,
+          difficulty: draftDifficulty,
+          cuisine: draftCuisine,
+          budgetFriendly: draftBudgetFriendly,
+          preferences: draftPreferences,
+        }}
+        onChange={(next) => {
+          setDraftMeal(next.meal);
+          setDraftMaxMinutes(next.maxMinutes);
+          setDraftDietMode(next.dietMode);
+          setDraftDishType(next.dishType);
+          setDraftDifficulty(next.difficulty);
+          setDraftCuisine(next.cuisine);
+          setDraftBudgetFriendly(next.budgetFriendly);
+          setDraftPreferences(next.preferences);
+        }}
+        onApply={applyMoreSettings}
+        onReset={resetMoreSettings}
+      />
       <BottomToast
         open={Boolean(toast)}
         title={toast?.title ?? ""}

@@ -8,7 +8,7 @@ import {
   rememberLoadedImage,
 } from "@/lib/image-cache";
 
-const CHEF_SRC = "/avatars/chef-character.png?v=2";
+const CHEF_SRC = "/avatars/chef-character.png?v=4";
 
 /** App chef avatar — photo only, no square frame */
 export function BrandMark({

@@ -1,6 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import * as bcrypt from "bcryptjs";
-import { FOOD_NAMES, normalizePersian } from "@atlas/shared";
+import { FOOD_ALIASES, FOOD_NAMES, compactPersian, normalizePersian } from "@atlas/shared";
 import {
   importIranianRecipes,
   ingredientIdFromName,
@@ -48,6 +48,8 @@ async function ensureFoodCatalog(prisma: PrismaClient) {
     ),
   ];
   let created = 0;
+  const byNormalized = new Map<string, string>();
+
   for (const name of unique) {
     const normalizedName = normalizePersian(name);
     if (normalizedName.length < 2) continue;
@@ -58,9 +60,13 @@ async function ensureFoodCatalog(prisma: PrismaClient) {
           { aliases: { some: { normalizedAlias: normalizedName } } },
         ],
       },
-      select: { id: true },
+      select: { id: true, normalizedName: true },
     });
-    if (existing) continue;
+    if (existing) {
+      byNormalized.set(normalizedName, existing.id);
+      byNormalized.set(existing.normalizedName, existing.id);
+      continue;
+    }
     const id = ingredientIdFromName(name);
     try {
       await prisma.ingredient.create({
@@ -76,11 +82,57 @@ async function ensureFoodCatalog(prisma: PrismaClient) {
           },
         },
       });
+      byNormalized.set(normalizedName, id);
       created += 1;
     } catch {
       /* alias collision with a richer catalog row */
     }
   }
+
+  for (const [canonical, aliases] of Object.entries(FOOD_ALIASES)) {
+    const canonKey = normalizePersian(canonical);
+    let parentId = byNormalized.get(canonKey);
+    if (!parentId) {
+      const row = await prisma.ingredient.findFirst({
+        where: {
+          OR: [
+            { normalizedName: canonKey },
+            { name: canonical },
+            { aliases: { some: { normalizedAlias: canonKey } } },
+          ],
+        },
+        select: { id: true },
+      });
+      parentId = row?.id;
+    }
+    if (!parentId) continue;
+
+    for (const alias of aliases) {
+      const normalizedAlias = normalizePersian(alias);
+      const compactAlias = compactPersian(alias);
+      if (normalizedAlias.length < 2) continue;
+      const forms = [...new Set([normalizedAlias, compactAlias])];
+      for (const form of forms) {
+        const clash = await prisma.ingredientAlias.findUnique({
+          where: { normalizedAlias: form },
+          select: { id: true },
+        });
+        if (clash) continue;
+        try {
+          await prisma.ingredientAlias.create({
+            data: {
+              ingredientId: parentId,
+              alias,
+              normalizedAlias: form,
+            },
+          });
+        } catch {
+          /* unique clash */
+        }
+      }
+    }
+  }
+
   return created;
 }
 

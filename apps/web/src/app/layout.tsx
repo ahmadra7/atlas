@@ -9,9 +9,14 @@ import { ThemeProvider } from "@/components/theme/ThemeProvider";
 export const metadata: Metadata = {
   title: "سرآشپز هوشمند",
   description: "هوشمندانه بپزید، با آنچه دارید.",
+  manifest: "/site.webmanifest",
   icons: {
-    icon: "/brand-chef.png",
-    apple: "/brand-chef.png",
+    icon: [
+      { url: "/favicon.ico", sizes: "32x32" },
+      { url: "/favicon-32.png", type: "image/png", sizes: "32x32" },
+      { url: "/icon-512.png", type: "image/png", sizes: "512x512" },
+    ],
+    apple: "/apple-touch-icon.png",
   },
 };
 

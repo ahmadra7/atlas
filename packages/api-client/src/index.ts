@@ -244,12 +244,14 @@ export function createAtlasClient(options: AtlasClientOptions = {}) {
     searchRecipes: async (q: string, limit = 40) => {
       const { normalizePersian } = await import("@atlas/shared");
       const needle = normalizePersian(q);
-      if (!needle) return [];
-      return mock.MOCK_RECIPES.filter((r) =>
-        normalizePersian(`${r.title} ${r.description} ${r.category}`).includes(
-          needle,
-        ),
-      ).slice(0, limit);
+      const pool = needle
+        ? mock.MOCK_RECIPES.filter((r) =>
+            normalizePersian(`${r.title} ${r.description} ${r.category}`).includes(
+              needle,
+            ),
+          )
+        : [...mock.MOCK_RECIPES];
+      return pool.slice(0, limit);
     },
     getRecipeBySlug: mock.getRecipeBySlug,
     startCookingSession: mock.startCookingSession,

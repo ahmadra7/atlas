@@ -11,6 +11,7 @@ import {
   ProfileSkeleton,
   RecipeSkeleton,
   RecommendationsSkeleton,
+  SearchResultsSkeleton,
   SearchSkeleton,
 } from "@/components/ui/Skeleton";
 import { hasWarmPageCache } from "@/lib/page-cache";
@@ -61,55 +62,62 @@ function pendingScreen(href: string) {
   }
   if (path.startsWith("/recommendations")) {
     return (
-      <AppShell hideNav showBack backHref="/home" title="لیست غذاها">
+      <AppShell hideNav showBack backHref="/home" title="لیست غذاها" routePath={path}>
         <RecommendationsSkeleton />
+      </AppShell>
+    );
+  }
+  if (path.startsWith("/popular")) {
+    return (
+      <AppShell hideNav showBack backHref="/home" title="دستورهای محبوب" routePath={path}>
+        <SearchResultsSkeleton />
       </AppShell>
     );
   }
   if (path.startsWith("/recipes/")) {
     return (
-      <AppShell hideNav showBack title="دستور" lockScroll>
+      <AppShell hideNav showBack title="دستور" lockScroll routePath={path}>
         <RecipeSkeleton />
       </AppShell>
     );
   }
   if (path.startsWith("/cook")) {
     return (
-      <AppShell hideNav showBack title="پخت">
+      <AppShell hideNav showBack title="پخت" routePath={path}>
         <CookSkeleton />
       </AppShell>
     );
   }
   if (path.startsWith("/search")) {
     return (
-      <AppShell title="جستجو">
+      <AppShell title="جستجو" routePath={path}>
         <SearchSkeleton />
       </AppShell>
     );
   }
   if (path.startsWith("/favorites")) {
     return (
-      <AppShell title="علاقه‌مندی‌ها">
+      <AppShell title="علاقه‌مندی‌ها" routePath={path}>
         <FavoritesSkeleton />
       </AppShell>
     );
   }
   if (path.startsWith("/profile")) {
     return (
-      <AppShell title="پروفایل">
+      <AppShell title="پروفایل" routePath={path}>
         <ProfileSkeleton />
       </AppShell>
     );
   }
   if (path.startsWith("/home")) {
     return (
-      <AppShell title={homeAppTitle} splitTitle>
+      <AppShell title={homeAppTitle} splitTitle routePath={path}>
         <HomeSkeleton />
       </AppShell>
     );
   }
   return (
-    <AppShell title={homeAppTitle} splitTitle>
+    <AppShell hideNav title="" routePath={path}>
       <HomeSkeleton />
     </AppShell>
   );

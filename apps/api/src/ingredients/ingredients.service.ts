@@ -1,6 +1,7 @@
 import { Injectable, BadRequestException } from "@nestjs/common";
 import { createHash } from "node:crypto";
 import {
+  canonicalFoodName,
   ingredientsLooselyMatch,
   isLikelyFoodIngredient,
   normalizePersian,
@@ -49,12 +50,16 @@ export class IngredientsService {
   async findCatalogByName(name: string) {
     const query = normalizePersian(name);
     if (!query) throw new BadRequestException("EMPTY_NAME");
+    const canonical = canonicalFoodName(name);
+    const lookup = normalizePersian(canonical ?? name);
 
     const existing = await this.prisma.ingredient.findFirst({
       where: {
         OR: [
           { normalizedName: query },
+          { normalizedName: lookup },
           { aliases: { some: { normalizedAlias: query } } },
+          { aliases: { some: { normalizedAlias: lookup } } },
         ],
       },
       include: { aliases: true },
@@ -81,19 +86,20 @@ export class IngredientsService {
       throw new BadRequestException("UNKNOWN_INGREDIENT");
     }
 
-    const id = ingredientIdFromName(name.trim());
+    const displayName = (canonical ?? name).trim();
+    const id = ingredientIdFromName(displayName);
     try {
       const created = await this.prisma.ingredient.upsert({
         where: { id },
         create: {
           id,
-          name: name.trim(),
-          normalizedName: query,
+          name: displayName,
+          normalizedName: lookup,
           category: "عمومی",
           popularity: 1,
           isCustom: false,
           aliases: {
-            create: [{ alias: name.trim(), normalizedAlias: query }],
+            create: [{ alias: displayName, normalizedAlias: lookup }],
           },
         },
         update: {},
