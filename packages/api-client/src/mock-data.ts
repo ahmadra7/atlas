@@ -1,6 +1,8 @@
 import type {
+  AuthSessionResponse,
   CookingSession,
   FavoriteItem,
+  GoogleAuthInput,
   HistoryItem,
   Ingredient,
   InventoryItem,
@@ -8,6 +10,7 @@ import type {
   RecommendationCard,
   RecommendationFilters,
   RecommendationResult,
+  RequestOtpResponse,
   UserProfile,
 } from "@atlas/contracts";
 import {
@@ -25,10 +28,44 @@ export const MOCK_RECIPES: Recipe[] = PERSIAN_RECIPES;
 export const MOCK_PROFILE: UserProfile = {
   id: "user-demo",
   displayName: "احمد رضایی",
+  avatarUrl: "/avatars/user-photo.png",
   dietaryPreferences: [],
   defaultMaxMinutes: 45,
   locale: "fa",
 };
+
+export const GUEST_PROFILE: UserProfile = {
+  id: "guest",
+  displayName: "",
+  avatarUrl: null,
+  dietaryPreferences: [],
+  locale: "fa",
+};
+
+let currentProfile: UserProfile | null = null;
+const mockUsers = new Map<string, UserProfile>();
+const otpByPhone = new Map<
+  string,
+  { code: string; expiresAt: number; attempts: number; sentAt: number }
+>();
+
+export function applyAuthProfile(profile: UserProfile | null) {
+  currentProfile = profile;
+}
+
+function mockToken(userId: string) {
+  return `mock.${userId}.${Date.now()}`;
+}
+
+function normalizeIranMobile(raw: string): string | null {
+  const digits = raw.replace(/[^\d]/g, "");
+  let n = digits;
+  if (n.startsWith("0098")) n = n.slice(4);
+  else if (n.startsWith("98")) n = n.slice(2);
+  if (n.startsWith("0")) n = n.slice(1);
+  if (n.length !== 10 || !n.startsWith("9")) return null;
+  return `0${n}`;
+}
 
 let inventory: InventoryItem[] = [];
 
@@ -600,5 +637,92 @@ export async function getHistory(): Promise<HistoryItem[]> {
 
 export async function getProfile(): Promise<UserProfile> {
   await delay(0);
-  return MOCK_PROFILE;
+  return currentProfile ?? GUEST_PROFILE;
+}
+
+export async function requestOtp(phone: string): Promise<RequestOtpResponse> {
+  await delay(420);
+  const normalized = normalizeIranMobile(phone);
+  if (!normalized) throw new Error("INVALID_PHONE");
+  const prev = otpByPhone.get(normalized);
+  const now = Date.now();
+  if (prev && now - prev.sentAt < 60_000) {
+    throw new Error("OTP_RATE_LIMIT");
+  }
+  const code = String(10000 + Math.floor(Math.random() * 90000));
+  otpByPhone.set(normalized, {
+    code,
+    expiresAt: now + 5 * 60_000,
+    attempts: 0,
+    sentAt: now,
+  });
+  return {
+    sent: true,
+    expiresInSec: 300,
+    resendInSec: 90,
+    debugCode: code,
+  };
+}
+
+export async function verifyOtp(
+  phone: string,
+  code: string,
+): Promise<AuthSessionResponse> {
+  await delay(280);
+  const normalized = normalizeIranMobile(phone);
+  if (!normalized) throw new Error("INVALID_PHONE");
+  const entry = otpByPhone.get(normalized);
+  if (!entry) throw new Error("OTP_NOT_FOUND");
+  if (Date.now() > entry.expiresAt) {
+    otpByPhone.delete(normalized);
+    throw new Error("OTP_EXPIRED");
+  }
+  entry.attempts += 1;
+  if (entry.attempts > 5) {
+    otpByPhone.delete(normalized);
+    throw new Error("OTP_LOCKED");
+  }
+  if (entry.code !== code.trim()) throw new Error("OTP_INVALID");
+  otpByPhone.delete(normalized);
+
+  const key = `phone:${normalized}`;
+  const existing = mockUsers.get(key);
+  const user: UserProfile = existing ?? {
+    id: `user-${normalized}`,
+    displayName: "",
+    avatarUrl: null,
+    phone: normalized,
+    email: null,
+    provider: "phone",
+    dietaryPreferences: [],
+    locale: "fa",
+  };
+  mockUsers.set(key, user);
+  currentProfile = user;
+  return { accessToken: mockToken(user.id), user };
+}
+
+export async function loginWithGoogle(
+  input: GoogleAuthInput,
+): Promise<AuthSessionResponse> {
+  await delay(240);
+  const googleId = input.googleId?.trim();
+  const email = input.email?.trim().toLowerCase();
+  if (!googleId && !email) throw new Error("GOOGLE_PROFILE_MISSING");
+  const key = `google:${googleId ?? email}`;
+  const existing = mockUsers.get(key);
+  const user: UserProfile = {
+    id: existing?.id ?? `user-google-${googleId ?? email}`,
+    displayName: input.displayName?.trim() || existing?.displayName || "",
+    avatarUrl: input.avatarUrl ?? existing?.avatarUrl ?? null,
+    email: email ?? existing?.email ?? null,
+    phone: existing?.phone ?? null,
+    provider: "google",
+    dietaryPreferences: existing?.dietaryPreferences ?? [],
+    defaultMaxMinutes: existing?.defaultMaxMinutes,
+    locale: "fa",
+  };
+  mockUsers.set(key, user);
+  currentProfile = user;
+  return { accessToken: mockToken(user.id), user };
 }

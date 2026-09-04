@@ -33,6 +33,10 @@ model User {
   email               String   @unique
   passwordHash        String
   displayName         String
+  phone               String?  @unique
+  googleId            String?  @unique
+  avatarUrl           String?
+  authProvider        String   @default("password")
   dietaryPreferences  String[] @default([])
   defaultMaxMinutes   Int?
   locale              String   @default("fa")

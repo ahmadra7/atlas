@@ -1,6 +1,17 @@
 import type {
   AnalyticsEvent,
+  AuthSessionResponse,
+  CookingSession,
+  FavoriteItem,
+  GoogleAuthInput,
+  HistoryItem,
+  Ingredient,
+  InventoryItem,
+  Recipe,
   RecommendationFilters,
+  RecommendationResult,
+  RequestOtpResponse,
+  UserProfile,
 } from "@atlas/contracts";
 import * as mock from "./mock-data";
 
@@ -63,42 +74,44 @@ function createHttpClient(baseUrl: string, getAccessToken?: AtlasClientOptions["
   return {
     mode: "http" as const,
     searchIngredients: async (q: string) =>
-      httpRequest(baseUrl, "api/ingredients/search", {
+      httpRequest<Ingredient[]>(baseUrl, "api/ingredients/search", {
         query: { q },
       }),
     getInventory: async () =>
-      httpRequest(baseUrl, "api/inventory", { token: await token() }),
+      httpRequest<InventoryItem[]>(baseUrl, "api/inventory", {
+        token: await token(),
+      }),
     addInventoryItem: async (ingredientId: string) =>
-      httpRequest(baseUrl, "api/inventory", {
+      httpRequest<InventoryItem>(baseUrl, "api/inventory", {
         method: "POST",
         token: await token(),
         body: { ingredientId },
       }),
     addIngredientByName: async (name: string) =>
-      httpRequest(baseUrl, "api/inventory", {
+      httpRequest<InventoryItem>(baseUrl, "api/inventory", {
         method: "POST",
         token: await token(),
         body: { name },
       }),
     addIngredientsFromSpeech: async (transcript: string) =>
-      httpRequest(baseUrl, "api/inventory/speech", {
+      httpRequest<InventoryItem[]>(baseUrl, "api/inventory/speech", {
         method: "POST",
         token: await token(),
         body: { transcript },
       }),
     resolveSpokenIngredients: async (transcript: string) =>
-      httpRequest(baseUrl, "api/inventory/speech/resolve", {
+      httpRequest<string[]>(baseUrl, "api/inventory/speech/resolve", {
         method: "POST",
         token: await token(),
         body: { transcript },
       }),
     removeInventoryItem: async (id: string) =>
-      httpRequest(baseUrl, `api/inventory/${id}`, {
+      httpRequest<void>(baseUrl, `api/inventory/${id}`, {
         method: "DELETE",
         token: await token(),
       }),
     getRecommendations: async (filters: RecommendationFilters = {}) =>
-      httpRequest(baseUrl, "api/recommendations", {
+      httpRequest<RecommendationResult>(baseUrl, "api/recommendations", {
         token: await token(),
         query: {
           meal: filters.meal,
@@ -112,37 +125,49 @@ function createHttpClient(baseUrl: string, getAccessToken?: AtlasClientOptions["
         },
       }),
     searchRecipes: async (q: string, limit = 40) =>
-      httpRequest(baseUrl, "api/recipes", {
+      httpRequest<Recipe[]>(baseUrl, "api/recipes", {
         query: { q, limit },
       }),
     getRecipeBySlug: async (slug: string) =>
-      httpRequest(baseUrl, `api/recipes/${slug}`),
+      httpRequest<Recipe | null>(baseUrl, `api/recipes/${slug}`),
     startCookingSession: async (recipeId: string) =>
-      httpRequest(baseUrl, "api/cooking/sessions", {
+      httpRequest<CookingSession>(baseUrl, "api/cooking/sessions", {
         method: "POST",
         token: await token(),
         body: { recipeId },
       }),
     getCookingSession: async (id: string) =>
-      httpRequest(baseUrl, `api/cooking/sessions/${id}`, {
+      httpRequest<CookingSession>(baseUrl, `api/cooking/sessions/${id}`, {
         token: await token(),
       }),
     completeStep: async (id: string, stepOrder: number) =>
-      httpRequest(baseUrl, `api/cooking/sessions/${id}/complete-step`, {
-        method: "POST",
-        token: await token(),
-        body: { stepOrder },
-      }),
+      httpRequest<CookingSession>(
+        baseUrl,
+        `api/cooking/sessions/${id}/complete-step`,
+        {
+          method: "POST",
+          token: await token(),
+          body: { stepOrder },
+        },
+      ),
     completeSession: async (id: string) =>
-      httpRequest(baseUrl, `api/cooking/sessions/${id}/complete`, {
-        method: "POST",
-        token: await token(),
-      }),
+      httpRequest<CookingSession>(
+        baseUrl,
+        `api/cooking/sessions/${id}/complete`,
+        {
+          method: "POST",
+          token: await token(),
+        },
+      ),
     abandonSession: async (id: string) =>
-      httpRequest(baseUrl, `api/cooking/sessions/${id}/abandon`, {
-        method: "POST",
-        token: await token(),
-      }),
+      httpRequest<CookingSession>(
+        baseUrl,
+        `api/cooking/sessions/${id}/abandon`,
+        {
+          method: "POST",
+          token: await token(),
+        },
+      ),
     askAssistant: async () => {
       throw new Error("ASSISTANT_NOT_IMPLEMENTED");
     },
@@ -150,31 +175,45 @@ function createHttpClient(baseUrl: string, getAccessToken?: AtlasClientOptions["
       throw new Error("SOS_NOT_IMPLEMENTED");
     },
     getFavorites: async () =>
-      httpRequest(baseUrl, "api/favorites", { token: await token() }),
+      httpRequest<FavoriteItem[]>(baseUrl, "api/favorites", {
+        token: await token(),
+      }),
     toggleFavorite: async (recipeId: string) =>
-      httpRequest(baseUrl, "api/favorites/toggle", {
+      httpRequest<boolean>(baseUrl, "api/favorites/toggle", {
         method: "POST",
         token: await token(),
         body: { recipeId },
       }),
     getHistory: async () =>
-      httpRequest(baseUrl, "api/history", { token: await token() }),
+      httpRequest<HistoryItem[]>(baseUrl, "api/history", {
+        token: await token(),
+      }),
     getProfile: async () =>
-      httpRequest(baseUrl, "api/profile", { token: await token() }),
+      httpRequest<UserProfile>(baseUrl, "api/profile", {
+        token: await token(),
+      }),
     trackEvent: async (_event: AnalyticsEvent) => {
       /* optional later */
     },
     login: async (email: string, password: string) =>
-      httpRequest<{
-        accessToken: string;
-        user: {
-          id: string;
-          email: string;
-          displayName: string;
-        };
-      }>(baseUrl, "api/auth/login", {
+      httpRequest<AuthSessionResponse>(baseUrl, "api/auth/login", {
         method: "POST",
         body: { email, password },
+      }),
+    requestOtp: async (phone: string) =>
+      httpRequest<RequestOtpResponse>(baseUrl, "api/auth/otp/request", {
+        method: "POST",
+        body: { phone },
+      }),
+    verifyOtp: async (phone: string, code: string) =>
+      httpRequest<AuthSessionResponse>(baseUrl, "api/auth/otp/verify", {
+        method: "POST",
+        body: { phone, code },
+      }),
+    loginWithGoogle: async (input: GoogleAuthInput) =>
+      httpRequest<AuthSessionResponse>(baseUrl, "api/auth/google", {
+        method: "POST",
+        body: input,
       }),
   };
 }
@@ -224,6 +263,9 @@ export function createAtlasClient(options: AtlasClientOptions = {}) {
     toggleFavorite: mock.toggleFavorite,
     getHistory: mock.getHistory,
     getProfile: mock.getProfile,
+    requestOtp: mock.requestOtp,
+    verifyOtp: mock.verifyOtp,
+    loginWithGoogle: mock.loginWithGoogle,
     trackEvent: async (_event: AnalyticsEvent) => {
       // no-op in mock mode
     },
@@ -232,4 +274,4 @@ export function createAtlasClient(options: AtlasClientOptions = {}) {
 
 export type AtlasClient = ReturnType<typeof createAtlasClient>;
 
-export { MOCK_INGREDIENTS, MOCK_RECIPES } from "./mock-data";
+export { MOCK_INGREDIENTS, MOCK_RECIPES, applyAuthProfile, GUEST_PROFILE } from "./mock-data";

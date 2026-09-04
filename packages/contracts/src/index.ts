@@ -167,12 +167,41 @@ export interface HistoryItem {
   endedAt?: string | null;
 }
 
+export type AuthProviderKind = "phone" | "google" | "password";
+
 export interface UserProfile {
   id: string;
   displayName: string;
+  /** Profile photo URL. When missing, UI shows the chef-hat fallback. */
+  avatarUrl?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  provider?: AuthProviderKind;
   dietaryPreferences: string[];
   defaultMaxMinutes?: number;
   locale: "fa";
+}
+
+export interface AuthSessionResponse {
+  accessToken: string;
+  user: UserProfile;
+}
+
+export interface RequestOtpResponse {
+  sent: true;
+  expiresInSec: number;
+  resendInSec: number;
+  /** Present only in mock/dev so the designer can complete the OTP flow without SMS. */
+  debugCode?: string;
+}
+
+export interface GoogleAuthInput {
+  accessToken?: string;
+  idToken?: string;
+  googleId?: string;
+  email?: string;
+  displayName?: string;
+  avatarUrl?: string | null;
 }
 
 export interface AssistantRequest {

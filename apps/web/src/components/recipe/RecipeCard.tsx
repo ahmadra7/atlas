@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { RecommendationCard } from "@atlas/contracts";
 import { formatMinutesFa, toPersianDigits } from "@atlas/shared";
@@ -9,6 +8,7 @@ import { SoftTag } from "@/components/ui/SoftTag";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { RecipeImage } from "./RecipeImage";
 import { isAtlasMobileWebView } from "@/lib/navigate";
+import { AuthLink } from "@/components/auth/AuthLink";
 import { ArrowDown2, ArrowLeft2, ArrowUp2, ShoppingCart, Timer1 } from "iconsax-react";
 
 function shopSearchUrl(
@@ -40,7 +40,7 @@ export function RecipeCard({ card }: { card: RecommendationCard }) {
 
   return (
     <article className="atlas-surface overflow-hidden transition">
-      <Link
+      <AuthLink
         href={`/recipes/${card.slug}`}
         className="block active:scale-[0.99]"
       >
@@ -59,7 +59,7 @@ export function RecipeCard({ card }: { card: RecommendationCard }) {
             tone="black"
           />
         </div>
-      </Link>
+      </AuthLink>
 
       <div className="flex flex-wrap items-center gap-2 px-4 pb-3">
         <SoftTag
@@ -150,10 +150,10 @@ export function RecipeCard({ card }: { card: RecommendationCard }) {
                 />
               </span>
               <span className="min-w-0 flex-1 text-right">
-                <span className="block text-body font-bold text-atlas-ink">
+                <span className="block text-[15px] font-medium text-atlas-ink/70">
                   خرید از اکالا
                 </span>
-                <span className="mt-0.5 block text-caption text-atlas-ink-muted">
+                <span className="mt-0.5 block text-[12px] font-light text-atlas-ink-muted/55">
                   سوپرمارکت آنلاین اُکالا
                 </span>
               </span>
@@ -178,10 +178,10 @@ export function RecipeCard({ card }: { card: RecommendationCard }) {
                 />
               </span>
               <span className="min-w-0 flex-1 text-right">
-                <span className="block text-body font-bold text-atlas-ink">
+                <span className="block text-[15px] font-medium text-atlas-ink/70">
                   خرید از اسنپ مارکت
                 </span>
-                <span className="mt-0.5 block text-caption text-atlas-ink-muted">
+                <span className="mt-0.5 block text-[12px] font-light text-atlas-ink-muted/55">
                   سفارش سریع از سوپرمارکت‌های اطراف
                 </span>
               </span>

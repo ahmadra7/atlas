@@ -105,6 +105,19 @@ export default function CookingPage() {
     }
   }, [step?.id, step?.timerSeconds]);
 
+  useEffect(() => {
+    if (session?.status !== "completed") return;
+    const html = document.documentElement;
+    const prevHtml = html.style.overflow;
+    const prevBody = document.body.style.overflow;
+    html.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    return () => {
+      html.style.overflow = prevHtml;
+      document.body.style.overflow = prevBody;
+    };
+  }, [session?.status]);
+
   async function goNext() {
     if (!session || !step) return;
     if (step.order >= session.totalSteps) {
@@ -180,11 +193,11 @@ export default function CookingPage() {
 
     return (
       <AppShell hideNav showBack backHref="/home" title="اتمام پخت" lockScroll>
-        <div className="flex min-h-0 flex-1 flex-col">
-          <div className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto px-2 pt-2 text-center">
+        <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+          <div className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-hidden px-2 text-center">
             <div
               className={`mx-auto flex items-center justify-center rounded-full bg-gradient-to-b from-amber-50 to-orange-50 shadow-[0_8px_24px_rgba(245,158,11,0.18)] ring-1 ring-amber-100 ${
-                askReason ? "h-16 w-16 text-3xl" : "h-24 w-24 text-5xl"
+                askReason ? "h-14 w-14 text-3xl" : "h-20 w-20 text-4xl"
               }`}
             >
               🎉
@@ -223,8 +236,8 @@ export default function CookingPage() {
                     }`}
                   >
                     <svg
-                      width="42"
-                      height="42"
+                      width="36"
+                      height="36"
                       viewBox="0 0 24 24"
                       aria-hidden
                       className={`transition-[fill,stroke,transform] duration-300 ease-out ${
@@ -253,7 +266,7 @@ export default function CookingPage() {
                 <textarea
                   value={reasonText}
                   onChange={(e) => setReasonText(e.target.value)}
-                  rows={3}
+                  rows={2}
                   className="mt-3 w-full resize-none rounded-atlas border border-atlas-border bg-atlas-surface p-3 text-center text-body text-atlas-ink outline-none focus:border-atlas-primary dark:bg-atlas-surface-muted"
                   placeholder="مثلاً طعم، زمان پخت، مراحل…"
                 />

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode, type TransitionEvent } from "react";
 import type {
   DietMode,
   Difficulty,
@@ -17,7 +17,6 @@ import {
   difficultyLabelFa,
   dishTypeLabelFa,
   formatMinutesFa,
-  greetingFa,
   ingredientsLooselyMatch,
   isLikelyFoodIngredient,
   isUnusualIngredient,
@@ -46,7 +45,7 @@ import {
   Trash,
 } from "iconsax-react";
 import { AppShell, homeAppTitle } from "@/components/layout/AppShell";
-import { BrandMark } from "@/components/brand/BrandMark";
+// import { BrandMark } from "@/components/brand/BrandMark";
 import { RecipeImage } from "@/components/recipe/RecipeImage";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button } from "@/components/ui/Button";
@@ -55,6 +54,7 @@ import { SoftTag } from "@/components/ui/SoftTag";
 import { HomeSkeleton } from "@/components/ui/Skeleton";
 import { BottomToast } from "@/components/ui/Toast";
 import { instantPush } from "@/components/navigation/InstantNav";
+import { AuthLink } from "@/components/auth/AuthLink";
 import { useIngredientVoiceInput } from "@/hooks/useIngredientVoiceInput";
 import { atlasClient, withApiSession } from "@/lib/client";
 import { partitionSpokenNames } from "@/lib/spokenIngredients";
@@ -158,36 +158,141 @@ function orderInventoryChips(items: InventoryItem[]): InventoryItem[] {
   });
 }
 
-function MicListenRing() {
+function EarIcon({ size = 16 }: { size?: number }) {
   return (
-    <>
-      <svg
-        className="pointer-events-none absolute inset-0 text-atlas-primary"
-        viewBox="0 0 80 80"
-        aria-hidden
-      >
-        <circle
-          cx="40"
-          cy="40"
-          r="36"
-          fill="none"
-          stroke="currentColor"
-          strokeOpacity="0.18"
-          strokeWidth="3.2"
-        />
-      </svg>
-      <div
-        className="pointer-events-none absolute inset-0 animate-[micOrbit_1.12s_linear_infinite] rounded-full"
-        style={{
-          background:
-            "conic-gradient(from 0deg, transparent 0%, var(--atlas-primary) 100%)",
-          WebkitMask:
-            "radial-gradient(farthest-side, transparent calc(100% - 3.2px), #000 calc(100% - 3.2px))",
-          mask: "radial-gradient(farthest-side, transparent calc(100% - 3.2px), #000 calc(100% - 3.2px))",
-        }}
-        aria-hidden
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 14 14"
+      fill="none"
+      aria-hidden
+    >
+      <path
+        d="M2.562 5.272A4.438 4.438 0 1 1 10.148 8.4c-.445.448-.702 1.07-.774 1.698c-.19 1.662-1.619 3.069-3.394 3.069a3.42 3.42 0 0 1-3.418-3.419"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
       />
-    </>
+      <path
+        d="M8.724 5.25a1.724 1.724 0 1 0-3.449 0v1.915m0 0h.471A1.5 1.5 0 0 1 7.222 8.4l.009.047"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function MicListenRing() {
+  const ringMask = {
+    WebkitMask:
+      "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
+    mask: "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
+    WebkitMaskComposite: "xor",
+    maskComposite: "exclude",
+  } as const;
+
+  return (
+    <div className="pointer-events-none absolute inset-0" aria-hidden>
+      <div
+        className="absolute inset-0 overflow-hidden rounded-[calc(1.6rem+4px)]"
+        style={{ ...ringMask, padding: "4px" }}
+      >
+        <div
+          className="absolute inset-[-55%] animate-[micOrbit_1.2s_linear_infinite]"
+          style={{
+            background:
+              "conic-gradient(from 0deg, var(--atlas-primary) 0%, transparent 45%, transparent 100%)",
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
+const HOME_BANNERS = [
+  {
+    src: "/banners/home-appliances.png",
+    alt: "لوازم خانگی برقی به انتخاب حرفه‌ای‌ها",
+  },
+  {
+    src: "/banners/home-coffee.png",
+    alt: "لوازم خانگی برقی به انتخاب حرفه‌ای‌ها",
+  },
+] as const;
+
+function HomeBannerSlider() {
+  const loopSlides = [...HOME_BANNERS, HOME_BANNERS[0]];
+  const realCount = HOME_BANNERS.length;
+  const [index, setIndex] = useState(0);
+  const [animate, setAnimate] = useState(true);
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setIndex((i) => (i >= realCount ? i : i + 1));
+    }, 4500);
+    return () => window.clearInterval(id);
+  }, [realCount]);
+
+  function onTrackTransitionEnd(event: TransitionEvent<HTMLDivElement>) {
+    if (event.target !== event.currentTarget) return;
+    if (index < realCount) return;
+    setAnimate(false);
+    setIndex(0);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => setAnimate(true));
+    });
+  }
+
+  const active = index % realCount;
+
+  return (
+    <div className="relative mb-4 overflow-hidden rounded-atlas">
+      <div
+        dir="ltr"
+        className={`flex h-[8.75rem] w-full ${
+          animate
+            ? "transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
+            : ""
+        }`}
+        style={{ transform: `translate3d(-${index * 100}%, 0, 0)` }}
+        onTransitionEnd={onTrackTransitionEnd}
+      >
+        {loopSlides.map((banner, i) => (
+          <img
+            key={`${banner.src}-${i}`}
+            src={banner.src}
+            alt={banner.alt}
+            className="h-full w-full min-w-full shrink-0 basis-full object-cover object-center"
+            draggable={false}
+          />
+        ))}
+      </div>
+      <div className="pointer-events-none absolute inset-x-0 bottom-2 z-10 flex justify-center">
+        <div className="flex items-center gap-1.5 rounded-full bg-white/25 p-[2px]">
+          {HOME_BANNERS.map((banner, i) => (
+            <button
+              key={banner.src}
+              type="button"
+              aria-label={`اسلاید ${i + 1}`}
+              aria-current={i === active}
+              onClick={() => {
+                if (i === active) return;
+                if (index === realCount - 1 && i === 0) {
+                  setIndex(realCount);
+                  return;
+                }
+                setIndex(i);
+              }}
+              className={`pointer-events-auto h-1.5 w-1.5 rounded-full transition ${
+                i === active ? "bg-white" : "bg-white/45"
+              }`}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -233,7 +338,9 @@ export default function HomePage() {
   }, [router]);
 
   useEffect(() => {
-    rememberLoadedImage("/avatars/chef-app.png");
+    rememberLoadedImage("/avatars/chef-character.png?v=2");
+    rememberLoadedImage("/banners/home-appliances.png");
+    rememberLoadedImage("/banners/home-coffee.png");
     for (const card of popular) {
       const src = card.imageUrl?.trim();
       if (!src) continue;
@@ -537,49 +644,42 @@ export default function HomePage() {
   }
 
   return (
-    <AppShell
-      title={homeAppTitle}
-      splitTitle
-      showBrand
-      brandAside={
-        <div className="min-w-0 leading-tight">
-          <p className="truncate text-[11px] font-thin text-atlas-ink-muted">
-            سلام احمد!
-          </p>
-          <p className="truncate text-[13px] font-semibold text-atlas-ink">
-            {greetingFa()} 👋
-          </p>
-        </div>
-      }
-    >
+    <AppShell title={homeAppTitle} splitTitle>
       {loading ? (
         <HomeSkeleton />
       ) : (
-      <div className="overflow-visible pb-8 pt-8">
-        <section className="relative z-10 mb-5 overflow-visible">
-          <div className="relative flex flex-col gap-5 overflow-visible rounded-atlas-xl bg-atlas-surface px-5 pb-5 shadow-[0_18px_40px_rgba(17,17,17,0.14),0_6px_14px_rgba(17,17,17,0.08)] dark:shadow-[0_18px_40px_rgba(0,0,0,0.45)]">
-            <div className="flex flex-col items-center text-center">
-              <div className="pointer-events-none -mt-[2.7rem] mb-2">
-                <BrandMark size={112} />
+      <div className="overflow-visible pb-8">
+        <section className="relative z-10 mb-4 overflow-visible">
+          <div className="relative flex flex-col gap-5 overflow-hidden rounded-atlas-xl bg-atlas-surface px-5 pb-5 pt-6 shadow-[0_12px_32px_rgba(20,40,80,0.09),0_3px_10px_rgba(20,40,80,0.05)] dark:shadow-[0_14px_32px_rgba(8,16,40,0.32)]">
+            <div className="flex items-center justify-center gap-4">
+              {/* <div className="pointer-events-none -mt-[1.8rem] mb-2">
+                <BrandMark size={76} />
+              </div> */}
+              <img
+                src="/avatars/chef-character.png?v=2"
+                alt=""
+                className="h-[4.25rem] w-auto object-contain"
+              />
+              <div className="text-right">
+                <h3 className="text-[1.45rem] font-extrabold leading-8 text-atlas-ink sm:text-[1.55rem]">
+                  چیا تو یخچال داری ؟!
+                </h3>
+                <p
+                  className="mt-1 max-w-[20rem] text-[13px] font-normal leading-5 text-atlas-ink"
+                  style={{ opacity: 0.6 }}
+                >
+                  هر موادی داری بگو تا بگم چی درست کنی!
+                </p>
               </div>
-              <h3 className="text-[1.45rem] font-extrabold leading-8 text-atlas-ink sm:text-[1.55rem]">
-                چیا تو یخچال داری ؟!
-              </h3>
-              <p
-                className="mt-1 max-w-[20rem] text-[13px] font-normal leading-5 text-atlas-ink"
-                style={{ opacity: 0.6 }}
-              >
-                هر موادی داری بگو تا بگم چی درست کنی!
-              </p>
             </div>
 
-                <div className="flex flex-col items-center gap-3">
-                  <div
-                    className={`relative flex items-center justify-center ${
-                      voice.listening ? "h-[5.35rem] w-[5.35rem]" : "h-[4.5rem] w-[4.5rem]"
-                    }`}
-                  >
-                    {voice.listening ? <MicListenRing /> : null}
+                <div className="relative flex flex-col items-center">
+                  <div className="relative flex h-16 w-16 items-center justify-center">
+                    {voice.listening ? (
+                      <div className="pointer-events-none absolute inset-[-4px]">
+                        <MicListenRing />
+                      </div>
+                    ) : null}
                     <button
                       type="button"
                       onClick={() => {
@@ -593,10 +693,10 @@ export default function HomePage() {
                       aria-label={
                         voice.listening ? "لغو ضبط" : "افزودن مواد با صدا"
                       }
-                      className={`relative z-10 inline-flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-full text-white transition active:scale-95 disabled:opacity-50 ${
+                      className={`relative z-10 inline-flex h-16 w-16 items-center justify-center rounded-[1.6rem] bg-atlas-primary text-white transition active:scale-95 disabled:opacity-50 ${
                         voice.listening
-                          ? "bg-[#E11D2E] shadow-[0_12px_32px_rgba(225,29,46,0.45)]"
-                          : "bg-atlas-primary shadow-[0_10px_28px_rgba(212,2,47,0.35)]"
+                          ? "shadow-[0_12px_32px_rgba(212,2,47,0.45)]"
+                          : "shadow-[0_10px_28px_rgba(212,2,47,0.35)]"
                       }`}
                     >
                       <span className="relative z-10">
@@ -604,12 +704,12 @@ export default function HomePage() {
                           <Add
                             size={28}
                             color="#ffffff"
-                            variant="Bold"
+                            variant="Linear"
                             className="rotate-45"
                           />
                         ) : (
                           <Microphone2
-                            size={30}
+                            size={28}
                             color="currentColor"
                             variant="Bold"
                           />
@@ -617,15 +717,32 @@ export default function HomePage() {
                       </span>
                     </button>
                   </div>
-                  {voice.listening ? (
-                    <div className="max-w-[17rem] rounded-xl border border-dashed border-atlas-primary/50 bg-atlas-primary/10 px-3.5 py-2 text-center">
-                      <p className="text-[12px] leading-5 text-atlas-ink-muted">
-                        {voice.draft || voice.interim
-                          ? voice.draft || voice.interim
-                          : "دارم گوش می‌دم… بگو"}
-                      </p>
+                  <div
+                    className={`grid w-full transition-[grid-template-rows] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                      voice.listening ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+                    }`}
+                  >
+                    <div className="min-h-0 overflow-hidden">
+                      <div
+                        className={`flex justify-center pt-3 transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                          voice.listening
+                            ? "translate-y-0 opacity-100"
+                            : "translate-y-1 opacity-0"
+                        }`}
+                      >
+                        <div className="inline-flex max-w-[17rem] items-center justify-center gap-1.5 rounded-xl bg-zinc-400/[0.07] px-3.5 py-2 dark:bg-white/[0.06]">
+                          <span className="shrink-0 text-atlas-ink-faint opacity-45">
+                            <EarIcon size={16} />
+                          </span>
+                          <p className="text-[12px] leading-5 text-atlas-ink-muted">
+                            {voice.draft || voice.interim
+                              ? voice.draft || voice.interim
+                              : "دارم گوش می‌دم… بگو"}
+                          </p>
+                        </div>
+                      </div>
                     </div>
-                  ) : null}
+                  </div>
                 </div>
 
                 <div className="flex items-start gap-2">
@@ -779,6 +896,17 @@ export default function HomePage() {
                 </div>
               ) : null}
 
+              {inventory.length > 0 ? (
+                <Button
+                  size="lg"
+                  className="w-full text-[14px] font-medium"
+                  icon={<ArrowLeft size={18} color="currentColor" />}
+                  onClick={goToFoodList}
+                >
+                  بزن بریم
+                </Button>
+              ) : null}
+              {/* disabled بزن بریم — hidden until ingredients exist
               <Button
                 size="lg"
                 className="w-full text-[14px] font-medium"
@@ -788,13 +916,19 @@ export default function HomePage() {
               >
                 بزن بریم
               </Button>
+              */}
           </div>
         </section>
+
+        <HomeBannerSlider />
 
         <div className="space-y-5">
         <section className="space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-[15px] font-normal text-atlas-ink">دستورهای محبوب</h3>
+            <div className="flex items-center gap-1.5">
+              <h3 className="text-[16px] font-medium text-atlas-ink">دستورهای محبوب</h3>
+              <Heart size={11} color="#D4022F" variant="Bold" />
+            </div>
             <Link
               href="/recommendations"
               dir="ltr"
@@ -806,11 +940,15 @@ export default function HomePage() {
           </div>
           <div className="space-y-3">
             {popular.map((card) => (
-              <Link
+              <AuthLink
                 key={card.recipeId}
                 href={`/recipes/${card.slug}`}
-                className="flex items-center gap-3 overflow-hidden rounded-atlas-lg bg-atlas-surface p-2 shadow-[0_2px_8px_rgba(17,17,17,0.06)]"
+                className="block w-full text-right"
               >
+                <div
+                  className="flex w-full items-center gap-3 overflow-hidden rounded-atlas-lg p-2 shadow-[0_12px_32px_rgba(20,40,80,0.09),0_3px_10px_rgba(20,40,80,0.05)] dark:shadow-[0_14px_32px_rgba(8,16,40,0.32)]"
+                  style={{ backgroundColor: "var(--atlas-surface)" }}
+                >
                 <RecipeImage
                   src={card.imageUrl}
                   alt={card.title}
@@ -819,7 +957,7 @@ export default function HomePage() {
                 />
                 <div className="min-w-0 flex-1 py-0.5 pl-1">
                   <div className="flex min-w-0 items-start justify-between gap-2">
-                    <p className="line-clamp-2 min-w-0 flex-1 text-[13px] font-semibold leading-5 text-atlas-ink">
+                    <p className="line-clamp-2 min-w-0 flex-1 text-[15px] font-semibold leading-5 text-atlas-ink">
                       {card.title}
                     </p>
                     <span className="mt-0.5 shrink-0 rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-medium text-sky-700 ring-1 ring-inset ring-sky-200/80 dark:bg-sky-500/15 dark:text-sky-300 dark:ring-sky-400/25">
@@ -830,6 +968,7 @@ export default function HomePage() {
                     <SoftTag
                       tone="white"
                       size="sm"
+                      rounded="md"
                       iconEnd
                       icon={<Timer1 size={11} color="currentColor" />}
                       label={formatMinutesFa(card.totalMinutes)}
@@ -837,13 +976,15 @@ export default function HomePage() {
                     <SoftTag
                       tone="white"
                       size="sm"
+                      rounded="md"
                       iconEnd
                       icon={<People size={11} color="currentColor" />}
                       label={`${toPersianDigits(card.servings)} نفر`}
                     />
                   </div>
                 </div>
-              </Link>
+                </div>
+              </AuthLink>
             ))}
           </div>
         </section>

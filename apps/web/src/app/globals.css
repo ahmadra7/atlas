@@ -129,7 +129,7 @@
 
 @keyframes micOrbit {
   to {
-    transform: rotate(360deg);
+    transform: rotate(-360deg);
   }
 }
 
@@ -184,7 +184,7 @@
   }
 
   .atlas-surface {
-    @apply rounded-atlas-lg border border-atlas-border bg-atlas-surface shadow-atlas;
+    @apply rounded-atlas-lg bg-atlas-surface shadow-[0_2px_8px_rgba(17,17,17,0.06)];
   }
 
   .atlas-caption {

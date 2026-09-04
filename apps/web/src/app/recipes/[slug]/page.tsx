@@ -13,6 +13,7 @@ import { StateView } from "@/components/ui/StateView";
 import { SoftTag, TagRow } from "@/components/ui/SoftTag";
 import { PotIcon } from "@/components/ui/PotIcon";
 import { RecipeImage } from "@/components/recipe/RecipeImage";
+import { useAuth } from "@/components/auth/AuthProvider";
 import { atlasClient } from "@/lib/client";
 import { pageCache } from "@/lib/page-cache";
 import { appNavigateSoftOrHard } from "@/lib/navigate";
@@ -21,6 +22,7 @@ import { Profile2User, Timer1 } from "iconsax-react";
 export default function RecipeDetailPage() {
   const params = useParams<{ slug: string }>();
   const router = useRouter();
+  const { isAuthenticated, requestLogin } = useAuth();
   const slugParam = params?.slug;
   const slug = Array.isArray(slugParam) ? slugParam[0] : slugParam;
   const cached = slug ? (pageCache.recipes[slug] ?? null) : null;
@@ -88,6 +90,10 @@ export default function RecipeDetailPage() {
                 active={favorited}
                 busy={toggling}
                 onToggle={async () => {
+                  if (!isAuthenticated) {
+                    requestLogin(`/recipes/${recipe.slug}`);
+                    return;
+                  }
                   setToggling(true);
                   try {
                     setFavorited(await atlasClient.toggleFavorite(recipe.id));
@@ -151,6 +157,10 @@ export default function RecipeDetailPage() {
               className="w-full text-[14px] font-medium"
               icon={<PotIcon size={20} color="currentColor" />}
               onClick={() => {
+                if (!isAuthenticated) {
+                  requestLogin(`/recipes/${recipe.slug}`);
+                  return;
+                }
                 const href = `/cook/start?recipeId=${encodeURIComponent(recipe.id)}`;
                 appNavigateSoftOrHard(href, (h) => router.push(h));
               }}

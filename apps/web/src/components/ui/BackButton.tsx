@@ -1,8 +1,34 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ArrowLeft2 } from "iconsax-react";
 import { appNavigateSoftOrHard } from "@/lib/navigate";
+
+export function BackArrowIcon({
+  size = 22,
+  className = "",
+}: {
+  size?: number;
+  className?: string;
+}) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden
+      className={className}
+    >
+      <path
+        d="M19 12H5.5M11 18.5 4.5 12 11 5.5"
+        stroke="currentColor"
+        strokeWidth="2.15"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 
 export function BackButton({
   href,
@@ -23,7 +49,7 @@ export function BackButton({
       }}
       className={`inline-flex h-10 w-10 items-center justify-center rounded-full text-atlas-ink transition hover:bg-atlas-surface-muted ${className}`}
     >
-      <ArrowLeft2 size={22} color="#111111" variant="Linear" />
+      <BackArrowIcon size={22} />
     </button>
   );
 }

@@ -1,14 +1,15 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Add, Clock, Heart, People, Timer1, Trash } from "iconsax-react";
 import type { Recipe } from "@atlas/contracts";
 import { formatMinutesFa, toPersianDigits } from "@atlas/shared";
 import { AppShell } from "@/components/layout/AppShell";
 import { Chip } from "@/components/ui/Chip";
+import { SearchResultsSkeleton } from "@/components/ui/Skeleton";
 import { SoftTag } from "@/components/ui/SoftTag";
 import { RecipeImage } from "@/components/recipe/RecipeImage";
+import { AuthLink } from "@/components/auth/AuthLink";
 import { atlasClient } from "@/lib/client";
 
 const popularTags = [
@@ -146,16 +147,20 @@ export default function SearchPage() {
         ) : (
           <section className="space-y-3">
             {loading ? (
-              <p className="text-body text-atlas-ink-muted">در حال جستجو…</p>
+              <SearchResultsSkeleton />
             ) : results.length === 0 ? (
               <p className="text-body text-atlas-ink-muted">نتیجه‌ای پیدا نشد.</p>
             ) : (
               results.map((recipe) => (
-                <Link
+                <AuthLink
                   key={recipe.id}
                   href={`/recipes/${recipe.slug}`}
-                  className="flex items-center gap-3 overflow-hidden rounded-atlas-lg bg-atlas-surface p-2 shadow-[0_2px_8px_rgba(17,17,17,0.06)]"
+                  className="block w-full text-right"
                 >
+                  <div
+                    className="flex w-full items-center gap-3 overflow-hidden rounded-atlas-lg p-2 shadow-[0_12px_32px_rgba(20,40,80,0.09),0_3px_10px_rgba(20,40,80,0.05)] dark:shadow-[0_14px_32px_rgba(8,16,40,0.32)]"
+                    style={{ backgroundColor: "var(--atlas-surface)" }}
+                  >
                   <RecipeImage
                     src={recipe.imageUrl}
                     alt={recipe.title}
@@ -188,7 +193,8 @@ export default function SearchPage() {
                       />
                     </div>
                   </div>
-                </Link>
+                  </div>
+                </AuthLink>
               ))
             )}
           </section>

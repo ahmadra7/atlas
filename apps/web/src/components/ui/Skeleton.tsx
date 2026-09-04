@@ -56,13 +56,13 @@ export function HomeSkeleton() {
   return (
     <PageSkeleton>
       <div className="overflow-visible">
-        <div className="relative flex flex-col gap-5 overflow-hidden rounded-atlas-xl bg-atlas-surface px-5 pb-5 pt-5 shadow-[0_18px_40px_rgba(17,17,17,0.08)]">
+        <div className="relative flex flex-col gap-5 overflow-hidden rounded-atlas-xl bg-atlas-surface px-5 pb-5 pt-6 shadow-[0_12px_32px_rgba(20,40,80,0.09),0_3px_10px_rgba(20,40,80,0.05)]">
           <div className="flex flex-col items-center gap-2">
             <Skeleton className="h-7 w-[68%]" />
             <Skeleton className="h-3 w-[52%]" />
           </div>
           <div className="flex justify-center">
-            <Skeleton className="h-[4.5rem] w-[4.5rem] !rounded-full" />
+            <Skeleton className="h-16 w-16 !rounded-[1.6rem]" />
           </div>
           <div className="flex items-start gap-2">
             <Skeleton className="h-12 min-w-0 flex-1 rounded-atlas" />
@@ -72,14 +72,14 @@ export function HomeSkeleton() {
         </div>
       </div>
 
-      <Skeleton className="h-12 w-full rounded-atlas" />
+      <Skeleton className="h-[8.75rem] w-full rounded-atlas" />
 
       <div className="space-y-3">
         <Skeleton className="h-5 w-28" />
         {Array.from({ length: 2 }, (_, i) => (
           <div
             key={i}
-            className="flex items-center gap-3 rounded-atlas-lg bg-atlas-surface p-2 shadow-[0_2px_8px_rgba(17,17,17,0.04)]"
+            className="flex items-center gap-3 rounded-atlas-lg bg-atlas-surface p-2 shadow-[0_12px_32px_rgba(20,40,80,0.09),0_3px_10px_rgba(20,40,80,0.05)] dark:shadow-[0_14px_32px_rgba(8,16,40,0.32)]"
           >
             <Skeleton className="h-20 w-20 shrink-0 rounded-atlas" />
             <div className="flex min-w-0 flex-1 flex-col gap-2 py-0.5">
@@ -138,7 +138,7 @@ export function RecommendationsSkeleton() {
       {Array.from({ length: 2 }, (_, i) => (
         <div
           key={i}
-          className="overflow-hidden rounded-atlas-lg border border-atlas-border/50 bg-atlas-surface"
+          className="overflow-hidden rounded-atlas-lg bg-atlas-surface shadow-[0_2px_8px_rgba(17,17,17,0.06)]"
         >
           <Skeleton className="h-40 w-full rounded-none" />
           <div className="space-y-3 p-4">
@@ -164,7 +164,6 @@ export function ProfileSkeleton() {
         <div className="flex items-center gap-3">
           <div className="relative shrink-0">
             <Skeleton className="h-16 w-16 shrink-0 rounded-full bg-white/30 before:via-white/50" />
-            <span className="absolute bottom-0.5 end-0.5 h-3.5 w-3.5 rounded-full bg-emerald-400 ring-[3px] ring-atlas-primary" />
           </div>
           <div className="flex-1 space-y-2">
             <Skeleton className="h-5 w-32 bg-white/25 before:via-white/40" />
@@ -183,7 +182,7 @@ export function ProfileSkeleton() {
       {Array.from({ length: 2 }, (_, i) => (
         <div
           key={i}
-          className="overflow-hidden rounded-atlas-xl border border-atlas-border/50 bg-atlas-surface"
+          className="overflow-hidden rounded-atlas-xl bg-atlas-surface shadow-[0_2px_8px_rgba(17,17,17,0.06)]"
         >
           {Array.from({ length: 2 }, (_, j) => (
             <div key={j} className="flex items-center gap-3 px-4 py-3.5">
@@ -206,7 +205,7 @@ export function FavoritesSkeleton() {
       {Array.from({ length: 2 }, (_, i) => (
         <div
           key={i}
-          className="overflow-hidden rounded-atlas-lg border border-atlas-border/50 bg-atlas-surface"
+          className="overflow-hidden rounded-atlas-lg bg-atlas-surface shadow-[0_2px_8px_rgba(17,17,17,0.06)]"
         >
           <Skeleton className="h-36 w-full rounded-none" />
           <div className="space-y-2 p-4">
@@ -229,7 +228,7 @@ export function HistorySkeleton() {
       {Array.from({ length: 3 }, (_, i) => (
         <div
           key={i}
-          className="flex items-center justify-between gap-3 rounded-atlas-xl border border-atlas-border/50 bg-atlas-surface p-4"
+          className="flex items-center justify-between gap-3 rounded-atlas-xl bg-atlas-surface p-4 shadow-[0_2px_8px_rgba(17,17,17,0.06)]"
         >
           <div className="flex-1 space-y-2">
             <Skeleton className="h-4 w-[65%]" />
@@ -283,5 +282,31 @@ export function SearchSkeleton() {
         ))}
       </div>
     </PageSkeleton>
+  );
+}
+
+/** Matches search result rows while a query is in flight. */
+export function SearchResultsSkeleton() {
+  return (
+    <div className="space-y-3">
+      {Array.from({ length: 4 }, (_, i) => (
+        <div
+          key={i}
+          className="flex items-center gap-3 overflow-hidden rounded-atlas-lg bg-atlas-surface p-2 shadow-[0_12px_32px_rgba(20,40,80,0.09),0_3px_10px_rgba(20,40,80,0.05)] dark:shadow-[0_14px_32px_rgba(8,16,40,0.32)]"
+        >
+          <Skeleton className="h-20 w-20 shrink-0 rounded-atlas" />
+          <div className="flex min-w-0 flex-1 flex-col gap-2 py-0.5 pl-1">
+            <div className="flex items-start justify-between gap-2">
+              <Skeleton className="h-4 w-[68%]" />
+              <Skeleton className="h-5 w-12 shrink-0 rounded-full" />
+            </div>
+            <div className="flex gap-1.5">
+              <Skeleton className="h-5 w-16 rounded-md" />
+              <Skeleton className="h-5 w-12 rounded-md" />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }

@@ -21,12 +21,15 @@ import {
   UserEdit,
 } from "iconsax-react";
 import { AppShell } from "@/components/layout/AppShell";
-import { BrandMark } from "@/components/brand/BrandMark";
+import { UserAvatar } from "@/components/layout/AvatarMenu";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { SignOutConfirmSheet } from "@/components/auth/SignOutConfirmSheet";
 import { useTheme } from "@/components/theme/ThemeProvider";
 import { IosSwitch } from "@/components/ui/IosSwitch";
 import { ProfileSkeleton } from "@/components/ui/Skeleton";
 import { atlasClient } from "@/lib/client";
 import { pageCache } from "@/lib/page-cache";
+import { formatIranMobile } from "@/lib/phone";
 
 const statusFa: Record<HistoryItem["status"], string> = {
   active: "در حال پخت",
@@ -111,8 +114,10 @@ function MenuRow({
 
 export default function ProfilePage() {
   const { theme, setTheme } = useTheme();
+  const { isAuthenticated, user, signOut } = useAuth();
+  const [signOutOpen, setSignOutOpen] = useState(false);
   const [profile, setProfile] = useState<UserProfile | null>(
-    () => pageCache.profile,
+    () => user ?? pageCache.profile,
   );
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [completedCount, setCompletedCount] = useState(0);
@@ -149,18 +154,33 @@ export default function ProfilePage() {
             <section className="overflow-hidden rounded-atlas-xl bg-atlas-primary px-4 pb-5 pt-5 text-white shadow-[0_14px_32px_rgba(212,2,47,0.28)]">
               <div className="flex items-center gap-3">
                 <div className="relative shrink-0">
-                  <BrandMark size={64} status />
+                  <UserAvatar
+                    src={isAuthenticated ? (user?.avatarUrl ?? profile.avatarUrl) : null}
+                    size={64}
+                    status={false}
+                  />
                 </div>
                 <div className="min-w-0 flex-1">
                   <h2 className="truncate text-h3 text-white">
-                    {profile.displayName}
+                    {isAuthenticated
+                      ? user?.displayName?.trim() ||
+                        profile.displayName?.trim() ||
+                        "کاربر"
+                      : "مهمان"}
                   </h2>
-                  <p className="mt-1 text-[12px] font-normal text-white/80">مهمان</p>
+                  <p className="mt-1 text-[12px] font-normal text-white/80">
+                    {isAuthenticated
+                      ? user?.email ||
+                        (user?.phone
+                          ? formatIranMobile(user.phone)
+                          : profile.email || "عضو سرآشپز هوشمند")
+                      : "وارد حساب نشده‌اید"}
+                  </p>
                 </div>
                 <Link
                   href="/auth"
                   className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-white transition hover:bg-white/25"
-                  aria-label="ویرایش پروفایل"
+                  aria-label={isAuthenticated ? "ویرایش پروفایل" : "ورود"}
                 >
                   <UserEdit size={18} color="currentColor" />
                 </Link>
@@ -196,7 +216,7 @@ export default function ProfilePage() {
               </div>
             </section>
 
-            <section className="overflow-hidden rounded-atlas-xl border border-atlas-border bg-atlas-surface dark:border-white/15">
+            <section className="overflow-hidden rounded-atlas-xl bg-atlas-surface shadow-[0_2px_8px_rgba(17,17,17,0.06)]">
               <p className="px-4 pb-1 pt-3 text-caption font-semibold text-atlas-ink-faint">
                 حساب کاربری
               </p>
@@ -220,7 +240,7 @@ export default function ProfilePage() {
               />
             </section>
 
-            <section className="overflow-hidden rounded-atlas-xl border border-atlas-border bg-atlas-surface dark:border-white/15">
+            <section className="overflow-hidden rounded-atlas-xl bg-atlas-surface shadow-[0_2px_8px_rgba(17,17,17,0.06)]">
               <p className="px-4 pb-1 pt-3 text-caption font-semibold text-atlas-ink-faint">
                 تنظیمات
               </p>
@@ -271,7 +291,7 @@ export default function ProfilePage() {
               />
             </section>
 
-            <section className="overflow-hidden rounded-atlas-xl border border-atlas-border bg-atlas-surface dark:border-white/15">
+            <section className="overflow-hidden rounded-atlas-xl bg-atlas-surface shadow-[0_2px_8px_rgba(17,17,17,0.06)]">
               <p className="px-4 pb-1 pt-3 text-caption font-semibold text-atlas-ink-faint">
                 پشتیبانی
               </p>
@@ -285,13 +305,22 @@ export default function ProfilePage() {
                 title="درباره سرآشپز هوشمند"
                 subtitle="نسخه ۱٫۰٫۰"
               />
-              <MenuRow
-                href="/auth"
-                icon={<Logout size={18} color="currentColor" />}
-                title="خروج از حساب"
-                subtitle="ادامه به‌صورت مهمان"
-                danger
-              />
+              {isAuthenticated ? (
+                <MenuRow
+                  icon={<Logout size={18} color="currentColor" />}
+                  title="خروج از حساب"
+                  subtitle="ادامه به‌صورت مهمان"
+                  danger
+                  onClick={() => setSignOutOpen(true)}
+                />
+              ) : (
+                <MenuRow
+                  href="/auth"
+                  icon={<Logout size={18} color="currentColor" />}
+                  title="ورود / ثبت‌نام"
+                  subtitle="با موبایل یا حساب گوگل"
+                />
+              )}
             </section>
 
             <section className="space-y-3">
@@ -311,7 +340,7 @@ export default function ProfilePage() {
                   </p>
                 </div>
               ) : (
-                <div className="overflow-hidden rounded-atlas-xl border border-atlas-border bg-atlas-surface dark:border-white/15">
+                <div className="overflow-hidden rounded-atlas-xl bg-atlas-surface shadow-[0_2px_8px_rgba(17,17,17,0.06)]">
                   {history.map((item, idx) => (
                     <Link
                       key={item.sessionId}
@@ -343,6 +372,14 @@ export default function ProfilePage() {
           </>
         ) : null}
       </div>
+      <SignOutConfirmSheet
+        open={signOutOpen}
+        onClose={() => setSignOutOpen(false)}
+        onConfirm={() => {
+          setSignOutOpen(false);
+          signOut();
+        }}
+      />
     </AppShell>
   );
 }

@@ -144,6 +144,7 @@ function RecommendationsContent() {
                   variant="tertiary"
                   size="sm"
                   icon={<Edit2 size={16} color="currentColor" />}
+                  className="!rounded-[4px] bg-atlas-primary/15 hover:bg-atlas-primary/25"
                 >
                   ویرایش مواد
                 </Button>

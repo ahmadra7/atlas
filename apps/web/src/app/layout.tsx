@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { ApiSessionBootstrap } from "@/components/auth/ApiSessionBootstrap";
+import { AuthProvider } from "@/components/auth/AuthProvider";
 import { InstantNav } from "@/components/navigation/InstantNav";
 import { MobileHardNav } from "@/components/navigation/MobileHardNav";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
@@ -37,6 +38,7 @@ export default function RootLayout({
   return (
     <html lang="fa" dir="rtl" suppressHydrationWarning>
       <head>
+        <script src="https://accounts.google.com/gsi/client" async defer />
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <link
           rel="preload"
@@ -62,9 +64,11 @@ export default function RootLayout({
       </head>
       <body className="bg-atlas-background font-sans text-atlas-ink transition-colors duration-300">
         <ThemeProvider>
-          <ApiSessionBootstrap />
-          <MobileHardNav />
-          <InstantNav>{children}</InstantNav>
+          <AuthProvider>
+            <ApiSessionBootstrap />
+            <MobileHardNav />
+            <InstantNav>{children}</InstantNav>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

@@ -28,8 +28,8 @@ export function Chip({
               ? "border-2 border-atlas-danger bg-black font-medium text-atlas-danger dark:border-atlas-danger dark:bg-[#2a2a32]"
               : "border-black bg-black font-medium text-white dark:border-white/12 dark:bg-[#2a2a32] dark:text-white"
             : unusual
-              ? "border-2 border-atlas-danger bg-zinc-50 font-medium text-atlas-danger dark:bg-atlas-surface-muted/40"
-              : "border-zinc-200/90 bg-zinc-50 font-medium text-atlas-ink dark:border-atlas-border dark:bg-atlas-surface-muted/40"
+              ? "border-2 border-atlas-danger bg-zinc-50 font-medium text-atlas-danger dark:bg-atlas-surface-muted"
+              : "border-zinc-200/90 bg-zinc-50 font-medium text-atlas-ink dark:border-white/25 dark:bg-atlas-surface-muted"
       }`}
     >
       {onClick ? (

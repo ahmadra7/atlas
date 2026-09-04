@@ -17,6 +17,15 @@ import { hasWarmPageCache } from "@/lib/page-cache";
 
 let pendingHref: string | null = null;
 const listeners = new Set<(href: string | null) => void>();
+let outsideDialogLock = 0;
+
+export function lockInstantNav() {
+  outsideDialogLock += 1;
+}
+
+export function unlockInstantNav() {
+  outsideDialogLock = Math.max(0, outsideDialogLock - 1);
+}
 
 export function beginInstantNav(href: string) {
   pendingHref = href;
@@ -47,6 +56,9 @@ export function instantReplace(
 function pendingScreen(href: string) {
   const path = href.split("?")[0] ?? href;
 
+  if (path.startsWith("/auth")) {
+    return <div className="atlas-phone min-h-svh bg-atlas-background" />;
+  }
   if (path.startsWith("/recommendations")) {
     return (
       <AppShell hideNav showBack backHref="/home" title="لیست غذاها">
@@ -91,7 +103,7 @@ function pendingScreen(href: string) {
   }
   if (path.startsWith("/home")) {
     return (
-      <AppShell title={homeAppTitle} splitTitle showBrand>
+      <AppShell title={homeAppTitle} splitTitle>
         <HomeSkeleton />
       </AppShell>
     );
@@ -163,6 +175,7 @@ export function InstantNav({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const onClick = (event: MouseEvent) => {
+      if (outsideDialogLock > 0) return;
       if (event.button !== 0) return;
       if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
         return;

@@ -1,0 +1,8 @@
+-- AlterTable
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "phone" TEXT;
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "googleId" TEXT;
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "avatarUrl" TEXT;
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "authProvider" TEXT NOT NULL DEFAULT 'password';
+
+CREATE UNIQUE INDEX IF NOT EXISTS "User_phone_key" ON "User"("phone");
+CREATE UNIQUE INDEX IF NOT EXISTS "User_googleId_key" ON "User"("googleId");

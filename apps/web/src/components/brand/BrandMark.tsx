@@ -8,7 +8,7 @@ import {
   rememberLoadedImage,
 } from "@/lib/image-cache";
 
-const CHEF_SRC = "/avatars/chef-app.png";
+const CHEF_SRC = "/avatars/chef-character.png?v=2";
 
 /** App chef avatar — photo only, no square frame */
 export function BrandMark({
@@ -27,8 +27,7 @@ export function BrandMark({
     setLoaded(true);
   }
 
-  const photo = Math.round(size * 0.82);
-  const inset = Math.round((size - photo) / 2);
+  const photo = size;
   const dot = Math.max(8, Math.round(size * 0.22));
 
   return (
@@ -52,7 +51,7 @@ export function BrandMark({
         style={{
           width: photo,
           height: photo,
-          filter: "drop-shadow(0 6px 14px rgba(17,17,17,0.22))",
+          filter: "drop-shadow(0 5px 12px rgba(20,40,80,0.10))",
         }}
         priority
         unoptimized
@@ -66,8 +65,8 @@ export function BrandMark({
           style={{
             width: dot,
             height: dot,
-            bottom: inset - dot * 0.28,
-            right: inset - dot * 0.28,
+            bottom: -dot * 0.28,
+            right: -dot * 0.28,
           }}
         />
       ) : null}

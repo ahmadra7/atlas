@@ -9,6 +9,8 @@ import {
   type NativeVoiceMode,
 } from "@/lib/voiceBridgeClient";
 
+const SILENCE_MS = 8000;
+
 type SpeechRecognitionLike = {
   lang: string;
   continuous: boolean;
@@ -91,6 +93,7 @@ export function useIngredientVoiceInput(options: {
   const listeningRef = useRef(false);
   const flushTimerRef = useRef<number | null>(null);
   const heardTimerRef = useRef<number | null>(null);
+  const silenceTimerRef = useRef<number | null>(null);
   const openedAtRef = useRef(0);
 
   const [phase, setPhase] = useState<VoicePhase>("idle");
@@ -118,7 +121,18 @@ export function useIngredientVoiceInput(options: {
     recognitionRef.current = null;
   }, []);
 
+  const clearSilenceTimer = useCallback(() => {
+    if (silenceTimerRef.current != null) {
+      window.clearTimeout(silenceTimerRef.current);
+      silenceTimerRef.current = null;
+    }
+  }, []);
+
   const resetIdle = useCallback((error?: string | null) => {
+    if (silenceTimerRef.current != null) {
+      window.clearTimeout(silenceTimerRef.current);
+      silenceTimerRef.current = null;
+    }
     setPhase("idle");
     setVolume(0);
     setInterim("");
@@ -176,6 +190,7 @@ export function useIngredientVoiceInput(options: {
       heardTimerRef.current = null;
     }
     clearFlushTimer();
+    clearSilenceTimer();
     userStoppingRef.current = false;
     listeningRef.current = false;
     if (engineRef.current === "native") {
@@ -202,7 +217,16 @@ export function useIngredientVoiceInput(options: {
     setVolume(0);
     setErrorMessage(null);
     setPhase("idle");
-  }, [cleanupWebRecognition, clearFlushTimer]);
+  }, [cleanupWebRecognition, clearFlushTimer, clearSilenceTimer]);
+
+  const armSilenceTimer = useCallback(() => {
+    clearSilenceTimer();
+    silenceTimerRef.current = window.setTimeout(() => {
+      silenceTimerRef.current = null;
+      if (!listeningRef.current) return;
+      closeMic();
+    }, SILENCE_MS);
+  }, [clearSilenceTimer, closeMic]);
 
   const emitIfIngredient = useCallback(
     (text: string) => {
@@ -249,6 +273,7 @@ export function useIngredientVoiceInput(options: {
         listeningRef.current = true;
         setErrorMessage(null);
         setVolume(0.25);
+        armSilenceTimer();
         return;
       }
 
@@ -261,6 +286,7 @@ export function useIngredientVoiceInput(options: {
         syncDraft(finalsRef.current, msg.transcript);
         setPhase("listening");
         listeningRef.current = true;
+        if (msg.transcript.trim()) armSilenceTimer();
         return;
       }
 
@@ -268,6 +294,7 @@ export function useIngredientVoiceInput(options: {
         if (msg.transcript.trim()) {
           finalsRef.current = [...finalsRef.current, msg.transcript.trim()];
           if (emitIfIngredient(msg.transcript)) return;
+          armSilenceTimer();
         }
         if (msg.alternatives?.length) {
           alternativesRef.current = [
@@ -283,6 +310,7 @@ export function useIngredientVoiceInput(options: {
       }
 
       if (msg.type === "atlas-voice/error") {
+        clearSilenceTimer();
         setPhase("idle");
         setVolume(0);
         setInterim("");
@@ -299,6 +327,7 @@ export function useIngredientVoiceInput(options: {
         if (nativeModeRef.current === "intent") {
           const spoken = capturedText();
           if (spoken) emitHeard(spoken);
+          clearSilenceTimer();
           setPhase("idle");
           setVolume(0);
           setInterim("");
@@ -329,7 +358,16 @@ export function useIngredientVoiceInput(options: {
 
     postToNative({ type: "atlas-voice/ping" });
     return unsub;
-  }, [capturedText, emitHeard, emitIfIngredient, resetIdle, submitTranscript, syncDraft]);
+  }, [
+    armSilenceTimer,
+    capturedText,
+    clearSilenceTimer,
+    emitHeard,
+    emitIfIngredient,
+    resetIdle,
+    submitTranscript,
+    syncDraft,
+  ]);
 
   const startWeb = useCallback(() => {
     const Ctor = getSpeechRecognitionCtor();
@@ -392,6 +430,7 @@ export function useIngredientVoiceInput(options: {
       alternativesRef.current = alts;
       syncDraft(finals, interimChunk);
       setVolume(interimChunk || finals.length ? 0.85 : 0.4);
+      if (interimChunk || finals.length) armSilenceTimer();
       armCommit();
     };
 
@@ -451,6 +490,7 @@ export function useIngredientVoiceInput(options: {
     recognitionRef.current = recognition;
     try {
       recognition.start();
+      armSilenceTimer();
     } catch {
       setPhase("idle");
       listeningRef.current = false;
@@ -459,6 +499,7 @@ export function useIngredientVoiceInput(options: {
       engineRef.current = null;
     }
   }, [
+    armSilenceTimer,
     capturedText,
     cleanupWebRecognition,
     closeMic,
@@ -495,15 +536,17 @@ export function useIngredientVoiceInput(options: {
         contextualStrings,
       });
       if (!ok) startWeb();
+      else armSilenceTimer();
       return;
     }
 
     startWeb();
-  }, [contextualStrings, phase, startWeb]);
+  }, [armSilenceTimer, contextualStrings, phase, startWeb]);
 
   const cancel = useCallback(() => {
     if (Date.now() - openedAtRef.current < 900) return;
     clearFlushTimer();
+    clearSilenceTimer();
     if (heardTimerRef.current != null) {
       window.clearTimeout(heardTimerRef.current);
       heardTimerRef.current = null;
@@ -534,7 +577,7 @@ export function useIngredientVoiceInput(options: {
     setVolume(0);
     setErrorMessage(null);
     setPhase("idle");
-  }, [cleanupWebRecognition, clearFlushTimer]);
+  }, [cleanupWebRecognition, clearFlushTimer, clearSilenceTimer]);
 
   /** User pressed Send — stop capture and add chips now. */
   const stop = useCallback(() => {
@@ -542,6 +585,7 @@ export function useIngredientVoiceInput(options: {
     userStoppingRef.current = true;
     listeningRef.current = false;
     setPhase("processing");
+    clearSilenceTimer();
 
     if (engineRef.current === "native") {
       postToNative({
@@ -573,6 +617,7 @@ export function useIngredientVoiceInput(options: {
     capturedText,
     cleanupWebRecognition,
     clearFlushTimer,
+    clearSilenceTimer,
     flushAndSubmit,
     phase,
     submitTranscript,
@@ -580,6 +625,10 @@ export function useIngredientVoiceInput(options: {
 
   useEffect(() => {
     return () => {
+      if (silenceTimerRef.current != null) {
+        window.clearTimeout(silenceTimerRef.current);
+        silenceTimerRef.current = null;
+      }
       try {
         recognitionRef.current?.abort();
       } catch {

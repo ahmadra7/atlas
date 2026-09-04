@@ -21,7 +21,7 @@ export function IosSwitch({
         onChange(!checked);
       }}
       className={`relative box-border h-[31px] w-[51px] shrink-0 overflow-hidden rounded-full border-0 p-0 transition-colors duration-200 ease-out ${
-        checked ? "bg-[#34C759]" : "bg-white ring-1 ring-black/10"
+        checked ? "bg-[#34C759]" : "bg-[#E5E5EA] dark:bg-[#3A3A3C]"
       }`}
       style={{ appearance: "none" }}
     >

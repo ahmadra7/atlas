@@ -6,7 +6,7 @@ const tones: Record<string, string> = {
   gray: "bg-atlas-surface-muted text-atlas-ink-muted ring-1 ring-inset ring-atlas-border",
   soft: "bg-atlas-surface/90 text-atlas-ink-muted ring-1 ring-inset ring-atlas-border",
   white:
-    "bg-white text-zinc-600 ring-1 ring-inset ring-zinc-200/80 dark:bg-atlas-surface dark:text-zinc-400 dark:ring-white/10",
+    "bg-white text-zinc-600 ring-1 ring-inset ring-zinc-200/80 dark:bg-atlas-surface-muted dark:text-zinc-400 dark:ring-white/10",
   amber:
     "bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
   green:
@@ -24,6 +24,7 @@ export function SoftTag({
   icon,
   iconEnd = false,
   size = "md",
+  rounded = "full",
 }: {
   label: string;
   tone?: keyof typeof tones;
@@ -31,6 +32,7 @@ export function SoftTag({
   /** Place icon on the visual right of the label. */
   iconEnd?: boolean;
   size?: "sm" | "md";
+  rounded?: "full" | "md";
 }) {
   const sizeClass =
     size === "sm"
@@ -40,7 +42,9 @@ export function SoftTag({
   return (
     <span
       dir="ltr"
-      className={`inline-flex items-center rounded-full font-medium tracking-tight ${sizeClass} ${tones[tone]}`}
+      className={`inline-flex items-center font-medium tracking-tight ${
+        rounded === "md" ? "rounded-md" : "rounded-full"
+      } ${sizeClass} ${tones[tone]}`}
     >
       {!iconEnd && icon ? (
         <span className="inline-flex shrink-0 opacity-70">{icon}</span>

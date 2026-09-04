@@ -1,14 +1,12 @@
 "use client";
 
 import { useEffect } from "react";
-import { ensureApiSession } from "@/lib/client";
+import { hydrateAuthSession } from "@/lib/auth-session";
 
-/** Boots JWT session when web talks to Nest/Postgres API. */
+/** Restores the saved login token before API calls. */
 export function ApiSessionBootstrap() {
   useEffect(() => {
-    void ensureApiSession(true).catch((err) => {
-      console.warn("[atlas] API session failed", err);
-    });
+    hydrateAuthSession();
   }, []);
   return null;
 }
