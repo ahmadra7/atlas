@@ -198,7 +198,7 @@ function AuthScreen() {
 
       <header className="relative z-10 flex shrink-0 items-center justify-between px-4 pb-1 pt-4">
         <div className="w-10" />
-        <p className="text-[15px] font-light text-atlas-ink">خوش آمدید</p>
+        <p className="text-[15px] font-medium text-atlas-ink">ورود | ثبت‌نام</p>
         <BackButton href="/home" />
       </header>
 
@@ -210,7 +210,7 @@ function AuthScreen() {
             alt=""
             className="h-[5rem] w-auto object-contain drop-shadow-[0_5px_12px_rgba(20,40,80,0.10)]"
           />
-          <h1 className="mt-2 text-[20px] font-semibold text-atlas-ink">
+          <h1 className="mt-2 text-[16px] font-semibold text-atlas-ink">
             {step === "phone" ? "کاربر گرامی خوش آمدید" : "کد تأیید"}
           </h1>
           {step === "otp" ? (
