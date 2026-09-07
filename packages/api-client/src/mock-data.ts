@@ -354,10 +354,15 @@ function buildCard(
   const matched = required.filter((i) => ownedIds.has(i.ingredientId));
   const missingCount = missing.length;
   const matchTier =
-    missingCount === 0 ? "exact" : missingCount === 1 ? "near" : "discovery";
-  const matchScore = Math.round(
-    ((required.length - missingCount) / Math.max(required.length, 1)) * 100,
-  );
+    matched.length > 0 && missingCount === 0
+      ? "exact"
+      : matched.length > 0 && missingCount === 1
+        ? "near"
+        : "discovery";
+  const matchScore =
+    required.length > 0 && matched.length > 0
+      ? Math.round((matched.length / required.length) * 100)
+      : 0;
 
   return {
     recipeId: recipe.id,

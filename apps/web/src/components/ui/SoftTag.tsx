@@ -7,6 +7,8 @@ const tones: Record<string, string> = {
   soft: "bg-atlas-surface/90 text-atlas-ink-muted ring-1 ring-inset ring-atlas-border",
   white:
     "bg-white text-zinc-600 ring-1 ring-inset ring-zinc-200/80 dark:bg-atlas-surface-muted dark:text-zinc-400 dark:ring-white/10",
+  mist:
+    "bg-zinc-100/60 text-zinc-500 ring-1 ring-inset ring-zinc-200/45 dark:bg-white/[0.06] dark:text-zinc-400 dark:ring-white/[0.07]",
   amber:
     "bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
   green:

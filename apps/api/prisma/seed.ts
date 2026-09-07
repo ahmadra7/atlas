@@ -2,7 +2,9 @@ import { PrismaClient } from "@prisma/client";
 import * as bcrypt from "bcryptjs";
 import { FOOD_ALIASES, FOOD_NAMES, compactPersian, normalizePersian } from "@atlas/shared";
 import {
-  importIranianRecipes,
+  importFoodCatalog,
+} from "./import-food-catalog";
+import {
   ingredientIdFromName,
 } from "./import-iranian-recipes";
 
@@ -29,7 +31,7 @@ async function main() {
     },
   });
 
-  const catalog = await importIranianRecipes({ replaceCatalog: true });
+  const catalog = await importFoodCatalog({ replaceCatalog: true });
   const extraIngredients = await ensureFoodCatalog(prisma);
 
   // Fridge starts empty — user adds ingredients themselves

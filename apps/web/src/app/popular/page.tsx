@@ -150,7 +150,16 @@ export default function PopularRecipesPage() {
                 setMoreOpen(true);
               }}
               aria-label="تنظیمات"
-              className="relative inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-atlas border border-atlas-border bg-atlas-surface text-atlas-ink-muted transition hover:border-atlas-border-strong hover:bg-atlas-surface-muted hover:text-atlas-ink"
+              style={
+                advancedCount > 0
+                  ? { backgroundColor: "rgba(212, 2, 47, 0.2)" }
+                  : undefined
+              }
+              className={`relative inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-atlas border transition ${
+                advancedCount > 0
+                  ? "border-atlas-border text-atlas-ink-muted"
+                  : "border-atlas-border bg-atlas-surface text-atlas-ink-muted hover:border-atlas-border-strong hover:bg-atlas-surface-muted hover:text-atlas-ink"
+              }`}
             >
               <Setting4 size={22} color="currentColor" variant="Outline" />
               {advancedCount > 0 ? (
@@ -162,22 +171,24 @@ export default function PopularRecipesPage() {
           </div>
         </div>
 
-        <div className="atlas-scroll-y min-h-0 flex-1 pb-6">
+        <div className="atlas-scroll-y min-h-0 flex-1 -mx-2 px-2">
           {loading ? (
-            <SearchResultsSkeleton />
+            <div className="pb-8 pt-2">
+              <SearchResultsSkeleton />
+            </div>
           ) : visible.length === 0 ? (
             <p className="pt-8 text-center text-body text-atlas-ink-muted">
               غذایی با این مشخصات پیدا نشد.
             </p>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-3 pb-8 pt-2">
               {visible.map((recipe) => (
                 <PopularRecipeRow
                   key={recipe.id}
                   href={`/recipes/${recipe.slug}`}
                   title={recipe.title}
                   imageUrl={recipe.imageUrl}
-                  cuisine={recipe.cuisine}
+                  category={recipe.category}
                   totalMinutes={recipe.totalMinutes}
                   servings={recipe.servings}
                 />

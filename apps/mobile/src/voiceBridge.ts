@@ -103,6 +103,8 @@ export function createVoiceBridge(webRef: RefObject<WebView | null>) {
   let userStopping = false;
   let userAborting = false;
   let startOpts: StartOpts | null = null;
+  let restartTimer: ReturnType<typeof setTimeout> | null = null;
+  let restartDelayMs = 350;
   const subscriptions: Array<{ remove: () => void }> = [];
 
   const post = (payload: unknown) => inject(webRef, payload);
@@ -115,9 +117,9 @@ export function createVoiceBridge(webRef: RefObject<WebView | null>) {
     contextualStrings: opts.contextualStrings.slice(0, 40),
     iosTaskHint: "dictation" as const,
     androidIntentOptions: {
-      EXTRA_LANGUAGE_MODEL: "web_search",
-      EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS: 4000,
-      EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS: 4000,
+      EXTRA_LANGUAGE_MODEL: "web_search" as const,
+      EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS: 10000,
+      EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS: 7000,
       EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS: 400,
     },
     volumeChangeEventOptions: {
@@ -138,6 +140,18 @@ export function createVoiceBridge(webRef: RefObject<WebView | null>) {
     }
   };
 
+  const scheduleRestart = () => {
+    if (!speechModule || !activeRequestId || !startOpts) return;
+    if (userStopping || userAborting || restartTimer) return;
+    const delay = restartDelayMs;
+    restartDelayMs = Math.min(restartDelayMs * 2, 3000);
+    restartTimer = setTimeout(() => {
+      restartTimer = null;
+      if (nativeStarted || userStopping || userAborting) return;
+      if (!restartIfNeeded()) scheduleRestart();
+    }, delay);
+  };
+
   const attachNativeListeners = () => {
     if (!speechModule || subscriptions.length > 0) return;
     const mod = speechModule.ExpoSpeechRecognitionModule;
@@ -145,6 +159,7 @@ export function createVoiceBridge(webRef: RefObject<WebView | null>) {
     subscriptions.push(
       mod.addListener("result", (event) => {
         if (!activeRequestId) return;
+        restartDelayMs = 350;
         const top = event.results?.[0];
         const transcript = top?.transcript?.trim() ?? "";
         const alternatives = (event.results ?? [])
@@ -172,14 +187,23 @@ export function createVoiceBridge(webRef: RefObject<WebView | null>) {
     subscriptions.push(
       mod.addListener("error", (event) => {
         if (!activeRequestId) return;
+        const retryable =
+          event.error === "no-speech" ||
+          event.error === "speech-timeout" ||
+          event.error === "client" ||
+          event.error === "busy" ||
+          event.error === "network" ||
+          event.error === "interrupted" ||
+          event.error === "audio-capture" ||
+          event.error === "unknown";
         if (
           !userStopping &&
           !userAborting &&
-          (event.error === "no-speech" ||
-            event.error === "speech-timeout" ||
-            event.error === "client")
+          retryable
         ) {
-          if (restartIfNeeded()) return;
+          nativeStarted = false;
+          scheduleRestart();
+          return;
         }
         if (userAborting) {
           post({ type: "atlas-voice/ended", requestId: activeRequestId });
@@ -188,7 +212,11 @@ export function createVoiceBridge(webRef: RefObject<WebView | null>) {
           userAborting = false;
           return;
         }
-        post({ type: "atlas-voice/ended", requestId: activeRequestId });
+        post({
+          type: "atlas-voice/error",
+          requestId: activeRequestId,
+          message: event.message || event.error,
+        });
         activeRequestId = null;
         nativeStarted = false;
         userStopping = false;
@@ -198,6 +226,7 @@ export function createVoiceBridge(webRef: RefObject<WebView | null>) {
     subscriptions.push(
       mod.addListener("end", () => {
         if (!activeRequestId) return;
+        nativeStarted = false;
         if (userAborting) {
           post({ type: "atlas-voice/ended", requestId: activeRequestId });
           activeRequestId = null;
@@ -212,10 +241,7 @@ export function createVoiceBridge(webRef: RefObject<WebView | null>) {
           userStopping = false;
           return;
         }
-        if (restartIfNeeded()) return;
-        post({ type: "atlas-voice/ended", requestId: activeRequestId });
-        activeRequestId = null;
-        nativeStarted = false;
+        scheduleRestart();
       }),
     );
 
@@ -250,6 +276,11 @@ export function createVoiceBridge(webRef: RefObject<WebView | null>) {
     nativeStarted = true;
     userStopping = false;
     userAborting = false;
+    restartDelayMs = 350;
+    if (restartTimer) {
+      clearTimeout(restartTimer);
+      restartTimer = null;
+    }
     startOpts = { lang, contextualStrings };
 
     mod.start(startOptions(startOpts));
@@ -328,6 +359,10 @@ export function createVoiceBridge(webRef: RefObject<WebView | null>) {
       }
 
       if (msg.type === "atlas-voice/abort" || msg.type === "atlas-voice/stop") {
+        if (restartTimer) {
+          clearTimeout(restartTimer);
+          restartTimer = null;
+        }
         if (msg.type === "atlas-voice/abort") userAborting = true;
         else userStopping = true;
 
@@ -382,6 +417,10 @@ export function createVoiceBridge(webRef: RefObject<WebView | null>) {
       return false;
     },
     dispose() {
+      if (restartTimer) {
+        clearTimeout(restartTimer);
+        restartTimer = null;
+      }
       subscriptions.forEach((s) => s.remove());
       subscriptions.length = 0;
       if (nativeStarted && speechModule) {

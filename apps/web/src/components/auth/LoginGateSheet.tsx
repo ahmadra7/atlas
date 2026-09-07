@@ -2,6 +2,7 @@
 
 import { Login, ProfileTick } from "iconsax-react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
+import { Button } from "@/components/ui/Button";
 
 export function LoginGateSheet({
   open,
@@ -20,7 +21,7 @@ export function LoginGateSheet({
       onClose={onClose}
     >
       <div className="flex flex-col items-center pb-5 pt-2 text-center">
-        <span className="inline-flex h-16 w-16 items-center justify-center rounded-[1.4rem] bg-[#F5C400]/20 text-[#C9A000]">
+        <span className="inline-flex h-16 w-16 items-center justify-center rounded-[1.4rem] bg-atlas-success-soft text-atlas-success">
           <ProfileTick size={34} color="currentColor" variant="Bold" />
         </span>
         <p className="mt-4 text-[17px] font-semibold text-atlas-ink">
@@ -29,21 +30,20 @@ export function LoginGateSheet({
         <p className="mt-2 max-w-[16.5rem] text-[13px] font-normal leading-6 text-atlas-ink-muted">
           برای دیدن دستور پخت و ذخیره غذاها، اول وارد حساب شوید یا ثبت‌نام کنید.
         </p>
-        <button
-          type="button"
+        <Button
+          className="mt-6 w-full"
           onClick={onLogin}
-          className="mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-atlas bg-[#F5C400] text-[15px] font-semibold text-[#111111] shadow-[0_8px_20px_rgba(245,196,0,0.35)] transition hover:bg-[#e6b800] active:scale-[0.99]"
+          icon={<Login size={20} color="currentColor" variant="Linear" />}
         >
-          <Login size={20} color="currentColor" variant="Linear" />
           ورود / ثبت‌نام
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
+          variant="tertiary"
+          className="mt-3 w-full font-medium"
           onClick={onClose}
-          className="mt-3 h-12 w-full text-[13px] font-normal text-atlas-ink-muted"
         >
           بعداً
-        </button>
+        </Button>
       </div>
     </BottomSheet>
   );

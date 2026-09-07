@@ -13,6 +13,7 @@ import { StateView } from "@/components/ui/StateView";
 import { SoftTag, TagRow } from "@/components/ui/SoftTag";
 import { PotIcon } from "@/components/ui/PotIcon";
 import { RecipeImage } from "@/components/recipe/RecipeImage";
+import { RecipeTypeTag } from "@/components/recipe/PopularRecipeRow";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { atlasClient } from "@/lib/client";
 import { pageCache } from "@/lib/page-cache";
@@ -82,10 +83,17 @@ export default function RecipeDetailPage() {
               width={480}
             />
 
-            <div className="flex items-start gap-2">
-              <h1 className="min-w-0 flex-1 text-[18px] font-bold leading-7 text-atlas-ink">
-                {recipe.title}
-              </h1>
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex min-w-0 items-start gap-1">
+                <h1 className="min-w-0 text-[18px] font-bold leading-7 text-atlas-ink">
+                  {recipe.title}
+                </h1>
+                <RecipeTypeTag
+                  category={recipe.category}
+                  title={recipe.title}
+                  className="mt-1"
+                />
+              </div>
               <FavoriteHeartButton
                 active={favorited}
                 busy={toggling}

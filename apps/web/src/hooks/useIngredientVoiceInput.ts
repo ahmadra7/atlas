@@ -2,10 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  collapseRepeatedSpeech,
+  mergeSpeechSegment,
   namesFromSpeech,
-  shouldHoldTrailingFood,
+  unrecognizedSpeechTokens,
 } from "@/lib/spokenIngredients";
-import { normalizePersian } from "@atlas/shared";
+import { ingredientsLooselyMatch, normalizePersian } from "@atlas/shared";
 import {
   isAtlasNativeApp,
   postToNative,
@@ -13,7 +15,7 @@ import {
   type NativeVoiceMode,
 } from "@/lib/voiceBridgeClient";
 
-const SILENCE_MS = 4000;
+const NO_NEW_FOOD_MS = 5000;
 
 type SpeechRecognitionLike = {
   lang: string;
@@ -73,19 +75,23 @@ const DEFAULT_CONTEXT = [
 ];
 
 function primaryTranscript(text: string): string {
-  return text.replace(/\s*\|\s*/g, " ").replace(/\s+/g, " ").trim();
+  return collapseRepeatedSpeech(text.replace(/\s*\|\s*/g, " "));
 }
 
 /**
  * Voice capture for ingredients.
- * Each recognized food is added immediately. Cancels after 4s of silence.
+ * Each recognized food is added immediately. Capture closes when no new food
+ * has been recognized for five seconds.
  */
 export function useIngredientVoiceInput(options: {
   onHeard: (transcript: string) => void | Promise<void>;
+  onRejected?: (token: string) => void;
   contextualStrings?: string[];
 }) {
   const onHeardRef = useRef(options.onHeard);
   onHeardRef.current = options.onHeard;
+  const onRejectedRef = useRef(options.onRejected);
+  onRejectedRef.current = options.onRejected;
   const contextualStrings = options.contextualStrings ?? DEFAULT_CONTEXT;
 
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
@@ -100,9 +106,10 @@ export function useIngredientVoiceInput(options: {
   const listeningRef = useRef(false);
   const flushTimerRef = useRef<number | null>(null);
   const heardTimerRef = useRef<number | null>(null);
-  const silenceTimerRef = useRef<number | null>(null);
+  const noNewFoodTimerRef = useRef<number | null>(null);
   const openedAtRef = useRef(0);
   const emittedNamesRef = useRef<Set<string>>(new Set());
+  const rejectedTokensRef = useRef<Set<string>>(new Set());
 
   const [phase, setPhase] = useState<VoicePhase>("idle");
   const [interim, setInterim] = useState("");
@@ -112,13 +119,6 @@ export function useIngredientVoiceInput(options: {
   const [engineMode, setEngineMode] = useState<NativeVoiceMode | "web" | null>(
     null,
   );
-
-  const syncDraft = useCallback((finals: string[], interimText: string) => {
-    const text = [...finals, interimText].map((t) => t.trim()).filter(Boolean).join(" ");
-    setDraft(text);
-    setInterim(interimText);
-    interimRef.current = interimText;
-  }, []);
 
   const cleanupWebRecognition = useCallback(() => {
     const rec = recognitionRef.current;
@@ -132,17 +132,10 @@ export function useIngredientVoiceInput(options: {
     recognitionRef.current = null;
   }, []);
 
-  const clearSilenceTimer = useCallback(() => {
-    if (silenceTimerRef.current != null) {
-      window.clearTimeout(silenceTimerRef.current);
-      silenceTimerRef.current = null;
-    }
-  }, []);
-
   const resetIdle = useCallback((error?: string | null) => {
-    if (silenceTimerRef.current != null) {
-      window.clearTimeout(silenceTimerRef.current);
-      silenceTimerRef.current = null;
+    if (noNewFoodTimerRef.current != null) {
+      window.clearTimeout(noNewFoodTimerRef.current);
+      noNewFoodTimerRef.current = null;
     }
     setPhase("idle");
     setVolume(0);
@@ -157,6 +150,7 @@ export function useIngredientVoiceInput(options: {
     alternativesRef.current = [];
     interimRef.current = "";
     emittedNamesRef.current = new Set();
+    rejectedTokensRef.current = new Set();
   }, []);
 
   const draftRef = useRef("");
@@ -193,23 +187,51 @@ export function useIngredientVoiceInput(options: {
   const emitHeard = useCallback((text: string) => {
     const composed = primaryTranscript(text);
     if (!composed) return;
-    void Promise.resolve(onHeardRef.current(composed));
+    onHeardRef.current(composed);
   }, []);
 
   const flushNewIngredients = useCallback(
     (text: string, holdLast = false) => {
       const composed = primaryTranscript(text);
-      if (!composed) return;
-      let names = namesFromSpeech(composed);
-      if (holdLast && names.length > 0 && shouldHoldTrailingFood(composed)) {
-        names = names.slice(0, -1);
-      }
+      if (!composed) return false;
+      let emittedNewFood = false;
+      const names = namesFromSpeech(composed);
       for (const name of names) {
         const key = normalizePersian(name);
-        if (!key || emittedNamesRef.current.has(key)) continue;
+        if (!key) continue;
+        let matchedPrev: string | null = null;
+        for (const prev of emittedNamesRef.current) {
+          if (prev === key || ingredientsLooselyMatch(name, prev)) {
+            matchedPrev = prev;
+            break;
+          }
+        }
+        if (matchedPrev) {
+          if (key.length > matchedPrev.length) {
+            emittedNamesRef.current.delete(matchedPrev);
+            emittedNamesRef.current.add(key);
+            emitHeard(name);
+            emittedNewFood = true;
+          }
+          continue;
+        }
         emittedNamesRef.current.add(key);
         emitHeard(name);
+        emittedNewFood = true;
       }
+
+      let rejected = unrecognizedSpeechTokens(composed);
+      if (holdLast && rejected.length > 0) {
+        const lastToken = normalizePersian(composed).split(/\s+/).filter(Boolean).pop();
+        rejected = rejected.filter((token) => normalizePersian(token) !== lastToken);
+      }
+      for (const token of rejected) {
+        const key = normalizePersian(token);
+        if (!key || rejectedTokensRef.current.has(key)) continue;
+        rejectedTokensRef.current.add(key);
+        onRejectedRef.current?.(token);
+      }
+      return emittedNewFood;
     },
     [emitHeard],
   );
@@ -220,7 +242,10 @@ export function useIngredientVoiceInput(options: {
       heardTimerRef.current = null;
     }
     clearFlushTimer();
-    clearSilenceTimer();
+    if (noNewFoodTimerRef.current != null) {
+      window.clearTimeout(noNewFoodTimerRef.current);
+      noNewFoodTimerRef.current = null;
+    }
     userStoppingRef.current = false;
     listeningRef.current = false;
     if (engineRef.current === "native") {
@@ -243,22 +268,25 @@ export function useIngredientVoiceInput(options: {
     alternativesRef.current = [];
     interimRef.current = "";
     emittedNamesRef.current = new Set();
+    rejectedTokensRef.current = new Set();
     setInterim("");
     setDraft("");
     setVolume(0);
     setErrorMessage(null);
     setPhase("idle");
-  }, [cleanupWebRecognition, clearFlushTimer, clearSilenceTimer]);
+  }, [cleanupWebRecognition, clearFlushTimer]);
 
-  const armSilenceTimer = useCallback(() => {
-    clearSilenceTimer();
-    silenceTimerRef.current = window.setTimeout(() => {
-      silenceTimerRef.current = null;
+  const armNoNewFoodTimer = useCallback(() => {
+    if (noNewFoodTimerRef.current != null) {
+      window.clearTimeout(noNewFoodTimerRef.current);
+    }
+    noNewFoodTimerRef.current = window.setTimeout(() => {
+      noNewFoodTimerRef.current = null;
       if (!listeningRef.current) return;
       flushNewIngredients(capturedText(), false);
       closeMic();
-    }, SILENCE_MS);
-  }, [capturedText, clearSilenceTimer, closeMic, flushNewIngredients]);
+    }, NO_NEW_FOOD_MS);
+  }, [capturedText, closeMic, flushNewIngredients]);
 
   useEffect(() => {
     if (!isAtlasNativeApp()) return;
@@ -279,34 +307,34 @@ export function useIngredientVoiceInput(options: {
         listeningRef.current = true;
         setErrorMessage(null);
         setVolume(0.25);
-        armSilenceTimer();
+        armNoNewFoodTimer();
         return;
       }
 
       if (msg.type === "atlas-voice/volume") {
-        setVolume(msg.value);
         return;
       }
 
       if (msg.type === "atlas-voice/partial") {
-        syncDraft(finalsRef.current, msg.transcript);
-        setPhase("listening");
-        listeningRef.current = true;
         if (msg.transcript.trim()) {
-          flushNewIngredients(
-            [...finalsRef.current, msg.transcript].join(" "),
+          const hasNewFood = flushNewIngredients(
+            mergeSpeechSegment(finalsRef.current.join(" "), msg.transcript),
             true,
           );
-          armSilenceTimer();
+          if (hasNewFood) armNoNewFoodTimer();
         }
         return;
       }
 
       if (msg.type === "atlas-voice/final") {
         if (msg.transcript.trim()) {
-          finalsRef.current = [...finalsRef.current, msg.transcript.trim()];
-          flushNewIngredients(finalsRef.current.join(" "), false);
-          armSilenceTimer();
+          const incoming = msg.transcript.trim();
+          const merged = mergeSpeechSegment(
+            finalsRef.current.join(" "),
+            incoming,
+          );
+          finalsRef.current = merged ? [merged] : [];
+          if (flushNewIngredients(merged, false)) armNoNewFoodTimer();
         }
         if (msg.alternatives?.length) {
           alternativesRef.current = [
@@ -314,15 +342,12 @@ export function useIngredientVoiceInput(options: {
             ...msg.alternatives,
           ];
         }
-        syncDraft(finalsRef.current, "");
         if (nativeModeRef.current === "intent") return;
-        setPhase("listening");
         listeningRef.current = true;
         return;
       }
 
       if (msg.type === "atlas-voice/error") {
-        clearSilenceTimer();
         setPhase("idle");
         setVolume(0);
         setInterim("");
@@ -338,7 +363,6 @@ export function useIngredientVoiceInput(options: {
         if (submittingRef.current) return;
         if (nativeModeRef.current === "intent") {
           flushNewIngredients(capturedText(), false);
-          clearSilenceTimer();
           setPhase("idle");
           setVolume(0);
           setInterim("");
@@ -365,14 +389,12 @@ export function useIngredientVoiceInput(options: {
     postToNative({ type: "atlas-voice/ping" });
     return unsub;
   }, [
-    armSilenceTimer,
+    armNoNewFoodTimer,
     capturedText,
-    clearSilenceTimer,
     closeMic,
     emitHeard,
     flushNewIngredients,
     resetIdle,
-    syncDraft,
   ]);
 
   const startWeb = useCallback(() => {
@@ -387,6 +409,7 @@ export function useIngredientVoiceInput(options: {
     alternativesRef.current = [];
     interimRef.current = "";
     emittedNamesRef.current = new Set();
+    rejectedTokensRef.current = new Set();
     setInterim("");
     setDraft("");
     setErrorMessage(null);
@@ -402,43 +425,30 @@ export function useIngredientVoiceInput(options: {
     recognition.lang = "fa-IR";
     recognition.continuous = true;
     recognition.interimResults = true;
-    recognition.maxAlternatives = 5;
+    recognition.maxAlternatives = 1;
 
-    recognition.onspeechstart = () => {
-      armSilenceTimer();
-    };
-    recognition.onsoundstart = () => {
-      armSilenceTimer();
-    };
     recognition.onspeechend = () => {
       flushNewIngredients(capturedText(), false);
-      armSilenceTimer();
     };
 
     recognition.onresult = (event) => {
       const finals: string[] = [];
       let interimChunk = "";
-      const alts: string[] = [];
       for (let i = 0; i < event.results.length; i += 1) {
         const result = event.results[i];
         if (!result) continue;
-        for (let a = 0; a < result.length; a += 1) {
-          const t = result[a]?.transcript?.trim();
-          if (t) alts.push(t);
-        }
         const best = result[0]?.transcript?.trim() ?? "";
         if (!best) continue;
         if (result.isFinal) finals.push(best);
-        else interimChunk += (interimChunk ? " " : "") + best;
+        else interimChunk = best;
       }
       finalsRef.current = finals;
-      alternativesRef.current = alts;
-      syncDraft(finals, interimChunk);
-      setVolume(interimChunk || finals.length ? 0.85 : 0.4);
-      const spoken = [...finals, interimChunk].filter(Boolean).join(" ");
+      interimRef.current = interimChunk;
+      const spoken = mergeSpeechSegment(finals.join(" "), interimChunk);
       if (spoken) {
-        flushNewIngredients(spoken, Boolean(interimChunk));
-        armSilenceTimer();
+        if (flushNewIngredients(spoken, Boolean(interimChunk))) {
+          armNoNewFoodTimer();
+        }
       }
     };
 
@@ -489,7 +499,7 @@ export function useIngredientVoiceInput(options: {
     recognitionRef.current = recognition;
     try {
       recognition.start();
-      armSilenceTimer();
+      armNoNewFoodTimer();
     } catch {
       setPhase("idle");
       listeningRef.current = false;
@@ -498,11 +508,10 @@ export function useIngredientVoiceInput(options: {
       engineRef.current = null;
     }
   }, [
-    armSilenceTimer,
+    armNoNewFoodTimer,
     capturedText,
     cleanupWebRecognition,
     flushNewIngredients,
-    syncDraft,
   ]);
 
   const start = useCallback(() => {
@@ -514,6 +523,7 @@ export function useIngredientVoiceInput(options: {
     alternativesRef.current = [];
     interimRef.current = "";
     emittedNamesRef.current = new Set();
+    rejectedTokensRef.current = new Set();
     setInterim("");
     setDraft("");
     setErrorMessage(null);
@@ -533,17 +543,19 @@ export function useIngredientVoiceInput(options: {
         contextualStrings,
       });
       if (!ok) startWeb();
-      else armSilenceTimer();
       return;
     }
 
     startWeb();
-  }, [armSilenceTimer, contextualStrings, phase, startWeb]);
+  }, [armNoNewFoodTimer, contextualStrings, phase, startWeb]);
 
   const cancel = useCallback(() => {
     if (Date.now() - openedAtRef.current < 900) return;
     clearFlushTimer();
-    clearSilenceTimer();
+    if (noNewFoodTimerRef.current != null) {
+      window.clearTimeout(noNewFoodTimerRef.current);
+      noNewFoodTimerRef.current = null;
+    }
     if (heardTimerRef.current != null) {
       window.clearTimeout(heardTimerRef.current);
       heardTimerRef.current = null;
@@ -570,12 +582,13 @@ export function useIngredientVoiceInput(options: {
     alternativesRef.current = [];
     interimRef.current = "";
     emittedNamesRef.current = new Set();
+    rejectedTokensRef.current = new Set();
     setInterim("");
     setDraft("");
     setVolume(0);
     setErrorMessage(null);
     setPhase("idle");
-  }, [cleanupWebRecognition, clearFlushTimer, clearSilenceTimer]);
+  }, [cleanupWebRecognition, clearFlushTimer]);
 
   /** User pressed Send — stop capture and add chips now. */
   const stop = useCallback(() => {
@@ -583,7 +596,10 @@ export function useIngredientVoiceInput(options: {
     userStoppingRef.current = true;
     listeningRef.current = false;
     setPhase("processing");
-    clearSilenceTimer();
+    if (noNewFoodTimerRef.current != null) {
+      window.clearTimeout(noNewFoodTimerRef.current);
+      noNewFoodTimerRef.current = null;
+    }
 
     if (engineRef.current === "native") {
       postToNative({
@@ -607,7 +623,6 @@ export function useIngredientVoiceInput(options: {
   }, [
     capturedText,
     cleanupWebRecognition,
-    clearSilenceTimer,
     closeMic,
     flushNewIngredients,
     phase,
@@ -615,9 +630,9 @@ export function useIngredientVoiceInput(options: {
 
   useEffect(() => {
     return () => {
-      if (silenceTimerRef.current != null) {
-        window.clearTimeout(silenceTimerRef.current);
-        silenceTimerRef.current = null;
+      if (noNewFoodTimerRef.current != null) {
+        window.clearTimeout(noNewFoodTimerRef.current);
+        noNewFoodTimerRef.current = null;
       }
       try {
         recognitionRef.current?.abort();
@@ -633,18 +648,6 @@ export function useIngredientVoiceInput(options: {
       }
     };
   }, [cleanupWebRecognition]);
-
-  useEffect(() => {
-    if (phase !== "listening") return;
-    if (engineMode === "native") return;
-    const id = window.setInterval(() => {
-      setVolume((v) => {
-        const next = 0.25 + Math.random() * 0.55;
-        return Math.abs(next - v) < 0.08 ? next + 0.15 : next;
-      });
-    }, 140);
-    return () => window.clearInterval(id);
-  }, [engineMode, phase]);
 
   return {
     phase,

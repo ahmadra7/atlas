@@ -6,6 +6,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
   type TransitionEvent,
@@ -21,6 +22,7 @@ import type {
   RecommendationCard,
 } from "@atlas/contracts";
 import {
+  canonicalFoodName,
   ingredientsLooselyMatch,
   isLikelyFoodIngredient,
   isUnusualIngredient,
@@ -105,32 +107,6 @@ function IngredientSuggestDropdown({
       {children}
     </div>,
     document.body,
-  );
-}
-
-function EarIcon({ size = 16 }: { size?: number }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width={size}
-      height={size}
-      viewBox="0 0 14 14"
-      fill="none"
-      aria-hidden
-    >
-      <path
-        d="M2.562 5.272A4.438 4.438 0 1 1 10.148 8.4c-.445.448-.702 1.07-.774 1.698c-.19 1.662-1.619 3.069-3.394 3.069a3.42 3.42 0 0 1-3.418-3.419"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M8.724 5.25a1.724 1.724 0 1 0-3.449 0v1.915m0 0h.471A1.5 1.5 0 0 1 7.222 8.4l.009.047"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
   );
 }
 
@@ -406,16 +382,48 @@ export default function HomePage() {
     setInventory(pageCache.inventory);
   }
 
-  const addSpokenChips = useCallback(async (names: string[]) => {
-    if (names.length === 0) return;
+  const showInvalidToast = useCallback(() => {
+    setToast({
+      title: "مواد غذایی اشتباه",
+      message:
+        "این مورد تو فهرست مواد اولیه ما نیست. فقط مواد غذایی مجاز را بگو.",
+    });
+  }, []);
+
+  const addSpokenChips = useCallback((names: string[]) => {
+    const resolved = names
+      .map((name) => canonicalFoodName(name) ?? name)
+      .filter(Boolean);
+    if (resolved.length === 0) return;
 
     setAddError(null);
     setInventory((prev) => {
-      const seen = new Set(
-        prev.map((item) => normalizePersian(item.ingredient.name)),
-      );
-      const extra = names
-        .filter((name) => !seen.has(normalizePersian(name)))
+      let changed = false;
+      const next = prev.map((item) => {
+        const upgrade = resolved.find(
+          (name) =>
+            ingredientsLooselyMatch(name, item.ingredient.name) &&
+            normalizePersian(name).length >
+              normalizePersian(item.ingredient.name).length,
+        );
+        if (!upgrade) return item;
+        changed = true;
+        return {
+          ...item,
+          ingredient: {
+            ...item.ingredient,
+            name: upgrade,
+            normalizedName: normalizePersian(upgrade),
+          },
+        };
+      });
+      const extra = resolved
+        .filter(
+          (name) =>
+            !next.some((item) =>
+              ingredientsLooselyMatch(name, item.ingredient.name),
+            ),
+        )
         .map((name) => ({
           id: `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
           ingredientId: `local-${normalizePersian(name)}`,
@@ -429,54 +437,19 @@ export default function HomePage() {
           },
           createdAt: new Date().toISOString(),
         }));
-      if (extra.length === 0) return prev;
-      const next = [...prev, ...extra];
-      pageCache.inventory = next;
-      return next;
+      if (extra.length === 0 && !changed) return prev;
+      const merged = extra.length === 0 ? next : [...next, ...extra];
+      pageCache.inventory = merged;
+      return merged;
     });
 
-    setAdding(true);
-    try {
-      await withApiSession(async () => {
-        for (const name of names) {
-          await atlasClient.addIngredientByName(name);
-        }
-      });
-      const inv = await withApiSession(() => atlasClient.getInventory());
-      if (inv.length > 0) {
-        setInventory((prev) => {
-          const serverByKey = new Map(
-            inv.map((item) => [normalizePersian(item.ingredient.name), item]),
-          );
-          const used = new Set<string>();
-          const merged: InventoryItem[] = [];
-          for (const item of prev) {
-            const key = normalizePersian(item.ingredient.name);
-            const serverItem = serverByKey.get(key);
-            if (serverItem) {
-              merged.push(serverItem);
-              used.add(key);
-            } else if (item.id.startsWith("local-")) {
-              merged.push(item);
-            }
-          }
-          for (const item of orderInventoryChips(inv)) {
-            const key = normalizePersian(item.ingredient.name);
-            if (!used.has(key)) {
-              merged.push(item);
-              used.add(key);
-            }
-          }
-          pageCache.inventory = merged;
-          return merged;
-        });
+    void withApiSession(async () => {
+      for (const name of resolved) {
+        await atlasClient.addIngredientByName(name);
       }
-      setQuery("");
-    } catch {
+    }).catch(() => {
       /* chips already sit under the input */
-    } finally {
-      setAdding(false);
-    }
+    });
   }, []);
 
   const voice = useIngredientVoiceInput({
@@ -490,12 +463,33 @@ export default function HomePage() {
       "کنسرو قارچ",
       ...FOOD_NAMES,
     ].slice(0, 180),
-    onHeard: async (transcript) => {
+    onHeard: (transcript) => {
       const { valid } = partitionSpokenNames(transcript);
       if (valid.length === 0) return;
-      await addSpokenChips(valid);
+      addSpokenChips(valid);
+    },
+    onRejected: () => {
+      showInvalidToast();
     },
   });
+
+  const voiceStopRef = useRef(voice.stop);
+  voiceStopRef.current = voice.stop;
+
+  useEffect(() => {
+    if (!voice.listening) return;
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (!target) return;
+      if (target.closest("[data-voice-mic]")) return;
+      if (!target.closest("button, a, [role='button']")) return;
+      voiceStopRef.current();
+    };
+    document.addEventListener("pointerdown", onPointerDown, true);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown, true);
+    };
+  }, [voice.listening]);
 
   async function addTyped() {
     if (!trimmed) return;
@@ -597,6 +591,7 @@ export default function HomePage() {
   }
 
   function goToFoodList() {
+    if (voice.listening) voice.stop();
     if (inventory.length === 0) return;
     const params = new URLSearchParams({
       meal,
@@ -655,6 +650,7 @@ export default function HomePage() {
                     ) : null}
                     <button
                       type="button"
+                      data-voice-mic
                       onClick={() => {
                         if (voice.processing) return;
                         if (voice.listening) {
@@ -689,32 +685,6 @@ export default function HomePage() {
                         )}
                       </span>
                     </button>
-                  </div>
-                  <div
-                    className={`grid w-full transition-[grid-template-rows] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
-                      voice.listening ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
-                    }`}
-                  >
-                    <div className="min-h-0 overflow-hidden">
-                      <div
-                        className={`flex justify-center pt-3 transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
-                          voice.listening
-                            ? "translate-y-0 opacity-100"
-                            : "translate-y-1 opacity-0"
-                        }`}
-                      >
-                        <div className="inline-flex max-w-[17rem] items-center justify-center gap-1.5 rounded-xl bg-zinc-400/[0.07] px-3.5 py-2 dark:bg-white/[0.06]">
-                          <span className="shrink-0 text-atlas-ink-faint opacity-45">
-                            <EarIcon size={16} />
-                          </span>
-                          <p className="text-[12px] leading-5 text-atlas-ink-muted">
-                            {voice.draft || voice.interim
-                              ? voice.draft || voice.interim
-                              : "دارم گوش می‌دم… بگو"}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
                   </div>
                 </div>
 
@@ -811,7 +781,16 @@ export default function HomePage() {
                     type="button"
                     onClick={openMoreSettings}
                     aria-label="تنظیمات"
-                    className="relative inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-atlas border border-atlas-border bg-atlas-surface text-atlas-ink-muted transition hover:border-atlas-border-strong hover:bg-atlas-surface-muted hover:text-atlas-ink"
+                    style={
+                      advancedCount > 0
+                        ? { backgroundColor: "rgba(212, 2, 47, 0.08)" }
+                        : undefined
+                    }
+                    className={`relative inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-atlas border border-atlas-border text-atlas-ink-muted transition ${
+                      advancedCount > 0
+                        ? ""
+                        : "bg-atlas-surface hover:border-atlas-border-strong hover:bg-atlas-surface-muted hover:text-atlas-ink"
+                    }`}
                   >
                     <Setting4 size={22} color="currentColor" variant="Outline" />
                     {advancedCount > 0 ? (
@@ -912,14 +891,13 @@ export default function HomePage() {
               <span dir="rtl">همه</span>
             </Link>
           </div>
-          <div className="space-y-3">
+          <div className="space-y-3 py-1">
             {popular.map((card) => (
               <PopularRecipeRow
                 key={card.recipeId}
                 href={`/recipes/${card.slug}`}
                 title={card.title}
                 imageUrl={card.imageUrl}
-                cuisine={card.cuisine}
                 totalMinutes={card.totalMinutes}
                 servings={card.servings}
               />

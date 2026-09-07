@@ -133,24 +133,11 @@ function RecommendationsContent() {
 
   return (
     <AppShell hideNav showBack backHref="/home" title="لیست غذاها">
-      <div className="space-y-4">
+      <div className="space-y-4 pb-20">
         {loading ? (
           <RecommendationsSkeleton />
         ) : (
           <>
-            <div className="flex justify-end">
-              <Link href="/home">
-                <Button
-                  variant="tertiary"
-                  size="sm"
-                  icon={<Edit2 size={16} color="currentColor" />}
-                  className="!rounded-[4px] bg-atlas-primary/15 hover:bg-atlas-primary/25"
-                >
-                  ویرایش مواد
-                </Button>
-              </Link>
-            </div>
-
             {error ? (
               <StateView
                 tone="danger"
@@ -175,6 +162,19 @@ function RecommendationsContent() {
             </div>
           </>
         )}
+      </div>
+
+      <div className="pointer-events-none fixed bottom-[max(1.5rem,env(safe-area-inset-bottom))] left-4 z-40">
+        <Link href="/home" className="pointer-events-auto">
+          <Button
+            variant="primary"
+            size="lg"
+            icon={<Edit2 size={18} color="#ffffff" variant="Bold" />}
+            className="min-w-40 !rounded-full bg-atlas-primary text-white shadow-[0_12px_32px_rgba(212,2,47,0.5)] transition-transform hover:-translate-y-1 active:translate-y-0"
+          >
+            ویرایش مواد
+          </Button>
+        </Link>
       </div>
     </AppShell>
   );

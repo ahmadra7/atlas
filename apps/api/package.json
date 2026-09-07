@@ -13,6 +13,7 @@
     "db:deploy": "prisma migrate deploy",
     "db:seed": "prisma db seed",
     "db:import-recipes": "node ../../node_modules/tsx/dist/cli.mjs prisma/import-iranian-recipes.ts",
+    "db:import-food": "node ../../node_modules/tsx/dist/cli.mjs prisma/import-food-catalog.ts",
     "db:reset": "prisma migrate reset --force"
   },
   "prisma": {
