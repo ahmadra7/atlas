@@ -29,6 +29,7 @@ export function recommendationCacheKey(filters: RecommendationFilters): string {
     cuisine: filters.cuisine ?? "",
     budgetFriendly: Boolean(filters.budgetFriendly),
     dietaryTags: filters.dietaryTags ?? [],
+    ingredients: filters.ingredients ?? [],
   });
 }
 

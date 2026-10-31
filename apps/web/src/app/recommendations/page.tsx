@@ -49,6 +49,13 @@ function parseFilters(searchParams: URLSearchParams): RecommendationFilters {
   const cuisineParam = searchParams.get("cuisine");
   const tagsParam = searchParams.get("tags");
   const budgetParam = searchParams.get("budgetFriendly");
+  const ingredientsParam = searchParams.get("ingredients");
+  const fromUrl = ingredientsParam
+    ? ingredientsParam.split("|").map((t) => t.trim()).filter(Boolean)
+    : [];
+  const fromCache = (pageCache.inventory ?? [])
+    .map((item) => item.ingredient.name.trim())
+    .filter(Boolean);
 
   return {
     meal: mealParam && meals.includes(mealParam) ? mealParam : "any",
@@ -70,6 +77,7 @@ function parseFilters(searchParams: URLSearchParams): RecommendationFilters {
     dietaryTags: tagsParam
       ? tagsParam.split(",").map((t) => t.trim()).filter(Boolean)
       : undefined,
+    ingredients: fromUrl.length > 0 ? fromUrl : fromCache.length > 0 ? fromCache : undefined,
   };
 }
 

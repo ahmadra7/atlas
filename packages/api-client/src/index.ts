@@ -58,6 +58,7 @@ async function httpRequest<T>(
     method: options.method ?? "GET",
     headers,
     body: options.body === undefined ? undefined : JSON.stringify(options.body),
+    signal: AbortSignal.timeout(12_000),
   });
 
   if (!res.ok) {
@@ -73,9 +74,9 @@ function createHttpClient(baseUrl: string, getAccessToken?: AtlasClientOptions["
 
   return {
     mode: "http" as const,
-    searchIngredients: async (q: string) =>
+    searchIngredients: async (q: string, limit = 40) =>
       httpRequest<Ingredient[]>(baseUrl, "api/ingredients/search", {
-        query: { q },
+        query: { q, limit },
       }),
     getInventory: async () =>
       httpRequest<InventoryItem[]>(baseUrl, "api/inventory", {
@@ -122,6 +123,9 @@ function createHttpClient(baseUrl: string, getAccessToken?: AtlasClientOptions["
           dietMode: filters.dietMode,
           dishType: filters.dishType,
           tags: filters.dietaryTags?.join(","),
+          ingredients: filters.ingredients?.length
+            ? filters.ingredients.join("|")
+            : undefined,
         },
       }),
     searchRecipes: async (q: string, limit = 40) =>

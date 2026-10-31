@@ -148,6 +148,26 @@ export default function RecipeDetailPage() {
                   </li>
                 ))}
               </ul>
+              {recipe.steps.length > 0 ? (
+                <div className="mt-6 space-y-3">
+                  <h2 className="text-[15px] font-bold text-atlas-ink">
+                    مراحل پخت
+                  </h2>
+                  <ol className="space-y-2.5">
+                    {recipe.steps.map((step) => (
+                      <li
+                        key={step.id}
+                        className="flex gap-2.5 text-[13px] leading-6 text-atlas-ink"
+                      >
+                        <span className="mt-0.5 inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-atlas-primary-soft text-[11px] font-bold text-atlas-primary">
+                          {toPersianDigits(step.order)}
+                        </span>
+                        <span>{step.instruction}</span>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              ) : null}
             </div>
           </section>
 

@@ -177,11 +177,70 @@ export class RecommendationsService {
     };
   }
 
+  private async buildOwnedMapFromNames(names: string[]): Promise<{
+    userItemCount: number;
+    pairs: Array<{ invKey: string; ingredientId: string }>;
+  }> {
+    const unique = [
+      ...new Set(names.map((name) => name.trim()).filter(Boolean)),
+    ];
+    if (unique.length === 0) return { userItemCount: 0, pairs: [] };
+
+    const pairs: Array<{ invKey: string; ingredientId: string }> = [];
+
+    for (const name of unique) {
+      const invKey = `name-${normalizePersian(name)}`;
+      const userName = name;
+      const norm = normalizePersian(name);
+      const firstToken = norm.split(" ")[0] ?? norm;
+
+      const candidates = await this.prisma.ingredient.findMany({
+        where: {
+          OR: [
+            { normalizedName: norm },
+            { normalizedName: { startsWith: `${norm} ` } },
+            { name: { contains: name.trim() } },
+            ...(firstToken.length >= 2
+              ? [
+                  { normalizedName: firstToken },
+                  { normalizedName: { startsWith: `${firstToken} ` } },
+                  { normalizedName: { contains: firstToken } },
+                ]
+              : []),
+          ],
+        },
+        select: { id: true, name: true, normalizedName: true },
+        take: 40,
+      });
+
+      const matched = candidates.filter(
+        (c) =>
+          ingredientsLooselyMatch(userName, c.name) ||
+          ingredientsLooselyMatch(userName, c.normalizedName),
+      );
+      if (matched.length === 0) continue;
+      const ids = new Set<string>();
+      for (const c of matched) ids.add(c.id);
+      for (const id of ids) pairs.push({ invKey, ingredientId: id });
+    }
+
+    const covered = new Set(pairs.map((p) => p.invKey));
+    return { userItemCount: covered.size, pairs };
+  }
+
   async recommend(
-    userId: string,
+    userId: string | null,
     filters: RecommendationFilters = {},
   ): Promise<RecommendationResult> {
-    const { userItemCount, pairs } = await this.buildOwnedMap(userId);
+    const names = (filters.ingredients ?? [])
+      .map((name) => name.trim())
+      .filter(Boolean);
+    const { userItemCount, pairs } =
+      names.length > 0
+        ? await this.buildOwnedMapFromNames(names)
+        : userId
+          ? await this.buildOwnedMap(userId)
+          : { userItemCount: 0, pairs: [] };
     if (userItemCount === 0 || pairs.length === 0) {
       return {
         id: `rec-${Date.now()}`,

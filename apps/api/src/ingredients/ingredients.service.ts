@@ -26,8 +26,9 @@ export class IngredientsService {
     const rows = await this.prisma.ingredient.findMany({
       where: {
         OR: [
+          { normalizedName: { startsWith: query } },
           { normalizedName: { contains: query } },
-          { name: { contains: q.trim() } },
+          { name: { contains: q.trim(), mode: "insensitive" } },
           { aliases: { some: { normalizedAlias: { contains: query } } } },
         ],
       },

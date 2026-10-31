@@ -37,7 +37,7 @@ export class CookingService {
         instruction: s.instruction,
         tip: s.tip,
         timerSeconds: s.timerSeconds,
-        imageUrl: s.imageUrl,
+        imageUrl: s.imageUrl ?? row.recipe.imageUrl,
       })),
       startedAt: row.startedAt.toISOString(),
       completedAt: row.completedAt?.toISOString() ?? null,

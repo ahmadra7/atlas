@@ -18,11 +18,20 @@ import {
   type Prisma,
 } from "@prisma/client";
 import { normalizePersian } from "@atlas/shared";
+import {
+  isGenericInstructionText,
+  synthesizeSteps,
+} from "./synthesize-steps";
 
 const prisma = new PrismaClient();
 
 type SourceIngredient = { name?: string; amount?: string | null };
-type SourceStep = { step?: number; text?: string };
+type SourceStep = {
+  step?: number;
+  text?: string;
+  tip?: string | null;
+  timerSeconds?: number | null;
+};
 type SourceRecipe = {
   id: number | string;
   title?: string;
@@ -193,8 +202,28 @@ function mapRecipeRow(r: SourceRecipe) {
     versionId: `ir-${external}-v1`,
     external,
     ingredients: r.ingredients ?? [],
-    instructions: r.instructions ?? [],
+    instructions: resolveInstructions(r),
   };
+}
+
+function resolveInstructions(r: SourceRecipe): SourceStep[] {
+  const source = r.instructions ?? [];
+  const texts = source.map((s) => (s.text ?? "").trim()).filter(Boolean);
+  if (texts.length > 0 && !isGenericInstructionText(texts)) {
+    return source;
+  }
+  return synthesizeSteps({
+    title: (r.title ?? "").trim(),
+    category: r.category,
+    cookingMethod: r.cooking_method,
+    cookMinutes: toInt(r.cooking_time_min, 0),
+    ingredients: r.ingredients ?? [],
+  }).map((s) => ({
+    step: s.order,
+    text: s.instruction,
+    tip: s.tip ?? null,
+    timerSeconds: s.timerSeconds ?? null,
+  }));
 }
 
 async function bulkInsert(source: SourceRecipe[]) {
@@ -300,8 +329,8 @@ async function bulkInsert(source: SourceRecipe[]) {
         recipeVersionId: r.versionId,
         order,
         instruction: text,
-        tip: null,
-        timerSeconds: null,
+        tip: s.tip ?? null,
+        timerSeconds: s.timerSeconds ?? null,
         imageUrl: null,
       });
     });
@@ -435,6 +464,8 @@ async function upsertIncremental(source: SourceRecipe[]) {
           recipeVersionId: versionId,
           order,
           instruction: text,
+          tip: s.tip ?? null,
+          timerSeconds: s.timerSeconds ?? null,
         };
       })
       .filter(Boolean) as Prisma.RecipeStepCreateManyInput[];

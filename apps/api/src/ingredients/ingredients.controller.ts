@@ -7,6 +7,6 @@ export class IngredientsController {
 
   @Get("search")
   search(@Query("q") q = "", @Query("limit") limit?: string) {
-    return this.ingredients.search(q, limit ? Number(limit) : 20);
+    return this.ingredients.search(q, limit ? Number(limit) : 40);
   }
 }

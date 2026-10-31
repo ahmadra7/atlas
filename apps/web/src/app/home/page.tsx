@@ -18,6 +18,7 @@ import type {
   Ingredient,
   InventoryItem,
   MealType,
+  Recipe,
   RecommendationCard,
 } from "@atlas/contracts";
 import {
@@ -44,7 +45,7 @@ import { PopularRecipeRow } from "@/components/recipe/PopularRecipeRow";
 import { RecipeSettingsSheet } from "@/components/recipe/RecipeSettingsSheet";
 import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
-import { HomeSkeleton } from "@/components/ui/Skeleton";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { BottomToast } from "@/components/ui/Toast";
 import { instantPush } from "@/components/navigation/InstantNav";
 import { useIngredientVoiceInput } from "@/hooks/useIngredientVoiceInput";
@@ -60,6 +61,47 @@ function orderInventoryChips(items: InventoryItem[]): InventoryItem[] {
     if (ta !== tb) return ta - tb;
     return a.id.localeCompare(b.id);
   });
+}
+
+function recipeToPopularCard(recipe: Recipe): RecommendationCard {
+  return {
+    recipeId: recipe.id,
+    slug: recipe.slug,
+    title: recipe.title,
+    imageUrl: recipe.imageUrl,
+    totalMinutes: recipe.totalMinutes,
+    servings: recipe.servings,
+    difficulty: recipe.difficulty,
+    meal: recipe.meal,
+    cuisine: recipe.cuisine,
+    matchTier: "discovery",
+    matchScore: 0,
+    missingCount: 0,
+    missingIngredients: [],
+    matchedIngredients: [],
+    tags: recipe.dietaryTags,
+    explanation: "",
+  };
+}
+
+function toLocalInventoryItem(item: {
+  id?: string;
+  name: string;
+}): InventoryItem {
+  const key = normalizePersian(item.name);
+  return {
+    id: `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    ingredientId: item.id ?? `local-${key}`,
+    ingredient: {
+      id: item.id ?? `local-${key}`,
+      name: item.name,
+      normalizedName: key,
+      aliases: [],
+      category: "عمومی",
+      popularity: 0,
+    },
+    createdAt: new Date().toISOString(),
+  };
 }
 
 function IngredientSuggestDropdown({
@@ -248,11 +290,13 @@ function HomeBannerSlider() {
 
 export default function HomePage() {
   const router = useRouter();
-  const { isAuthenticated, requestLogin } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [queryInputEl, setQueryInputEl] = useState<HTMLInputElement | null>(
     null,
   );
-  const [loading, setLoading] = useState(() => pageCache.inventory === null);
+  const [popularLoading, setPopularLoading] = useState(
+    () => pageCache.popular === null,
+  );
   const [popular, setPopular] = useState<RecommendationCard[]>(
     () => pageCache.popular ?? [],
   );
@@ -308,46 +352,48 @@ export default function HomePage() {
     let cancelled = false;
     void (async () => {
       try {
-        if (pageCache.inventory !== null) {
-          setLoading(false);
+        if (isAuthenticated) {
+          const inv = await withApiSession(() => atlasClient.getInventory());
+          if (cancelled) return;
+          pageCache.inventory = orderInventoryChips(inv);
+          setInventory(pageCache.inventory);
+        } else if (pageCache.inventory === null) {
+          pageCache.inventory = [];
         }
+      } catch {
+        if (!cancelled && pageCache.inventory === null) {
+          pageCache.inventory = [];
+        }
+      }
 
-        const inv = await withApiSession(() => atlasClient.getInventory());
+      if (pageCache.popular && pageCache.popular.length > 0) {
+        if (!cancelled) setPopularLoading(false);
+        return;
+      }
+
+      try {
+        const recipes = await atlasClient.searchRecipes("", 4);
         if (cancelled) return;
-        pageCache.inventory = orderInventoryChips(inv);
-        setInventory(pageCache.inventory);
-        setLoading(false);
-
-        if (pageCache.popular !== null) return;
-
-        const rec = await withApiSession(() =>
-          atlasClient.getRecommendations({
-            meal: "any",
-            maxMinutes: 60,
-          }),
-        );
-        if (cancelled) return;
-        const cards = [...rec.exact, ...rec.near, ...rec.discovery].slice(
-          0,
-          4,
-        );
+        const cards = recipes.slice(0, 4).map(recipeToPopularCard);
         pageCache.popular = cards;
         setPopular(cards);
       } catch {
-        if (!cancelled) setLoading(false);
+        /* popular stays empty until the API is up */
+      } finally {
+        if (!cancelled) setPopularLoading(false);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     let cancelled = false;
     const t = setTimeout(async () => {
       setSearching(true);
       try {
-        const results = await atlasClient.searchIngredients(query);
+        const results = await atlasClient.searchIngredients(query, 40);
         if (!cancelled) setSuggestions(results);
       } finally {
         if (!cancelled) setSearching(false);
@@ -406,35 +452,20 @@ export default function HomePage() {
     setInventory(pageCache.inventory);
   }
 
-  const addSpokenChips = useCallback(async (names: string[]) => {
-    if (names.length === 0) return;
-
-    setAddError(null);
+  function appendLocalIngredient(item: { id?: string; name: string }) {
     setInventory((prev) => {
-      const seen = new Set(
-        prev.map((item) => normalizePersian(item.ingredient.name)),
-      );
-      const extra = names
-        .filter((name) => !seen.has(normalizePersian(name)))
-        .map((name) => ({
-          id: `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-          ingredientId: `local-${normalizePersian(name)}`,
-          ingredient: {
-            id: `local-${normalizePersian(name)}`,
-            name,
-            normalizedName: normalizePersian(name),
-            aliases: [],
-            category: "عمومی",
-            popularity: 0,
-          },
-          createdAt: new Date().toISOString(),
-        }));
-      if (extra.length === 0) return prev;
-      const next = [...prev, ...extra];
+      const key = normalizePersian(item.name);
+      if (prev.some((row) => normalizePersian(row.ingredient.name) === key)) {
+        return prev;
+      }
+      const next = [...prev, toLocalInventoryItem(item)];
       pageCache.inventory = next;
       return next;
     });
+  }
 
+  async function persistAddedNames(names: string[]) {
+    if (!isAuthenticated || names.length === 0) return;
     setAdding(true);
     try {
       await withApiSession(async () => {
@@ -442,42 +473,26 @@ export default function HomePage() {
           await atlasClient.addIngredientByName(name);
         }
       });
-      const inv = await withApiSession(() => atlasClient.getInventory());
-      if (inv.length > 0) {
-        setInventory((prev) => {
-          const serverByKey = new Map(
-            inv.map((item) => [normalizePersian(item.ingredient.name), item]),
-          );
-          const used = new Set<string>();
-          const merged: InventoryItem[] = [];
-          for (const item of prev) {
-            const key = normalizePersian(item.ingredient.name);
-            const serverItem = serverByKey.get(key);
-            if (serverItem) {
-              merged.push(serverItem);
-              used.add(key);
-            } else if (item.id.startsWith("local-")) {
-              merged.push(item);
-            }
-          }
-          for (const item of orderInventoryChips(inv)) {
-            const key = normalizePersian(item.ingredient.name);
-            if (!used.has(key)) {
-              merged.push(item);
-              used.add(key);
-            }
-          }
-          pageCache.inventory = merged;
-          return merged;
-        });
-      }
-      setQuery("");
+      await reloadInventory();
     } catch {
-      /* chips already sit under the input */
+      /* local chips already show under the input */
     } finally {
       setAdding(false);
     }
-  }, []);
+  }
+
+  const addSpokenChips = useCallback(
+    async (names: string[]) => {
+      if (names.length === 0) return;
+      setAddError(null);
+      setQuery("");
+      for (const name of names) {
+        appendLocalIngredient({ name });
+      }
+      await persistAddedNames(names);
+    },
+    [isAuthenticated],
+  );
 
   const voice = useIngredientVoiceInput({
     contextualStrings: [
@@ -504,41 +519,24 @@ export default function HomePage() {
       return;
     }
     if (!canAdd) return;
-    setAdding(true);
+    const match = suggestions.find(
+      (item) =>
+        normalizePersian(item.name) === normalizePersian(trimmed) ||
+        ingredientsLooselyMatch(trimmed, item.name),
+    );
+    const name = match?.name ?? trimmed;
     setAddError(null);
-    try {
-      const match = suggestions.find(
-        (item) =>
-          normalizePersian(item.name) === normalizePersian(trimmed) ||
-          ingredientsLooselyMatch(trimmed, item.name),
-      );
-      if (match) {
-        await withApiSession(() => atlasClient.addInventoryItem(match.id));
-      } else {
-        await withApiSession(() => atlasClient.addIngredientByName(trimmed));
-      }
-      await reloadInventory();
-      setQuery("");
-    } catch {
-      setAddError("مواد اولیه اشتباه است");
-    } finally {
-      setAdding(false);
-    }
+    setQuery("");
+    appendLocalIngredient(match ?? { name });
+    await persistAddedNames([name]);
   }
 
   async function addSuggestion(item: Ingredient) {
     if (selectedIds.has(item.id)) return;
-    setAdding(true);
     setAddError(null);
-    try {
-      await withApiSession(() => atlasClient.addInventoryItem(item.id));
-      await reloadInventory();
-      setQuery("");
-    } catch {
-      setAddError("افزودن از لیست انجام نشد. اتصال به سرور را چک کنید.");
-    } finally {
-      setAdding(false);
-    }
+    setQuery("");
+    appendLocalIngredient(item);
+    await persistAddedNames([item.name]);
   }
 
   function openMoreSettings() {
@@ -608,19 +606,15 @@ export default function HomePage() {
     if (cuisine !== "any") params.set("cuisine", cuisine);
     if (budgetFriendly) params.set("budgetFriendly", "1");
     if (preferences.length > 0) params.set("tags", preferences.join(","));
-    const href = `/recommendations?${params.toString()}`;
-    if (!isAuthenticated) {
-      requestLogin(href);
-      return;
-    }
-    instantPush(router, href);
+    const names = inventory
+      .map((item) => item.ingredient.name.trim())
+      .filter(Boolean);
+    if (names.length > 0) params.set("ingredients", names.join("|"));
+    instantPush(router, `/recommendations?${params.toString()}`);
   }
 
   return (
     <AppShell title={homeAppTitle} splitTitle>
-      {loading ? (
-        <HomeSkeleton />
-      ) : (
       <div className="overflow-visible pb-8">
         <section className="relative z-10 mb-4 overflow-visible">
           <div className="relative flex flex-col gap-5 overflow-visible rounded-atlas-xl bg-atlas-surface px-5 pb-5 pt-6 shadow-[0_12px_32px_rgba(20,40,80,0.09),0_3px_10px_rgba(20,40,80,0.05)] dark:shadow-[0_14px_32px_rgba(8,16,40,0.32)]">
@@ -913,22 +907,37 @@ export default function HomePage() {
             </Link>
           </div>
           <div className="space-y-3">
-            {popular.map((card) => (
-              <PopularRecipeRow
-                key={card.recipeId}
-                href={`/recipes/${card.slug}`}
-                title={card.title}
-                imageUrl={card.imageUrl}
-                cuisine={card.cuisine}
-                totalMinutes={card.totalMinutes}
-                servings={card.servings}
-              />
-            ))}
+            {popularLoading && popular.length === 0
+              ? Array.from({ length: 2 }, (_, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center gap-3 rounded-atlas-lg bg-atlas-surface p-2 shadow-[0_12px_32px_rgba(20,40,80,0.09),0_3px_10px_rgba(20,40,80,0.05)] dark:shadow-[0_14px_32px_rgba(8,16,40,0.32)]"
+                  >
+                    <Skeleton className="h-20 w-20 shrink-0 rounded-atlas" />
+                    <div className="flex min-w-0 flex-1 flex-col gap-2 py-0.5">
+                      <Skeleton className="h-4 w-[80%]" />
+                      <div className="flex gap-1.5">
+                        <Skeleton className="h-5 w-16 rounded-md" />
+                        <Skeleton className="h-5 w-12 rounded-md" />
+                      </div>
+                    </div>
+                  </div>
+                ))
+              : popular.map((card) => (
+                  <PopularRecipeRow
+                    key={card.recipeId}
+                    href={`/recipes/${card.slug}`}
+                    title={card.title}
+                    imageUrl={card.imageUrl}
+                    cuisine={card.cuisine}
+                    totalMinutes={card.totalMinutes}
+                    servings={card.servings}
+                  />
+                ))}
           </div>
         </section>
         </div>
       </div>
-      )}
 
       <RecipeSettingsSheet
         open={moreOpen}

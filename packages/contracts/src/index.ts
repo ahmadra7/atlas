@@ -100,6 +100,8 @@ export interface RecommendationFilters {
   cuisine?: string;
   dietMode?: DietMode;
   dishType?: DishType;
+  /** Guest/local pantry names used for matching when there is no server inventory. */
+  ingredients?: string[];
 }
 
 export type MatchTier = "exact" | "near" | "discovery";
