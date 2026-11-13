@@ -9,6 +9,7 @@ import { BottomSheet } from "@/components/ui/BottomSheet";
 import { RecipeImage } from "./RecipeImage";
 import { isAtlasMobileWebView } from "@/lib/navigate";
 import { AuthLink } from "@/components/auth/AuthLink";
+import { recipePath } from "@/lib/recipe-path";
 import { ArrowDown2, ArrowLeft2, ArrowUp2, ShoppingCart, Timer1 } from "iconsax-react";
 
 function shopSearchUrl(
@@ -41,7 +42,7 @@ export function RecipeCard({ card }: { card: RecommendationCard }) {
   return (
     <article className="atlas-surface overflow-hidden transition">
       <AuthLink
-        href={`/recipes/${card.slug}`}
+        href={recipePath(card.slug)}
         className="block active:scale-[0.99]"
       >
         <RecipeImage

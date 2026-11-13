@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none">
+  <defs>
+    <linearGradient id="rim" x1="20" y1="12" x2="108" y2="116" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFE08A"/>
+      <stop offset="0.45" stop-color="#F5B942"/>
+      <stop offset="1" stop-color="#C47A12"/>
+    </linearGradient>
+    <linearGradient id="face" x1="34" y1="28" x2="96" y2="102" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFCF5"/>
+      <stop offset="1" stop-color="#F3E7D2"/>
+    </linearGradient>
+    <radialGradient id="gloss" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(48 40) rotate(55) scale(42 36)">
+      <stop stop-color="#fff" stop-opacity="0.75"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="shadow" x="8" y="14" width="112" height="112" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="8" stdDeviation="6" flood-color="#000" flood-opacity="0.22"/>
+    </filter>
+  </defs>
+  <ellipse cx="64" cy="112" rx="34" ry="6" fill="#000" opacity="0.12"/>
+  <g filter="url(#shadow)">
+    <circle cx="64" cy="66" r="44" fill="url(#rim)"/>
+    <circle cx="64" cy="66" r="36" fill="url(#face)"/>
+    <circle cx="64" cy="66" r="36" fill="url(#gloss)"/>
+    <g stroke="#C47A12" stroke-width="2.5" stroke-linecap="round">
+      <path d="M64 36v6"/>
+      <path d="M64 90v6"/>
+      <path d="M34 66h6"/>
+      <path d="M88 66h6"/>
+    </g>
+    <path d="M64 66l0-18" stroke="#1F1F1F" stroke-width="3.5" stroke-linecap="round"/>
+    <path d="M64 66l14 8" stroke="#FF3737" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="64" cy="66" r="4" fill="#1F1F1F"/>
+    <circle cx="64" cy="66" r="2" fill="#FF3737"/>
+  </g>
+</svg>

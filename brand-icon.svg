@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none">
+  <defs>
+    <linearGradient id="hatBody" x1="20" y1="20" x2="110" y2="110">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="45%" stop-color="#F3F4F6"/>
+      <stop offset="100%" stop-color="#D4D4D8"/>
+    </linearGradient>
+    <linearGradient id="hatShade" x1="64" y1="40" x2="64" y2="100">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#A1A1AA" stop-opacity="0.55"/>
+    </linearGradient>
+    <linearGradient id="band" x1="30" y1="88" x2="98" y2="108">
+      <stop offset="0%" stop-color="#FF6B6B"/>
+      <stop offset="50%" stop-color="#FF3737"/>
+      <stop offset="100%" stop-color="#C81E1E"/>
+    </linearGradient>
+    <radialGradient id="puff" cx="0.35" cy="0.3" r="0.75">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="70%" stop-color="#E4E4E7"/>
+      <stop offset="100%" stop-color="#A1A1AA"/>
+    </radialGradient>
+  </defs>
+  <rect width="128" height="128" rx="32" fill="#111111"/>
+  <ellipse cx="64" cy="98" rx="38" ry="10" fill="#3F3F46" opacity="0.35"/>
+  <path d="M28 92c4 10 18 16 36 16s32-6 36-16c-6 5-20 8-36 8s-30-3-36-8Z" fill="url(#hatShade)"/>
+  <path d="M34 84c3 8 15 13 30 13s27-5 30-13c-5 4-16 7-30 7s-25-3-30-7Z" fill="url(#band)"/>
+  <path d="M36 82c-2-22 10-40 28-44 18-4 34 8 36 28 1 10-2 20-8 26-10 4-36 4-48 0-4-5-7-14-8-10Z" fill="url(#puff)"/>
+  <ellipse cx="52" cy="52" rx="14" ry="10" fill="#FFFFFF" opacity="0.55"/>
+  <ellipse cx="78" cy="58" rx="10" ry="8" fill="#D4D4D8" opacity="0.45"/>
+  <circle cx="64" cy="40" r="7" fill="url(#hatBody)"/>
+  <circle cx="62" cy="38" r="3" fill="#FFFFFF" opacity="0.8"/>
+</svg>

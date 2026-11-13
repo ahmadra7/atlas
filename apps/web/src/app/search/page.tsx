@@ -11,6 +11,7 @@ import { SoftTag } from "@/components/ui/SoftTag";
 import { RecipeImage } from "@/components/recipe/RecipeImage";
 import { AuthLink } from "@/components/auth/AuthLink";
 import { atlasClient } from "@/lib/client";
+import { recipePath } from "@/lib/recipe-path";
 
 const popularTags = [
   "قرمه",
@@ -154,7 +155,7 @@ export default function SearchPage() {
               results.map((recipe) => (
                 <AuthLink
                   key={recipe.id}
-                  href={`/recipes/${recipe.slug}`}
+                  href={recipePath(recipe.slug)}
                   className="block w-full text-right"
                 >
                   <div

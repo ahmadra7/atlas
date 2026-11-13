@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600" fill="none">
+  <rect width="800" height="600" fill="#EDE8E0"/>
+  <g transform="translate(400 300) scale(0.72) translate(-400 -300)">
+    <circle cx="400" cy="300" r="118" fill="#E2D9CC"/>
+    <!-- plate -->
+    <circle cx="400" cy="308" r="78" fill="#F7F3EC" stroke="#C4B8A8" stroke-width="6"/>
+    <circle cx="400" cy="308" r="52" fill="#EDE8E0" stroke="#D4C9BA" stroke-width="3"/>
+    <!-- fork -->
+    <g stroke="#A89886" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M292 248v36"/>
+      <path d="M278 248v22c0 12 14 18 14 18"/>
+      <path d="M306 248v22c0 12-14 18-14 18"/>
+      <path d="M292 284v88"/>
+    </g>
+    <!-- knife -->
+    <g stroke="#A89886" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M508 248c18 28 18 56 0 84"/>
+      <path d="M508 332v40"/>
+    </g>
+    <!-- steam -->
+    <g stroke="#C4B8A8" stroke-width="5" stroke-linecap="round" fill="none" opacity="0.85">
+      <path d="M372 214c0-14 12-18 12-32"/>
+      <path d="M400 206c0-14 12-18 12-32"/>
+      <path d="M428 214c0-14 12-18 12-32"/>
+    </g>
+  </g>
+</svg>

@@ -74,7 +74,7 @@ function pendingScreen(href: string) {
       </AppShell>
     );
   }
-  if (path.startsWith("/recipes/")) {
+  if (path.startsWith("/recipes")) {
     return (
       <AppShell hideNav showBack title="دستور" lockScroll routePath={path}>
         <RecipeSkeleton />

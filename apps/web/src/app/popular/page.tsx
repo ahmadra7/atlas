@@ -12,6 +12,7 @@ import {
 } from "@/components/recipe/RecipeSettingsSheet";
 import { SearchResultsSkeleton } from "@/components/ui/Skeleton";
 import { atlasClient } from "@/lib/client";
+import { recipePath } from "@/lib/recipe-path";
 
 const DISH_LABELS: Record<string, string[]> = {
   main: ["غذای اصلی"],
@@ -185,7 +186,7 @@ export default function PopularRecipesPage() {
               {visible.map((recipe) => (
                 <PopularRecipeRow
                   key={recipe.id}
-                  href={`/recipes/${recipe.slug}`}
+                  href={recipePath(recipe.slug)}
                   title={recipe.title}
                   imageUrl={recipe.imageUrl}
                   category={recipe.category}

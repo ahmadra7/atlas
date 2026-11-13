@@ -8,6 +8,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { HistorySkeleton } from "@/components/ui/Skeleton";
 import { StateView } from "@/components/ui/StateView";
 import { atlasClient } from "@/lib/client";
+import { recipePath } from "@/lib/recipe-path";
 
 const statusFa: Record<HistoryItem["status"], string> = {
   active: "در حال پخت",
@@ -48,7 +49,7 @@ export default function HistoryPage() {
         {items.map((item) => (
           <Link
             key={item.sessionId}
-            href={`/recipes/${item.slug}`}
+            href={recipePath(item.slug)}
             className="atlas-surface block p-4"
           >
             <h2 className="text-h3 text-atlas-ink">{item.title}</h2>

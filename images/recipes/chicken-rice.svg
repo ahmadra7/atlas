@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500" viewBox="0 0 800 500" fill="none">
+  <rect width="800" height="500" fill="#E8F0EC"/>
+  <ellipse cx="400" cy="320" rx="240" ry="80" fill="#D7E0DB"/>
+  <ellipse cx="340" cy="250" rx="120" ry="70" fill="#F4E8C1"/>
+  <ellipse cx="480" cy="240" rx="90" ry="55" fill="#C9782A"/>
+  <ellipse cx="500" cy="230" rx="40" ry="24" fill="#E7B26B"/>
+  <text x="400" y="60" text-anchor="middle" fill="#2F5D50" font-size="28" font-family="Tahoma">E1: H (1F,</text>
+</svg>

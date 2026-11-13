@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" fill="none">
+  <defs>
+    <linearGradient id="aiOrb" x1="14" y1="10" x2="82" y2="86" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FF6B4A"/>
+      <stop offset="0.5" stop-color="#FF3737"/>
+      <stop offset="1" stop-color="#E11D2E"/>
+    </linearGradient>
+    <radialGradient id="aiShine" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(34 28) rotate(45) scale(30 26)">
+      <stop stop-color="#fff" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="aiGlow" x="0" y="0" width="96" height="96" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#FF3737" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <g filter="url(#aiGlow)">
+    <circle cx="48" cy="48" r="40" fill="url(#aiOrb)"/>
+    <circle cx="48" cy="48" r="40" fill="url(#aiShine)"/>
+  </g>
+  <path d="M48 24l3.2 12.4L63 40l-11.8 3.6L48 56l-3.2-12.4L33 40l11.8-3.6L48 24z" fill="#fff"/>
+  <path d="M66 28l1.4 5.2L72 35l-4.6 1.4L66 41.5l-1.4-5.1L60 35l4.6-1.4L66 28z" fill="#fff" opacity="0.9"/>
+  <path d="M30 58l1.1 4L35 63.2l-3.9 1.2L30 68.3l-1.1-3.9L25 63.2l3.9-1.2L30 58z" fill="#fff" opacity="0.85"/>
+  <rect x="36" y="52" width="24" height="16" rx="4" fill="#fff" opacity="0.22"/>
+  <rect x="40" y="56" width="16" height="8" rx="2" stroke="#fff" stroke-width="1.8" fill="none"/>
+  <path d="M44 56v-3M52 56v-3M44 64v3M52 64v3" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>
+</svg>

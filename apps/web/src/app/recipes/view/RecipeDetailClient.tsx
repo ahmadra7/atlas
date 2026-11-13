@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { Recipe } from "@atlas/contracts";
 import { formatMinutesFa, isPantryStaple, toPersianDigits } from "@atlas/shared";
@@ -18,14 +18,14 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { atlasClient } from "@/lib/client";
 import { pageCache } from "@/lib/page-cache";
 import { appNavigateSoftOrHard } from "@/lib/navigate";
+import { recipePath } from "@/lib/recipe-path";
 import { Profile2User, Timer1 } from "iconsax-react";
 
 export default function RecipeDetailClient() {
-  const params = useParams<{ slug: string }>();
+  const searchParams = useSearchParams();
   const router = useRouter();
   const { isAuthenticated, requestLogin } = useAuth();
-  const slugParam = params?.slug;
-  const slug = Array.isArray(slugParam) ? slugParam[0] : slugParam;
+  const slug = searchParams.get("slug")?.trim() ?? "";
   const cached = slug ? (pageCache.recipes[slug] ?? null) : null;
   const [recipe, setRecipe] = useState<Recipe | null>(() => cached);
   const [loading, setLoading] = useState(() => cached === null);
@@ -34,7 +34,11 @@ export default function RecipeDetailClient() {
   const [toggling, setToggling] = useState(false);
 
   useEffect(() => {
-    if (!slug) return;
+    if (!slug) {
+      setError("دستور پیدا نشد.");
+      setLoading(false);
+      return;
+    }
     let cancelled = false;
     async function load() {
       const hit = pageCache.recipes[slug];
@@ -99,7 +103,7 @@ export default function RecipeDetailClient() {
                 busy={toggling}
                 onToggle={async () => {
                   if (!isAuthenticated) {
-                    requestLogin(`/recipes/${recipe.slug}`);
+                    requestLogin(recipePath(recipe.slug));
                     return;
                   }
                   setToggling(true);
@@ -166,7 +170,7 @@ export default function RecipeDetailClient() {
               icon={<PotIcon size={20} color="currentColor" />}
               onClick={() => {
                 if (!isAuthenticated) {
-                  requestLogin(`/recipes/${recipe.slug}`);
+                  requestLogin(recipePath(recipe.slug));
                   return;
                 }
                 const href = `/cook/start?recipeId=${encodeURIComponent(recipe.id)}`;

@@ -54,6 +54,7 @@ import { atlasClient, withApiSession } from "@/lib/client";
 import { partitionSpokenNames } from "@/lib/spokenIngredients";
 import { pageCache } from "@/lib/page-cache";
 import { rememberLoadedImage } from "@/lib/image-cache";
+import { recipePath } from "@/lib/recipe-path";
 
 function orderInventoryChips(items: InventoryItem[]): InventoryItem[] {
   return [...items].sort((a, b) => {
@@ -895,7 +896,7 @@ export default function HomePage() {
             {popular.map((card) => (
               <PopularRecipeRow
                 key={card.recipeId}
-                href={`/recipes/${card.slug}`}
+                href={recipePath(card.slug)}
                 title={card.title}
                 imageUrl={card.imageUrl}
                 totalMinutes={card.totalMinutes}

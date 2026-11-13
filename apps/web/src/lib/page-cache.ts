@@ -39,8 +39,9 @@ export function hasWarmPageCache(path: string): boolean {
   if (path.startsWith("/recommendations")) {
     return pageCache.recommendations !== null;
   }
-  if (path.startsWith("/recipes/")) {
-    const slug = path.split("/")[2] ?? "";
+  if (path.startsWith("/recipes")) {
+    const slug =
+      new URLSearchParams(path.split("?")[1] ?? "").get("slug") ?? "";
     return Boolean(slug && pageCache.recipes[slug]);
   }
   return false;

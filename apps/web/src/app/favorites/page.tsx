@@ -13,6 +13,7 @@ import { StateView } from "@/components/ui/StateView";
 import { instantPush } from "@/components/navigation/InstantNav";
 import { atlasClient } from "@/lib/client";
 import { pageCache } from "@/lib/page-cache";
+import { recipePath } from "@/lib/recipe-path";
 
 export default function FavoritesPage() {
   const router = useRouter();
@@ -66,7 +67,7 @@ export default function FavoritesPage() {
                 {difficultyLabelFa[item.difficulty]}
               </p>
               <div className="mt-3 flex gap-2">
-                <Link href={`/recipes/${item.slug}`} prefetch>
+                <Link href={recipePath(item.slug)} prefetch>
                   <Button size="sm">مشاهده</Button>
                 </Link>
                 <Button

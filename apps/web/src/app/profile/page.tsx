@@ -28,6 +28,7 @@ import { useTheme } from "@/components/theme/ThemeProvider";
 import { IosSwitch } from "@/components/ui/IosSwitch";
 import { ProfileSkeleton } from "@/components/ui/Skeleton";
 import { atlasClient } from "@/lib/client";
+import { recipePath } from "@/lib/recipe-path";
 import { pageCache } from "@/lib/page-cache";
 import { formatIranMobile } from "@/lib/phone";
 
@@ -344,7 +345,7 @@ export default function ProfilePage() {
                   {history.map((item, idx) => (
                     <Link
                       key={item.sessionId}
-                      href={`/recipes/${item.slug}`}
+                      href={recipePath(item.slug)}
                       className={`flex items-center justify-between gap-3 px-4 py-3.5 transition hover:bg-atlas-surface-muted/70 ${
                         idx < history.length - 1
                           ? "border-b border-atlas-border dark:border-white/10"
