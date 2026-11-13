@@ -1,8 +1,8 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import type { CookingSession } from "@atlas/contracts";
 import { formatDurationClock, toPersianDigits } from "@atlas/shared";
 import {
@@ -36,8 +36,9 @@ const sosIssues = [
 
 type Panel = "none" | "ask" | "abandon";
 
-export default function CookingPage() {
-  const params = useParams<{ sessionId: string }>();
+function CookingPageContent() {
+  const searchParams = useSearchParams();
+  const sessionId = searchParams.get("id")?.trim() ?? "";
   const router = useRouter();
   const [session, setSession] = useState<CookingSession | null>(null);
   const [loading, setLoading] = useState(true);
@@ -56,8 +57,13 @@ export default function CookingPage() {
   useEffect(() => {
     let cancelled = false;
     async function load() {
+      if (!sessionId) {
+        setError("نشست پخت پیدا نشد.");
+        setLoading(false);
+        return;
+      }
       try {
-        const data = await atlasClient.getCookingSession(params.sessionId);
+        const data = await atlasClient.getCookingSession(sessionId);
         if (!cancelled) {
           setSession(data);
           if (!data) setError("نشست پخت پیدا نشد.");
@@ -72,7 +78,7 @@ export default function CookingPage() {
     return () => {
       cancelled = true;
     };
-  }, [params.sessionId]);
+  }, [sessionId]);
 
   const step = useMemo(() => {
     if (!session) return null;
@@ -603,5 +609,19 @@ function Modal({
         {children}
       </div>
     </div>
+  );
+}
+
+export default function CookingPage() {
+  return (
+    <Suspense
+      fallback={
+        <AppShell hideNav showBack backHref="/home" title="پخت">
+          <CookSkeleton />
+        </AppShell>
+      }
+    >
+      <CookingPageContent />
+    </Suspense>
   );
 }

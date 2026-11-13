@@ -1,7 +1,13 @@
 [build]
   command = "npm run build -w @atlas/web"
-  publish = "apps/web/.next"
+  publish = "apps/web/out"
 
 [build.environment]
   NODE_VERSION = "20"
   NODE_OPTIONS = "--max-old-space-size=4096"
+  NETLIFY_NEXT_PLUGIN_SKIP = "true"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Cross-Origin-Opener-Policy = "same-origin-allow-popups"

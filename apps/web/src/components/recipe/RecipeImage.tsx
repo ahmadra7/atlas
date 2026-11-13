@@ -31,7 +31,7 @@ export function optimizeImageSrc(
   try {
     const url = new URL(trimmed);
     if (url.protocol !== "https:") return PLACEHOLDER;
-    return `/api/img?u=${encodeURIComponent(trimmed)}`;
+    return trimmed;
   } catch {
     return PLACEHOLDER;
   }

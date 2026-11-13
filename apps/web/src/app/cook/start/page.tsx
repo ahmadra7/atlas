@@ -24,7 +24,10 @@ function StartCookContent() {
       .startCookingSession(recipeId)
       .then((session) => {
         if (!cancelled) {
-          instantReplace(router, `/cook/${session.id}`);
+          instantReplace(
+            router,
+            `/cook/session?id=${encodeURIComponent(session.id)}`,
+          );
         }
       })
       .catch(() => {

@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  output: "export",
   transpilePackages: [
     "@atlas/api-client",
     "@atlas/contracts",
@@ -16,29 +17,8 @@ const nextConfig: NextConfig = {
       static: 300,
     },
   },
-  async rewrites() {
-    if (process.env.NODE_ENV === "production") return [];
-    return [
-      {
-        source: "/api/:path*",
-        destination: "http://127.0.0.1:4000/api/:path*",
-      },
-    ];
-  },
-  async headers() {
-    return [
-      {
-        source: "/:path*",
-        headers: [
-          {
-            key: "Cross-Origin-Opener-Policy",
-            value: "same-origin-allow-popups",
-          },
-        ],
-      },
-    ];
-  },
   images: {
+    unoptimized: true,
     remotePatterns: [
       {
         protocol: "https",
