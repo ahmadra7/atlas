@@ -216,7 +216,7 @@ export function InstantNav({ children }: { children: ReactNode }) {
     <>
       {children}
       {pending && overlayPath && !skipOverlay ? (
-        <div className="pointer-events-none fixed inset-y-0 left-1/2 z-[80] w-full max-w-md -translate-x-1/2 bg-atlas-background">
+        <div className="pointer-events-none fixed inset-y-0 left-1/2 z-[80] h-dvh w-full max-w-md -translate-x-1/2 bg-atlas-background">
           <div
             className={`overflow-y-auto ${
               overlayCoversNav ? "h-full" : "h-[calc(100%-6.75rem)]"

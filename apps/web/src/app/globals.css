@@ -9,6 +9,8 @@
   html {
     direction: rtl;
     font-family: "Dana", sans-serif;
+    height: 100%;
+    -webkit-text-size-adjust: 100%;
   }
 
   html,
@@ -26,7 +28,10 @@
     font-family: "Dana", sans-serif;
     font-size: var(--atlas-body);
     font-weight: 400;
+    min-height: 100dvh;
     min-height: 100vh;
+    overscroll-behavior-y: none;
+    touch-action: manipulation;
     transition: background-color 0.3s ease, color 0.3s ease;
   }
 
@@ -180,7 +185,9 @@
 
 @layer utilities {
   .atlas-phone {
-    @apply mx-auto min-h-screen w-full max-w-md bg-atlas-background;
+    @apply mx-auto w-full max-w-md bg-atlas-background;
+    min-height: 100dvh;
+    min-height: 100vh;
   }
 
   .atlas-surface {

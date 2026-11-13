@@ -106,11 +106,11 @@ export function AppShell({
       className={`atlas-phone relative flex flex-col ${
         lockScroll
           ? "h-svh max-h-svh !min-h-0 overflow-hidden"
-          : "min-h-screen"
+          : "min-h-dvh"
       }`}
     >
       {showHeader ? (
-        <header className="sticky top-0 z-30 shrink-0 overflow-visible border-b border-atlas-border/70 bg-atlas-surface/80 px-4 py-3 backdrop-blur-xl dark:border-white/15">
+        <header className="sticky top-0 z-30 shrink-0 overflow-visible border-b border-atlas-border/70 bg-atlas-surface/80 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-xl dark:border-white/15">
           <div className="grid min-h-11 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1">
             <div className="z-10 flex min-w-0 items-center gap-1 ps-2">
               {showIdentity && !isAuthenticated ? <LoginEntryButton /> : null}

@@ -22,10 +22,14 @@
 - **CookingSession** — پخت مرحله‌ای و تاریخچه
 - **AnalyticsEvent** (اختیاری بعدی)
 
+## محصول کلاینت
+محصول اصلی **وب React (Next.js)** است: همان UI و قابلیت‌ها از URL در موبایل و دسکتاپ باز می‌شود (PWA / Add to Home Screen). شل اندروید/Expo دیگر مسیر انتشار نیست.
+
+نسخه قبلی WebView/APK روی برنچ `backup/native-apk-webview` نگه داشته شده است.
+
 ## مرزها
 ```
-apps/web  ──HTTP──►  apps/api (Nest)  ──Prisma──►  PostgreSQL
-apps/mobile (WebView همان وب)
+apps/web (React / PWA)  ──HTTP──►  apps/api (Nest)  ──Prisma──►  PostgreSQL
 packages/contracts   قراردادهای مشترک
 packages/api-client  کلاینت (mode: http | mock)
 ```

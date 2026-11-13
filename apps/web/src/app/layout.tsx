@@ -1,15 +1,25 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { ApiSessionBootstrap } from "@/components/auth/ApiSessionBootstrap";
 import { AuthProvider } from "@/components/auth/AuthProvider";
 import { InstantNav } from "@/components/navigation/InstantNav";
 import { MobileHardNav } from "@/components/navigation/MobileHardNav";
+import { RegisterServiceWorker } from "@/components/pwa/RegisterServiceWorker";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 
 export const metadata: Metadata = {
   title: "سرآشپز هوشمند",
   description: "هوشمندانه بپزید، با آنچه دارید.",
+  applicationName: "چی بپزم",
   manifest: "/site.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "چی بپزم",
+  },
+  formatDetection: {
+    telephone: false,
+  },
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "32x32" },
@@ -18,6 +28,16 @@ export const metadata: Metadata = {
     ],
     apple: "/apple-touch-icon.png",
   },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#D4022F" },
+    { media: "(prefers-color-scheme: dark)", color: "#1A1214" },
+  ],
 };
 
 const themeInitScript = `
@@ -67,10 +87,11 @@ export default function RootLayout({
           crossOrigin="anonymous"
         />
       </head>
-      <body className="bg-atlas-background font-sans text-atlas-ink transition-colors duration-300">
+      <body className="bg-atlas-background font-sans text-atlas-ink antialiased transition-colors duration-300">
         <ThemeProvider>
           <AuthProvider>
             <ApiSessionBootstrap />
+            <RegisterServiceWorker />
             <MobileHardNav />
             <InstantNav>{children}</InstantNav>
           </AuthProvider>
