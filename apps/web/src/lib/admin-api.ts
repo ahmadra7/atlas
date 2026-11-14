@@ -13,7 +13,12 @@ export function getAdminSecret(): string {
 
 export function setAdminSecret(secret: string) {
   if (typeof window === "undefined") return;
-  localStorage.setItem(SECRET_KEY, secret);
+  if (!secret) localStorage.removeItem(SECRET_KEY);
+  else localStorage.setItem(SECRET_KEY, secret);
+}
+
+export function clearAdminSecret() {
+  setAdminSecret("");
 }
 
 function adminBaseUrl(): string {
@@ -66,7 +71,7 @@ export function listAdminRecipes(params: {
   q?: string;
   page?: number;
   limit?: number;
-  status?: "all" | "published" | "draft";
+  status?: "all" | "published" | "draft" | "deleted";
 }) {
   const query = new URLSearchParams();
   if (params.q) query.set("q", params.q);
@@ -96,9 +101,16 @@ export function updateAdminRecipe(id: string, body: unknown) {
 }
 
 export function deleteAdminRecipe(id: string) {
-  return adminRequest<{ ok: true }>(`/recipes/${encodeURIComponent(id)}`, {
+  return adminRequest<AdminRecipeDetail>(`/recipes/${encodeURIComponent(id)}`, {
     method: "DELETE",
   });
+}
+
+export function restoreAdminRecipe(id: string) {
+  return adminRequest<AdminRecipeDetail>(
+    `/recipes/${encodeURIComponent(id)}/restore`,
+    { method: "POST" },
+  );
 }
 
 export function searchAdminIngredients(q: string) {
@@ -106,4 +118,50 @@ export function searchAdminIngredients(q: string) {
   return adminRequest<Array<Pick<Ingredient, "id" | "name" | "category">>>(
     `/ingredients?${query.toString()}`,
   );
+}
+
+export function getAdminTaxonomy() {
+  return adminRequest<{
+    categories: string[];
+    subcategoriesByCategory: Record<string, string[]>;
+    cuisines: string[];
+  }>("/taxonomy");
+}
+
+export async function uploadAdminImage(file: File): Promise<{ url: string }> {
+  const body = new FormData();
+  body.append("file", file);
+  let res: Response;
+  try {
+    res = await fetch(`${adminBaseUrl()}/api/admin/uploads/image`, {
+      method: "POST",
+      headers: {
+        "x-admin-secret": getAdminSecret(),
+      },
+      body,
+    });
+  } catch {
+    throw new Error(
+      "سرویس API در دسترس نیست. Postgres محلی و npm run dev:api را اجرا کنید.",
+    );
+  }
+  if (res.status === 401) {
+    throw new Error("کلید مدیریت نادرست است.");
+  }
+  if (!res.ok) {
+    let message = `خطای سرور (${res.status})`;
+    try {
+      const payload = (await res.json()) as {
+        message?: string | string[];
+        error?: { message?: string };
+      };
+      const raw = payload.error?.message ?? payload.message;
+      if (typeof raw === "string") message = raw;
+      else if (Array.isArray(raw)) message = raw.join("، ");
+    } catch {
+      /* keep default */
+    }
+    throw new Error(message);
+  }
+  return (await res.json()) as { url: string };
 }

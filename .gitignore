@@ -44,6 +44,12 @@ apps/web/public/icons/fridge-mascot-raw.png
 apps/api/data/*.json
 apps/api/data/*.db
 
+# local recipe image uploads
+apps/api/uploads/
+
+# ephemeral Prisma engine downloads
+.tmp-prisma-engines/
+
 # EAS / Expo local credentials
 apps/mobile/.expo
 *.jks

@@ -8,7 +8,10 @@ export class FavoritesService {
 
   async list(userId: string): Promise<FavoriteItem[]> {
     const rows = await this.prisma.favorite.findMany({
-      where: { userId },
+      where: {
+        userId,
+        recipe: { deletedAt: null, published: true },
+      },
       include: { recipe: true },
       orderBy: { savedAt: "desc" },
     });
@@ -24,7 +27,9 @@ export class FavoritesService {
   }
 
   async toggle(userId: string, recipeId: string) {
-    const recipe = await this.prisma.recipe.findUnique({ where: { id: recipeId } });
+    const recipe = await this.prisma.recipe.findFirst({
+      where: { id: recipeId, deletedAt: null },
+    });
     if (!recipe) throw new NotFoundException("RECIPE_NOT_FOUND");
 
     const existing = await this.prisma.favorite.findUnique({

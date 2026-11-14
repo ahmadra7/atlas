@@ -246,6 +246,7 @@ export interface AdminRecipeHeader {
   imageUrl: string;
   published: boolean;
   verified: boolean;
+  deletedAt?: string | null;
   ingredientCount: number;
   stepCount: number;
   updatedAt: string;
@@ -283,6 +284,7 @@ export interface AdminRecipeDetail {
   budgetFriendly: boolean;
   verified: boolean;
   published: boolean;
+  deletedAt?: string | null;
   versionId: string;
   versionNumber: number;
   ingredients: AdminRecipeIngredient[];

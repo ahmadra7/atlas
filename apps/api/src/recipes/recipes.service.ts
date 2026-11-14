@@ -18,7 +18,7 @@ export class RecipesService {
 
   async getBySlug(slug: string) {
     const row = await this.prisma.recipe.findFirst({
-      where: { slug, published: true },
+      where: { slug, published: true, deletedAt: null },
       include: recipeInclude,
     });
     return row ? mapRecipe(row) : null;
@@ -26,7 +26,7 @@ export class RecipesService {
 
   async getById(id: string) {
     const row = await this.prisma.recipe.findFirst({
-      where: { id, published: true },
+      where: { id, published: true, deletedAt: null },
       include: recipeInclude,
     });
     if (!row) throw new NotFoundException("RECIPE_NOT_FOUND");
@@ -39,6 +39,7 @@ export class RecipesService {
     const rows = await this.prisma.recipe.findMany({
       where: {
         published: true,
+        deletedAt: null,
         OR: [
           { title: { contains: q, mode: "insensitive" } },
           { description: { contains: q, mode: "insensitive" } },
@@ -56,7 +57,7 @@ export class RecipesService {
   /** Lightweight list for recommend scoring (no steps). */
   async listForRecommend(where: Prisma.RecipeWhereInput, take = 800) {
     const rows = await this.prisma.recipe.findMany({
-      where: { published: true, ...where },
+      where: { published: true, deletedAt: null, ...where },
       include: recommendInclude,
       orderBy: { title: "asc" },
       take,

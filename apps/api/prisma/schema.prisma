@@ -105,6 +105,8 @@ model Recipe {
   budgetFriendly      Boolean    @default(false)
   verified            Boolean    @default(false)
   published           Boolean    @default(true)
+  /// Soft-delete: hidden from app, retained in DB for admin restore
+  deletedAt           DateTime?
   /// Extra/future fields from richer dumps without schema churn
   meta                Json?
   createdAt           DateTime   @default(now())
@@ -115,6 +117,7 @@ model Recipe {
   cookingSessions CookingSession[]
 
   @@index([published, totalMinutes])
+  @@index([deletedAt])
   @@index([meal, difficulty])
   @@index([cuisine])
   @@index([category])

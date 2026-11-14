@@ -32,8 +32,8 @@ export class ListRecipesQueryDto {
   limit?: number;
 
   @IsOptional()
-  @IsIn(["all", "published", "draft"])
-  status?: "all" | "published" | "draft";
+  @IsIn(["all", "published", "draft", "deleted"])
+  status?: "all" | "published" | "draft" | "deleted";
 }
 
 export class AdminIngredientLineDto {

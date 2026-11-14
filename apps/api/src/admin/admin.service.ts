@@ -3,7 +3,10 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { createHash, randomUUID } from "node:crypto";
+import { mkdir, writeFile } from "node:fs/promises";
+import { extname, join } from "node:path";
 import type { Prisma } from "@prisma/client";
 import { normalizePersian } from "@atlas/shared";
 import type {
@@ -13,6 +16,13 @@ import type {
 } from "@atlas/contracts";
 import { PrismaService } from "../prisma/prisma.service";
 import type { UpsertRecipeDto } from "./admin.dto";
+
+const IMAGE_MIME_EXT: Record<string, string> = {
+  "image/jpeg": ".jpg",
+  "image/png": ".png",
+  "image/webp": ".webp",
+  "image/gif": ".gif",
+};
 
 const adminInclude = {
   versions: {
@@ -64,6 +74,7 @@ function toHeader(
     imageUrl: row.imageUrl,
     published: row.published,
     verified: row.verified,
+    deletedAt: row.deletedAt?.toISOString() ?? null,
     ingredientCount: version?.ingredients.length ?? 0,
     stepCount: version?.steps.length ?? 0,
     updatedAt: row.updatedAt.toISOString(),
@@ -100,6 +111,7 @@ function toDetail(
     budgetFriendly: row.budgetFriendly,
     verified: row.verified,
     published: row.published,
+    deletedAt: row.deletedAt?.toISOString() ?? null,
     versionId: version.id,
     versionNumber: version.versionNumber,
     ingredients: version.ingredients.map((line) => ({
@@ -125,13 +137,42 @@ function toDetail(
 
 @Injectable()
 export class AdminService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly config: ConfigService,
+  ) {}
+
+  async uploadRecipeImage(file: Express.Multer.File) {
+    if (!file?.buffer?.length) {
+      throw new BadRequestException("فایل تصویر لازم است.");
+    }
+    const ext =
+      IMAGE_MIME_EXT[file.mimetype] ??
+      extname(file.originalname).toLowerCase();
+    if (!Object.values(IMAGE_MIME_EXT).includes(ext)) {
+      throw new BadRequestException(
+        "فقط تصویرهای JPG، PNG، WEBP یا GIF مجاز است.",
+      );
+    }
+    const uploadsDir = join(process.cwd(), "uploads");
+    await mkdir(uploadsDir, { recursive: true });
+    const filename = `${randomUUID()}${ext}`;
+    await writeFile(join(uploadsDir, filename), file.buffer);
+
+    const port = Number(this.config.get("PORT") ?? 4000);
+    const publicBase = (
+      this.config.get<string>("PUBLIC_API_URL") ??
+      `http://127.0.0.1:${port}`
+    ).replace(/\/$/, "");
+
+    return { url: `${publicBase}/uploads/${filename}` };
+  }
 
   async listRecipes(params: {
     q?: string;
     page?: number;
     limit?: number;
-    status?: "all" | "published" | "draft";
+    status?: "all" | "published" | "draft" | "deleted";
   }): Promise<AdminRecipeList> {
     const page = Math.max(params.page ?? 1, 1);
     const limit = Math.min(Math.max(params.limit ?? 40, 1), 100);
@@ -139,8 +180,13 @@ export class AdminService {
     const status = params.status ?? "all";
 
     const where: Prisma.RecipeWhereInput = {};
-    if (status === "published") where.published = true;
-    if (status === "draft") where.published = false;
+    if (status === "deleted") {
+      where.deletedAt = { not: null };
+    } else {
+      where.deletedAt = null;
+      if (status === "published") where.published = true;
+      if (status === "draft") where.published = false;
+    }
     if (q) {
       where.OR = [
         { title: { contains: q, mode: "insensitive" } },
@@ -185,8 +231,7 @@ export class AdminService {
     const id = `rcp-${randomUUID()}`;
     const versionId = `rv-${randomUUID()}`;
     const lines = await this.resolveIngredients(dto.ingredients);
-    const totalMinutes =
-      dto.totalMinutes ?? dto.prepMinutes + dto.cookMinutes;
+    const totalMinutes = dto.prepMinutes + dto.cookMinutes;
 
     await this.prisma.recipe.create({
       data: {
@@ -261,8 +306,7 @@ export class AdminService {
       id,
     );
     const lines = await this.resolveIngredients(dto.ingredients);
-    const totalMinutes =
-      dto.totalMinutes ?? dto.prepMinutes + dto.cookMinutes;
+    const totalMinutes = dto.prepMinutes + dto.cookMinutes;
     const nextNumber = (existing.versions[0]?.versionNumber ?? 0) + 1;
     const versionId = `rv-${randomUUID()}`;
 
@@ -329,16 +373,86 @@ export class AdminService {
     return this.getRecipe(id);
   }
 
-  async deleteRecipe(id: string): Promise<{ ok: true }> {
+  async deleteRecipe(id: string): Promise<AdminRecipeDetail> {
+    const existing = await this.prisma.recipe.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException("RECIPE_NOT_FOUND");
+    if (existing.deletedAt) return this.getRecipe(id);
+
+    await this.prisma.recipe.update({
+      where: { id },
+      data: {
+        deletedAt: new Date(),
+        published: false,
+      },
+    });
+    return this.getRecipe(id);
+  }
+
+  async restoreRecipe(id: string): Promise<AdminRecipeDetail> {
     const existing = await this.prisma.recipe.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException("RECIPE_NOT_FOUND");
 
-    await this.prisma.$transaction([
-      this.prisma.cookingSession.deleteMany({ where: { recipeId: id } }),
-      this.prisma.favorite.deleteMany({ where: { recipeId: id } }),
-      this.prisma.recipe.delete({ where: { id } }),
-    ]);
-    return { ok: true };
+    await this.prisma.recipe.update({
+      where: { id },
+      data: {
+        deletedAt: null,
+        published: true,
+      },
+    });
+    return this.getRecipe(id);
+  }
+
+  async getTaxonomy() {
+    const rows = await this.prisma.recipe.findMany({
+      where: { deletedAt: null },
+      select: { category: true, subcategory: true, cuisine: true },
+      distinct: ["category", "subcategory", "cuisine"],
+      orderBy: [
+        { category: "asc" },
+        { subcategory: "asc" },
+        { cuisine: "asc" },
+      ],
+    });
+
+    const categories = Array.from(
+      new Set(rows.map((row) => row.category).filter(Boolean)),
+    ).sort((a, b) => a.localeCompare(b, "fa"));
+
+    const subcategoriesByCategory: Record<string, string[]> = {};
+    for (const row of rows) {
+      if (!row.category || !row.subcategory) continue;
+      const list = subcategoriesByCategory[row.category] ?? [];
+      if (!list.includes(row.subcategory)) list.push(row.subcategory);
+      subcategoriesByCategory[row.category] = list;
+    }
+    for (const key of Object.keys(subcategoriesByCategory)) {
+      subcategoriesByCategory[key] = subcategoriesByCategory[key].sort((a, b) =>
+        a.localeCompare(b, "fa"),
+      );
+    }
+
+    const defaultCuisines = [
+      "ایرانی",
+      "فرنگی",
+      "عربی",
+      "ترکی",
+      "هندی",
+      "چینی",
+      "ایتالیایی",
+      "مکزیکی",
+      "آسیایی",
+      "مدیترانه‌ای",
+      "تلفیقی",
+      "سایر",
+    ];
+    const cuisines = Array.from(
+      new Set([
+        ...defaultCuisines,
+        ...rows.map((row) => row.cuisine).filter(Boolean),
+      ]),
+    ).sort((a, b) => a.localeCompare(b, "fa"));
+
+    return { categories, subcategoriesByCategory, cuisines };
   }
 
   async searchIngredients(q: string, limit = 20) {
