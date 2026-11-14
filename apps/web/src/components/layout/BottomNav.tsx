@@ -18,6 +18,7 @@ const hideNavPrefixes = [
   "/recipes",
   "/recommendations",
   "/popular",
+  "/admin",
 ];
 
 export function shouldHideNav(pathname: string) {

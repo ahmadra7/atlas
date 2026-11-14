@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "npm run dev -w @atlas/web",
     "dev:web": "npm run dev -w @atlas/web",
+    "dev:admin": "npm run dev -w @atlas/web",
     "dev:api": "npm run dev -w @atlas/api",
     "dev:mobile": "npm run start -w @atlas/mobile",
     "tunnel:web": "node scripts/keep-web-tunnel.mjs",

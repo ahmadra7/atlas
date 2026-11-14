@@ -230,3 +230,70 @@ export interface AnalyticsEvent {
   properties?: Record<string, unknown>;
   occurredAt?: string;
 }
+
+/** Local catalog admin (header/detail CRUD). Not used by ranking. */
+export interface AdminRecipeHeader {
+  id: string;
+  slug: string;
+  title: string;
+  category: string;
+  subcategory?: string | null;
+  meal: MealType;
+  cuisine: string;
+  difficulty: Difficulty;
+  totalMinutes: number;
+  servings: number;
+  imageUrl: string;
+  published: boolean;
+  verified: boolean;
+  ingredientCount: number;
+  stepCount: number;
+  updatedAt: string;
+}
+
+export interface AdminRecipeIngredient {
+  id?: string;
+  ingredientId: string;
+  name: string;
+  quantity?: string | null;
+  unit?: string | null;
+  optional?: boolean;
+}
+
+export interface AdminRecipeDetail {
+  id: string;
+  slug: string;
+  sourceExternalId?: string | null;
+  title: string;
+  description: string;
+  category: string;
+  subcategory?: string | null;
+  meal: MealType;
+  cuisine: string;
+  region?: string | null;
+  difficulty: Difficulty;
+  prepMinutes: number;
+  cookMinutes: number;
+  totalMinutes: number;
+  servings: number;
+  imageUrl: string;
+  caloriesPerServing?: number | null;
+  cookingMethod?: string | null;
+  dietaryTags: string[];
+  budgetFriendly: boolean;
+  verified: boolean;
+  published: boolean;
+  versionId: string;
+  versionNumber: number;
+  ingredients: AdminRecipeIngredient[];
+  steps: RecipeStep[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminRecipeList {
+  items: AdminRecipeHeader[];
+  total: number;
+  page: number;
+  limit: number;
+}

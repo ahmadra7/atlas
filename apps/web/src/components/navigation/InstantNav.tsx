@@ -210,7 +210,9 @@ export function InstantNav({ children }: { children: ReactNode }) {
 
   const overlayPath = pending?.split("?")[0] ?? null;
   const overlayCoversNav = overlayPath ? shouldHideNav(overlayPath) : true;
-  const skipOverlay = overlayPath ? hasWarmPageCache(overlayPath) : false;
+  const skipOverlay =
+    Boolean(overlayPath?.startsWith("/admin")) ||
+    (overlayPath ? hasWarmPageCache(overlayPath) : false);
 
   return (
     <>

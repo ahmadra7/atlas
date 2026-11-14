@@ -10,6 +10,7 @@ import { RecommendationsModule } from "./recommendations/recommendations.module"
 import { CookingModule } from "./cooking/cooking.module";
 import { FavoritesModule } from "./favorites/favorites.module";
 import { HistoryModule } from "./history/history.module";
+import { AdminModule } from "./admin/admin.module";
 import { HealthController } from "./health.controller";
 
 @Module({
@@ -25,6 +26,7 @@ import { HealthController } from "./health.controller";
     CookingModule,
     FavoritesModule,
     HistoryModule,
+    AdminModule,
   ],
   controllers: [HealthController],
 })
