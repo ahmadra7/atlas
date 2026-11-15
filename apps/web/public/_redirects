@@ -1,0 +1,15 @@
+/                 /index.html  200
+/home             /home.html  200
+/admin            /admin.html  200
+/auth             /auth.html  200
+/favorites        /favorites.html  200
+/history          /history.html  200
+/ingredients      /ingredients.html  200
+/onboarding       /onboarding.html  200
+/popular          /popular.html  200
+/profile          /profile.html  200
+/recommendations  /recommendations.html  200
+/search           /search.html  200
+/recipes/view     /recipes/view.html  200
+/cook/start       /cook/start.html  200
+/cook/session     /cook/session.html  200

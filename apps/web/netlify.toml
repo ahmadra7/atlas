@@ -1,6 +1,6 @@
 [build]
-  command = "npm run build -w @atlas/web"
-  publish = "apps/web/out"
+  command = "npm run publish:static"
+  publish = "."
 
 [build.environment]
   NODE_VERSION = "20"
