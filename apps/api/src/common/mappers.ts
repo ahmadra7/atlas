@@ -41,6 +41,7 @@ type RecipeFull = {
   title: string;
   description: string;
   category: string;
+  subcategory?: string | null;
   meal: Recipe["meal"];
   cuisine: string;
   region: string | null;
@@ -50,6 +51,8 @@ type RecipeFull = {
   totalMinutes: number;
   servings: number;
   imageUrl: string;
+  caloriesPerServing?: number | null;
+  cookingMethod?: string | null;
   dietaryTags: string[] | unknown;
   budgetFriendly: boolean;
   versions: Array<{
@@ -98,6 +101,7 @@ export function mapRecipe(row: RecipeFull): Recipe {
     title: row.title,
     description: row.description,
     category: row.category,
+    subcategory: row.subcategory ?? null,
     meal: row.meal === "any" ? "lunch" : row.meal,
     cuisine: row.cuisine,
     region: row.region ?? undefined,
@@ -107,6 +111,8 @@ export function mapRecipe(row: RecipeFull): Recipe {
     totalMinutes: row.totalMinutes,
     servings: row.servings,
     imageUrl: row.imageUrl,
+    caloriesPerServing: row.caloriesPerServing ?? null,
+    cookingMethod: row.cookingMethod ?? null,
     dietaryTags: asStringArray(row.dietaryTags),
     budgetFriendly: row.budgetFriendly,
     ingredients: [...version.ingredients]

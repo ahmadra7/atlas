@@ -3,6 +3,7 @@ import type {
   AdminRecipeList,
   Ingredient,
 } from "@atlas/contracts";
+import { getRuntimeConfigSync } from "@/lib/runtime-config";
 
 const SECRET_KEY = "atlas_admin_secret";
 
@@ -22,6 +23,8 @@ export function clearAdminSecret() {
 }
 
 function adminBaseUrl(): string {
+  const runtime = getRuntimeConfigSync();
+  if (runtime.apiUrl) return runtime.apiUrl.replace(/\/$/, "");
   if (process.env.NEXT_PUBLIC_ATLAS_API_URL) {
     return process.env.NEXT_PUBLIC_ATLAS_API_URL.replace(/\/$/, "");
   }

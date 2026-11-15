@@ -190,6 +190,7 @@ export default function PopularRecipesPage() {
                   title={recipe.title}
                   imageUrl={recipe.imageUrl}
                   category={recipe.category}
+                  subcategory={recipe.subcategory}
                   totalMinutes={recipe.totalMinutes}
                   servings={recipe.servings}
                 />

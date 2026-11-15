@@ -75,6 +75,7 @@ export interface Recipe {
   title: string;
   description: string;
   category: string;
+  subcategory?: string | null;
   meal: MealType;
   cuisine: string;
   region?: string;
@@ -84,6 +85,8 @@ export interface Recipe {
   totalMinutes: number;
   servings: number;
   imageUrl: string;
+  caloriesPerServing?: number | null;
+  cookingMethod?: string | null;
   dietaryTags: string[];
   budgetFriendly: boolean;
   ingredients: RecipeIngredient[];

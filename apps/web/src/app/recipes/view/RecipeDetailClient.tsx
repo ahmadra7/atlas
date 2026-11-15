@@ -3,7 +3,13 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { Recipe } from "@atlas/contracts";
-import { formatMinutesFa, isPantryStaple, toPersianDigits } from "@atlas/shared";
+import {
+  difficultyLabelFa,
+  formatMinutesFa,
+  isPantryStaple,
+  mealLabelFa,
+  toPersianDigits,
+} from "@atlas/shared";
 import { AppShell } from "@/components/layout/AppShell";
 import { BottomBar } from "@/components/ui/BottomBar";
 import { Button } from "@/components/ui/Button";
@@ -102,7 +108,11 @@ export default function RecipeDetailClient() {
                   {recipe.title}
                 </h1>
                 <RecipeTypeTag
-                  category={recipe.category}
+                  category={
+                    recipe.subcategory?.trim()
+                      ? `${recipe.category} / ${recipe.subcategory}`
+                      : recipe.category
+                  }
                   title={recipe.title}
                   className="mt-1"
                 />
@@ -125,6 +135,12 @@ export default function RecipeDetailClient() {
               />
             </div>
 
+            {recipe.description?.trim() ? (
+              <p className="text-[13px] leading-6 text-atlas-ink-muted">
+                {recipe.description.trim()}
+              </p>
+            ) : null}
+
             <TagRow>
               <SoftTag
                 label={formatMinutesFa(recipe.totalMinutes)}
@@ -140,7 +156,54 @@ export default function RecipeDetailClient() {
                 iconEnd
                 icon={<Profile2User size={12} color="currentColor" />}
               />
+              <SoftTag
+                label={difficultyLabelFa[recipe.difficulty]}
+                tone="soft"
+                size="sm"
+              />
+              {recipe.meal !== "any" ? (
+                <SoftTag
+                  label={mealLabelFa[recipe.meal]}
+                  tone="soft"
+                  size="sm"
+                />
+              ) : null}
+              {recipe.cuisine?.trim() ? (
+                <SoftTag label={recipe.cuisine.trim()} tone="soft" size="sm" />
+              ) : null}
+              {recipe.region?.trim() ? (
+                <SoftTag label={recipe.region.trim()} tone="soft" size="sm" />
+              ) : null}
+              {recipe.cookingMethod?.trim() ? (
+                <SoftTag
+                  label={recipe.cookingMethod.trim()}
+                  tone="soft"
+                  size="sm"
+                />
+              ) : null}
+              {recipe.caloriesPerServing != null &&
+              recipe.caloriesPerServing > 0 ? (
+                <SoftTag
+                  label={`${toPersianDigits(recipe.caloriesPerServing)} کالری`}
+                  tone="soft"
+                  size="sm"
+                />
+              ) : null}
+              {recipe.budgetFriendly ? (
+                <SoftTag label="اقتصادی" tone="soft" size="sm" />
+              ) : null}
+              {recipe.dietaryTags.map((tag) => (
+                <SoftTag key={tag} label={tag} tone="soft" size="sm" />
+              ))}
             </TagRow>
+            {(recipe.prepMinutes > 0 || recipe.cookMinutes > 0) &&
+            (recipe.prepMinutes !== recipe.totalMinutes ||
+              recipe.cookMinutes > 0) ? (
+              <p className="text-[11px] font-medium text-atlas-ink-faint">
+                آماده‌سازی {formatMinutesFa(recipe.prepMinutes)} · پخت{" "}
+                {formatMinutesFa(recipe.cookMinutes)}
+              </p>
+            ) : null}
           </div>
 
           <section className="-mx-4 flex min-h-0 flex-1 flex-col overflow-hidden rounded-t-[2rem] rounded-b-none border-0 bg-atlas-surface px-4 pt-4 shadow-atlas">

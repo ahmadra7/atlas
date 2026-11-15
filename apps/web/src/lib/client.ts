@@ -1,4 +1,9 @@
-import { createAtlasClient } from "@atlas/api-client";
+import { createAtlasClient, type AtlasClient } from "@atlas/api-client";
+import {
+  getRuntimeConfigSync,
+  loadRuntimeConfig,
+  type AtlasRuntimeConfig,
+} from "@/lib/runtime-config";
 
 const TOKEN_KEY = "atlas_access_token";
 
@@ -13,30 +18,57 @@ export function setAccessToken(token: string | null) {
   else localStorage.removeItem(TOKEN_KEY);
 }
 
-const mode =
-  process.env.NEXT_PUBLIC_ATLAS_API_MODE === "http" ? "http" : "mock";
-
-function atlasApiBaseUrl(): string {
-  if (process.env.NEXT_PUBLIC_ATLAS_API_URL) {
-    return process.env.NEXT_PUBLIC_ATLAS_API_URL;
-  }
-  if (typeof window !== "undefined") {
-    return window.location.origin;
-  }
-  return "http://127.0.0.1:4000";
+function buildClient(config: AtlasRuntimeConfig): AtlasClient {
+  const mode = config.apiMode === "http" ? "http" : "mock";
+  const baseUrl =
+    config.apiUrl ||
+    (typeof window !== "undefined"
+      ? window.location.origin
+      : "http://127.0.0.1:4000");
+  return createAtlasClient({
+    mode,
+    baseUrl,
+    getAccessToken,
+  });
 }
 
-export const atlasClient = createAtlasClient({
-  mode,
-  baseUrl: atlasApiBaseUrl(),
-  getAccessToken,
+let impl: AtlasClient = buildClient(getRuntimeConfigSync());
+let ready: Promise<void> | null = null;
+
+function installClient(next: AtlasClient) {
+  impl = next;
+}
+
+/** Apply runtime config (and rebuild HTTP/mock client) before first data fetch. */
+export async function initAtlasClient(): Promise<void> {
+  if (ready) return ready;
+  ready = (async () => {
+    const config = await loadRuntimeConfig();
+    installClient(buildClient(config));
+  })();
+  return ready;
+}
+
+export const atlasClient: AtlasClient = new Proxy({} as AtlasClient, {
+  get(_target, prop) {
+    const value = Reflect.get(impl as object, prop);
+    if (typeof value !== "function") return value;
+    return async (...args: unknown[]) => {
+      await initAtlasClient();
+      const fn = Reflect.get(impl as object, prop) as (
+        ...a: unknown[]
+      ) => unknown;
+      return fn.apply(impl, args);
+    };
+  },
 });
 
 /** HTTP calls run with the stored user token; guests stay unauthenticated. */
 export async function ensureApiSession(_force = false): Promise<void> {
-  return;
+  await initAtlasClient();
 }
 
 export async function withApiSession<T>(fn: () => Promise<T>): Promise<T> {
+  await initAtlasClient();
   return fn();
 }
