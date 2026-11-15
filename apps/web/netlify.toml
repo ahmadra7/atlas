@@ -1,6 +1,6 @@
 [build]
-  command = "npm run build -w @atlas/web"
-  publish = "apps/web/out"
+  command = "echo 'Using committed static export'"
+  publish = "."
 
 [build.environment]
   NODE_VERSION = "20"

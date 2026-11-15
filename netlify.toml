@@ -1,7 +1,8 @@
 [build]
-  # Proven path: Next static export; serve apps/web/out (includes public/_redirects).
-  command = "npm run build -w @atlas/web"
-  publish = "apps/web/out"
+  # Prebuilt static export is committed at repo root (see npm run publish:static).
+  # Skip Next build on Netlify to avoid OOM/failed deploys; publish the mirrored files.
+  command = "echo 'Using committed static export'"
+  publish = "."
 
 [build.environment]
   NODE_VERSION = "20"
