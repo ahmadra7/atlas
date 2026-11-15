@@ -35,11 +35,31 @@ export function HomeScreen({ navigation }: TabProps<"Home">) {
 
   useEffect(() => {
     void (async () => {
-      const rec = await atlasClient.getRecommendations({
-        meal: "any",
-        maxMinutes: 60,
-      });
-      setPopular([...rec.exact, ...rec.near, ...rec.discovery].slice(0, 4));
+      try {
+        const recipes = await atlasClient.searchRecipes("", 4);
+        setPopular(
+          recipes.map((recipe) => ({
+            recipeId: recipe.id,
+            slug: recipe.slug,
+            title: recipe.title,
+            imageUrl: recipe.imageUrl,
+            totalMinutes: recipe.totalMinutes,
+            servings: recipe.servings,
+            difficulty: recipe.difficulty,
+            meal: recipe.meal,
+            cuisine: recipe.cuisine,
+            matchTier: "discovery" as const,
+            matchScore: 0,
+            missingCount: 0,
+            missingIngredients: [],
+            matchedIngredients: [],
+            tags: recipe.dietaryTags,
+            explanation: "",
+          })),
+        );
+      } catch {
+        setPopular([]);
+      }
     })();
   }, []);
 

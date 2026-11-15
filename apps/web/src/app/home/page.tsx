@@ -52,7 +52,7 @@ import { instantPush } from "@/components/navigation/InstantNav";
 import { useIngredientVoiceInput } from "@/hooks/useIngredientVoiceInput";
 import { atlasClient, withApiSession } from "@/lib/client";
 import { partitionSpokenNames } from "@/lib/spokenIngredients";
-import { pageCache } from "@/lib/page-cache";
+import { invalidateRecommendationCache, pageCache } from "@/lib/page-cache";
 import { rememberLoadedImage } from "@/lib/image-cache";
 import { recipePath } from "@/lib/recipe-path";
 
@@ -295,20 +295,33 @@ export default function HomePage() {
         setInventory(pageCache.inventory);
         setLoading(false);
 
-        if (pageCache.popular !== null) return;
+        if (pageCache.popular !== null && pageCache.popular.length > 0) {
+          setPopular(pageCache.popular);
+          return;
+        }
 
-        const rec = await withApiSession(() =>
-          atlasClient.getRecommendations({
-            meal: "any",
-            maxMinutes: 60,
-          }),
-        );
+        // Catalog strip — not pantry recommendations (those need inventory + auth).
+        const recipes = await atlasClient.searchRecipes("", 4);
         if (cancelled) return;
-        const cards = [...rec.exact, ...rec.near, ...rec.discovery].slice(
-          0,
-          4,
-        );
-        pageCache.popular = cards;
+        const cards: RecommendationCard[] = recipes.map((recipe) => ({
+          recipeId: recipe.id,
+          slug: recipe.slug,
+          title: recipe.title,
+          imageUrl: recipe.imageUrl,
+          totalMinutes: recipe.totalMinutes,
+          servings: recipe.servings,
+          difficulty: recipe.difficulty,
+          meal: recipe.meal,
+          cuisine: recipe.cuisine,
+          matchTier: "discovery",
+          matchScore: 0,
+          missingCount: 0,
+          missingIngredients: [],
+          matchedIngredients: [],
+          tags: recipe.dietaryTags,
+          explanation: "",
+        }));
+        if (cards.length > 0) pageCache.popular = cards;
         setPopular(cards);
       } catch {
         if (!cancelled) setLoading(false);
@@ -381,6 +394,7 @@ export default function HomePage() {
     const inv = await withApiSession(() => atlasClient.getInventory());
     pageCache.inventory = orderInventoryChips(inv);
     setInventory(pageCache.inventory);
+    invalidateRecommendationCache();
   }
 
   const showInvalidToast = useCallback(() => {
@@ -441,6 +455,7 @@ export default function HomePage() {
       if (extra.length === 0 && !changed) return prev;
       const merged = extra.length === 0 ? next : [...next, ...extra];
       pageCache.inventory = merged;
+      invalidateRecommendationCache();
       return merged;
     });
 
@@ -576,6 +591,7 @@ export default function HomePage() {
     const ids = inventory.map((item) => item.id);
     pageCache.inventory = [];
     setInventory([]);
+    invalidateRecommendationCache();
     setAddError(null);
     setAdding(true);
     try {
@@ -594,6 +610,7 @@ export default function HomePage() {
   function goToFoodList() {
     if (voice.listening) voice.stop();
     if (inventory.length === 0) return;
+    invalidateRecommendationCache();
     const params = new URLSearchParams({
       meal,
       maxMinutes: String(maxMinutes),
@@ -821,6 +838,7 @@ export default function HomePage() {
                           setInventory((prev) => {
                             const next = prev.filter((row) => row.id !== item.id);
                             pageCache.inventory = next;
+                            invalidateRecommendationCache();
                             return next;
                           });
                           if (item.id.startsWith("local-")) return;

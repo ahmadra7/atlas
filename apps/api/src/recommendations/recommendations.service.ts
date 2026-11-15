@@ -1,6 +1,10 @@
 import { Injectable } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
-import { ingredientsLooselyMatch, isPantryStaple, normalizePersian } from "@atlas/shared";
+import {
+  ingredientsLooselyMatch,
+  isPantryStaple,
+  normalizePersian,
+} from "@atlas/shared";
 import type {
   RecommendationCard,
   RecommendationFilters,
@@ -32,7 +36,10 @@ export class RecommendationsService {
   constructor(private readonly prisma: PrismaService) {}
 
   private filtersSql(filters: RecommendationFilters): Prisma.Sql {
-    const parts: Prisma.Sql[] = [Prisma.sql`r.published = true`];
+    const parts: Prisma.Sql[] = [
+      Prisma.sql`r.published = true`,
+      Prisma.sql`r."deletedAt" IS NULL`,
+    ];
 
     if (filters.meal && filters.meal !== "any") {
       parts.push(Prisma.sql`r.meal = ${filters.meal}::"MealType"`);
@@ -133,13 +140,22 @@ export class RecommendationsService {
     return { userItemCount: rows.length, pairs };
   }
 
-  private toCard(row: ScoredRow): RecommendationCard {
+  /**
+   * Rank cookable-from-pantry recipes:
+   * 1) exact — all non-staple required ingredients owned (salt/pepper/spices ignored)
+   * 2) near — missing exactly 1 real ingredient
+   * 3) discovery — missing 2, then 3, …
+   * Extra pantry items never disqualify a recipe.
+   */
+  private toCard(row: ScoredRow): RecommendationCard | null {
     const missingIngredients = (row.missingNames ?? []).filter(
       (n) => !isPantryStaple(n),
     );
     const matchedIngredients = (row.matchedNames ?? []).filter(
       (n) => !isPantryStaple(n),
     );
+    if (matchedIngredients.length === 0) return null;
+
     const missingCount = missingIngredients.length;
     const requiredNonStaple = matchedIngredients.length + missingCount;
     const matchTier =
@@ -170,7 +186,7 @@ export class RecommendationsService {
       tags,
       explanation:
         missingCount === 0
-          ? "همه مواد لازم را داری."
+          ? "با همین مواد می‌تونی درست کنی."
           : missingCount === 1
             ? `فقط «${missingIngredients[0] ?? "یک ماده"}» کم است.`
             : `${missingCount} ماده کم داری.`,
@@ -197,6 +213,10 @@ export class RecommendationsService {
       (p) => Prisma.sql`(${p.invKey}::text, ${p.ingredientId}::text)`,
     );
 
+    // Score every published recipe that shares ≥1 owned ingredient.
+    // Do NOT require the recipe to use every pantry item — that inverted ranking.
+    // Staples (نمک/فلفل/ادویه) stay in SQL rows then get stripped in toCard so
+    // ORDER BY / LIMIT are approximate; we fetch a wide window and re-sort in TS.
     const rows = await this.prisma.$queryRaw<ScoredRow[]>`
       WITH owned_map(inv_key, ingredient_id) AS (
         VALUES ${Prisma.join(valueRows)}
@@ -210,15 +230,6 @@ export class RecommendationsService {
         INNER JOIN "RecipeIngredient" ri ON ri."recipeVersionId" = rv.id
         WHERE rv."isCurrent" = true
           AND ri.optional = false
-      ),
-      covered AS (
-        SELECT
-          rr.recipe_id,
-          COUNT(DISTINCT om.inv_key)::int AS user_covered
-        FROM recipe_req rr
-        INNER JOIN owned_map om ON om.ingredient_id = rr.ingredient_id
-        GROUP BY rr.recipe_id
-        HAVING COUNT(DISTINCT om.inv_key) = ${userItemCount}
       ),
       scored AS (
         SELECT
@@ -256,12 +267,16 @@ export class RecommendationsService {
             ARRAY[]::text[]
           ) AS "matchedNames"
         FROM "Recipe" r
-        INNER JOIN covered c ON c.recipe_id = r.id
         INNER JOIN recipe_req rr ON rr.recipe_id = r.id
         WHERE ${whereSql}
         GROUP BY
           r.id, r.slug, r.title, r."imageUrl", r."totalMinutes", r.servings,
           r.difficulty, r.meal, r.cuisine, r."dietaryTags", r."budgetFriendly"
+        HAVING COUNT(DISTINCT rr.ingredient_id) FILTER (
+          WHERE EXISTS (
+            SELECT 1 FROM owned_map o WHERE o.ingredient_id = rr.ingredient_id
+          )
+        ) >= 1
       )
       SELECT
         s.*,
@@ -272,13 +287,17 @@ export class RecommendationsService {
         s."matchedCount" DESC,
         s."requiredCount" ASC,
         s.title ASC
-      LIMIT 200
+      LIMIT 800
     `;
 
-    let cards = rows.map((row) => this.toCard(row));
+    let cards = rows
+      .map((row) => this.toCard(row))
+      .filter((card): card is RecommendationCard => card !== null);
+
     cards.sort(
       (a, b) =>
         a.missingCount - b.missingCount ||
+        b.matchedIngredients.length - a.matchedIngredients.length ||
         b.matchScore - a.matchScore ||
         a.title.localeCompare(b.title, "fa"),
     );

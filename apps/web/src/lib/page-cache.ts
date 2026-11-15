@@ -20,6 +20,10 @@ export const pageCache = {
 };
 
 export function recommendationCacheKey(filters: RecommendationFilters): string {
+  const inventorySig = (pageCache.inventory ?? [])
+    .map((item) => item.ingredientId)
+    .sort()
+    .join(",");
   return JSON.stringify({
     meal: filters.meal,
     maxMinutes: filters.maxMinutes,
@@ -29,7 +33,13 @@ export function recommendationCacheKey(filters: RecommendationFilters): string {
     cuisine: filters.cuisine ?? "",
     budgetFriendly: Boolean(filters.budgetFriendly),
     dietaryTags: filters.dietaryTags ?? [],
+    inventory: inventorySig,
   });
+}
+
+export function invalidateRecommendationCache() {
+  pageCache.recommendations = null;
+  pageCache.recommendationKey = "";
 }
 
 export function hasWarmPageCache(path: string): boolean {

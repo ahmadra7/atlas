@@ -116,6 +116,29 @@ const SPICE_PHRASES = [
   "سبزی خشک",
 ];
 
+/** Everyday cooking fats / water — treated like spices for pantry matching. */
+const COOKING_STAPLE_PHRASES = [
+  "روغن سرخ کردنی",
+  "روغن سرخ‌کردنی",
+  "روغن زیتون",
+  "روغن کنجد",
+  "روغن گیاهی",
+  "روغن نباتی",
+  "روغن آفتابگردان",
+  "روغن آفتاب گردان",
+  "روغن کانولا",
+  "روغن مایع",
+  "روغن جامد",
+  "روغن ذرت",
+  "روغن حیوانی",
+  "مارگارین",
+  "روغن",
+  "آب",
+  "اب",
+];
+
+const NON_STAPLE_FAT_HINTS = ["بادام", "فندق", "پسته", "شکلات"];
+
 const MEASURE_RE =
   /به مقدار لازم|به میزان لازم|به اندازه لازم|بر حسب ذائقه|برحسب ذائقه|به دلخواه|\d+(?:[./]\d+)?|قاشق(?: چایخوری| غذاخوری)?|نوک قاشق|پیمانه|فنجان|لیوان|گرم|کیلو(?:گرم)?|سی سی|میلی ?لیتر|عدد|بسته|کمی|اندکی|مقداری|کافی/g;
 
@@ -130,6 +153,9 @@ function stripMeasures(n: string): string {
 const SPICE_PHRASES_BY_LENGTH = [...SPICE_PHRASES].sort(
   (a, b) => b.length - a.length,
 );
+const COOKING_STAPLE_BY_LENGTH = [...COOKING_STAPLE_PHRASES].sort(
+  (a, b) => b.length - a.length,
+);
 
 function phraseHasSpice(phrase: string): boolean {
   if (!phrase) return false;
@@ -141,7 +167,31 @@ function phraseHasSpice(phrase: string): boolean {
   });
 }
 
-/** Salt / pepper / common spices — ignore when counting missing ingredients. */
+function phraseIsCookingFatOrWater(phrase: string): boolean {
+  if (!phrase) return false;
+  if (NON_STAPLE_FAT_HINTS.some((hint) => phrase.includes(hint))) return false;
+  if (
+    phrase === "کره" ||
+    phrase.startsWith("کره ") ||
+    phrase.startsWith("کره")
+  ) {
+    return !NON_STAPLE_FAT_HINTS.some((hint) => phrase.includes(hint));
+  }
+  return COOKING_STAPLE_BY_LENGTH.some((item) => {
+    if (phrase === item) return true;
+    if (phrase.startsWith(`${item} `)) return true;
+    return item.length >= 3 && phrase.startsWith(item);
+  });
+}
+
+function phraseIsPantryStaple(phrase: string): boolean {
+  return phraseHasSpice(phrase) || phraseIsCookingFatOrWater(phrase);
+}
+
+/**
+ * Salt / pepper / spices / everyday oil & water —
+ * ignore when counting missing ingredients for recommendations.
+ */
 export function isPantryStaple(name: string): boolean {
   const n = normalizePersian(name);
   if (!n) return false;
@@ -153,7 +203,7 @@ export function isPantryStaple(name: string): boolean {
     .map((part) => stripMeasures(part))
     .filter(Boolean);
   const parts = chunks.length > 0 ? chunks : [n];
-  return parts.every(phraseHasSpice);
+  return parts.every(phraseIsPantryStaple);
 }
 
 export function toPersianDigits(value: string | number): string {

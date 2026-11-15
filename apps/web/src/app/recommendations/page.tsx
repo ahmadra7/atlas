@@ -151,7 +151,7 @@ function RecommendationsContent() {
               <StateView
                 tone="empty"
                 title="نتیجه‌ای پیدا نشد"
-                description="غذایی که همه مواد واردشده را داشته باشد پیدا نشد."
+                description="با این مواد غذایی پیدا نشد. ماده دیگری اضافه کنید یا فیلترها را عوض کنید."
               />
             ) : null}
 

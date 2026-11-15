@@ -343,26 +343,39 @@ export async function removeInventoryItem(id: string): Promise<void> {
   inventory = inventory.filter((item) => item.id !== id);
 }
 
+function ownsIngredient(
+  line: { ingredientId: string; name: string },
+  ownedIds: Set<string>,
+  ownedNames: string[],
+): boolean {
+  if (ownedIds.has(line.ingredientId)) return true;
+  return ownedNames.some((name) => ingredientsLooselyMatch(name, line.name));
+}
+
+/**
+ * Rank cookable-from-pantry: exact (missing 0, spices ignored) → near (1) → discovery (2+).
+ * Extra pantry items never disqualify. Returns null when nothing real matched.
+ */
 function buildCard(
   recipe: Recipe,
   ownedIds: Set<string>,
-): RecommendationCard {
+  ownedNames: string[],
+): RecommendationCard | null {
   const required = recipe.ingredients.filter(
     (i) => !i.optional && !isPantryStaple(i.name),
   );
-  const missing = required.filter((i) => !ownedIds.has(i.ingredientId));
-  const matched = required.filter((i) => ownedIds.has(i.ingredientId));
+  const missing = required.filter(
+    (i) => !ownsIngredient(i, ownedIds, ownedNames),
+  );
+  const matched = required.filter((i) =>
+    ownsIngredient(i, ownedIds, ownedNames),
+  );
+  if (matched.length === 0) return null;
+
   const missingCount = missing.length;
   const matchTier =
-    matched.length > 0 && missingCount === 0
-      ? "exact"
-      : matched.length > 0 && missingCount === 1
-        ? "near"
-        : "discovery";
-  const matchScore =
-    required.length > 0 && matched.length > 0
-      ? Math.round((matched.length / required.length) * 100)
-      : 0;
+    missingCount === 0 ? "exact" : missingCount === 1 ? "near" : "discovery";
+  const matchScore = Math.round((matched.length / required.length) * 100);
 
   return {
     recipeId: recipe.id,
@@ -385,7 +398,7 @@ function buildCard(
     ].filter(Boolean),
     explanation:
       missingCount === 0
-        ? "همه مواد لازم را دارید."
+        ? "با همین مواد می‌تونی درست کنی."
         : missingCount === 1
           ? `فقط «${missing[0]?.name}» کم است.`
           : `${missingCount} ماده کم دارید.`,
@@ -397,7 +410,10 @@ export async function getRecommendations(
 ): Promise<RecommendationResult> {
   await delay(0);
   const ownedIds = new Set(inventory.map((i) => i.ingredientId));
-  let cards = MOCK_RECIPES.map((recipe) => buildCard(recipe, ownedIds));
+  const ownedNames = inventory.map((i) => i.ingredient.name);
+  let cards = MOCK_RECIPES.map((recipe) =>
+    buildCard(recipe, ownedIds, ownedNames),
+  ).filter((card): card is RecommendationCard => card !== null);
 
   if (filters.meal && filters.meal !== "any") {
     cards = cards.filter((card) => {
@@ -475,21 +491,19 @@ export async function getRecommendations(
     });
   }
 
-  const exact = cards
-    .filter((c) => c.matchTier === "exact")
-    .sort((a, b) => b.matchScore - a.matchScore);
-  const near = cards
-    .filter((c) => c.matchTier === "near")
-    .sort((a, b) => b.matchScore - a.matchScore);
-  const discovery = cards
-    .filter((c) => c.matchTier === "discovery")
-    .sort((a, b) => a.missingCount - b.missingCount || b.matchScore - a.matchScore);
+  cards.sort(
+    (a, b) =>
+      a.missingCount - b.missingCount ||
+      b.matchedIngredients.length - a.matchedIngredients.length ||
+      b.matchScore - a.matchScore ||
+      a.title.localeCompare(b.title, "fa"),
+  );
 
   return {
     id: `rec-${recommendationSeq++}`,
-    exact,
-    near,
-    discovery,
+    exact: cards.filter((c) => c.missingCount === 0),
+    near: cards.filter((c) => c.missingCount === 1),
+    discovery: cards.filter((c) => c.missingCount >= 2),
     filters,
   };
 }
