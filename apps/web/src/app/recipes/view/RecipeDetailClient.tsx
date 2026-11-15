@@ -19,7 +19,11 @@ import { atlasClient } from "@/lib/client";
 import { pageCache } from "@/lib/page-cache";
 import { appNavigateSoftOrHard } from "@/lib/navigate";
 import { recipePath } from "@/lib/recipe-path";
-import { Profile2User, Timer1 } from "iconsax-react";
+import {
+  getVoiceStepsEnabled,
+  setVoiceStepsEnabled,
+} from "@/lib/speak";
+import { Profile2User, Timer1, VolumeHigh, VolumeSlash } from "iconsax-react";
 
 export default function RecipeDetailClient() {
   const searchParams = useSearchParams();
@@ -32,6 +36,11 @@ export default function RecipeDetailClient() {
   const [error, setError] = useState<string | null>(null);
   const [favorited, setFavorited] = useState(false);
   const [toggling, setToggling] = useState(false);
+  const [voiceSteps, setVoiceSteps] = useState(false);
+
+  useEffect(() => {
+    setVoiceSteps(getVoiceStepsEnabled());
+  }, []);
 
   useEffect(() => {
     if (!slug) {
@@ -141,6 +150,59 @@ export default function RecipeDetailClient() {
                 {toPersianDigits(recipe.ingredients.length)} مورد
               </span>
             </div>
+
+            <button
+              type="button"
+              role="switch"
+              aria-checked={voiceSteps}
+              onClick={() => {
+                const next = !voiceSteps;
+                setVoiceSteps(next);
+                setVoiceStepsEnabled(next);
+              }}
+              className={`mt-3 flex w-full shrink-0 items-center justify-between gap-3 rounded-2xl border px-3.5 py-3 text-right transition ${
+                voiceSteps
+                  ? "border-atlas-primary/25 bg-atlas-primary-soft"
+                  : "border-atlas-border bg-atlas-background"
+              }`}
+            >
+              <span className="flex min-w-0 items-center gap-2.5">
+                <span
+                  className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
+                    voiceSteps
+                      ? "bg-atlas-primary text-white"
+                      : "bg-atlas-surface-muted text-atlas-ink-muted"
+                  }`}
+                >
+                  {voiceSteps ? (
+                    <VolumeHigh size={18} color="currentColor" variant="Bold" />
+                  ) : (
+                    <VolumeSlash size={18} color="currentColor" variant="Linear" />
+                  )}
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-[13px] font-bold text-atlas-ink">
+                    پخش مراحل با صدا
+                  </span>
+                  <span className="mt-0.5 block text-[11px] font-medium leading-5 text-atlas-ink-muted">
+                    متن هر مرحله هنگام پخت برایت خوانده می‌شود
+                  </span>
+                </span>
+              </span>
+              <span
+                className={`relative h-6 w-11 shrink-0 rounded-full transition ${
+                  voiceSteps ? "bg-atlas-primary" : "bg-zinc-300 dark:bg-zinc-600"
+                }`}
+              >
+                <span
+                  className="absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-[inset-inline-start] duration-200"
+                  style={{
+                    insetInlineStart: voiceSteps ? "1.35rem" : "0.15rem",
+                  }}
+                />
+              </span>
+            </button>
+
             <div className="atlas-scroll-y mt-3 min-h-0 flex-1 pe-1 pb-[5.75rem]">
               <ul className="space-y-2">
                 {recipe.ingredients.map((ing) => (
@@ -173,11 +235,15 @@ export default function RecipeDetailClient() {
                   requestLogin(recipePath(recipe.slug));
                   return;
                 }
-                const href = `/cook/start?recipeId=${encodeURIComponent(recipe.id)}`;
+                const params = new URLSearchParams({
+                  recipeId: recipe.id,
+                });
+                if (voiceSteps) params.set("voice", "1");
+                const href = `/cook/start?${params.toString()}`;
                 appNavigateSoftOrHard(href, (h) => router.push(h));
               }}
             >
-              می‌پزم
+              شروع پخت
             </Button>
           </BottomBar>
         </div>

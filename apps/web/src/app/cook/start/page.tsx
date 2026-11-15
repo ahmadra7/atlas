@@ -12,6 +12,8 @@ function StartCookContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const recipeId = searchParams.get("recipeId");
+  const voiceOn =
+    searchParams.get("voice") === "1" || searchParams.get("voice") === "true";
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -24,10 +26,11 @@ function StartCookContent() {
       .startCookingSession(recipeId)
       .then((session) => {
         if (!cancelled) {
-          instantReplace(
-            router,
-            `/cook/session?id=${encodeURIComponent(session.id)}`,
-          );
+          const params = new URLSearchParams({
+            id: session.id,
+          });
+          if (voiceOn) params.set("voice", "1");
+          instantReplace(router, `/cook/session?${params.toString()}`);
         }
       })
       .catch(() => {
@@ -36,7 +39,7 @@ function StartCookContent() {
     return () => {
       cancelled = true;
     };
-  }, [recipeId, router]);
+  }, [recipeId, router, voiceOn]);
 
   if (error) {
     return (

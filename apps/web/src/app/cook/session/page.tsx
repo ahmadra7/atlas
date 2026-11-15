@@ -10,11 +10,13 @@ import {
   ArrowRight2,
   CloseCircle,
   Danger,
+  Home2,
   LampOn,
   LogoutCurve,
   Send2,
   TickCircle,
-  Home2,
+  VolumeHigh,
+  VolumeSlash,
 } from "iconsax-react";
 import { BrandMark } from "@/components/brand/BrandMark";
 import { AppShell } from "@/components/layout/AppShell";
@@ -25,6 +27,12 @@ import { StateView } from "@/components/ui/StateView";
 import { RecipeImage } from "@/components/recipe/RecipeImage";
 import { instantPush } from "@/components/navigation/InstantNav";
 import { atlasClient } from "@/lib/client";
+import {
+  getVoiceStepsEnabled,
+  setVoiceStepsEnabled,
+  speakPersian,
+  stopSpeaking,
+} from "@/lib/speak";
 
 const sosIssues = [
   { code: "too_salty", label: "شور شده" },
@@ -39,6 +47,7 @@ type Panel = "none" | "ask" | "abandon";
 function CookingPageContent() {
   const searchParams = useSearchParams();
   const sessionId = searchParams.get("id")?.trim() ?? "";
+  const voiceParam = searchParams.get("voice");
   const router = useRouter();
   const [session, setSession] = useState<CookingSession | null>(null);
   const [loading, setLoading] = useState(true);
@@ -53,6 +62,23 @@ function CookingPageContent() {
   const [ratingLocked, setRatingLocked] = useState(false);
   const [askReason, setAskReason] = useState(false);
   const [reasonText, setReasonText] = useState("");
+  const [voiceSteps, setVoiceSteps] = useState(
+    () => voiceParam === "1" || voiceParam === "true",
+  );
+
+  useEffect(() => {
+    if (voiceParam === "1" || voiceParam === "true") {
+      setVoiceSteps(true);
+      setVoiceStepsEnabled(true);
+      return;
+    }
+    if (voiceParam === "0" || voiceParam === "false") {
+      setVoiceSteps(false);
+      setVoiceStepsEnabled(false);
+      return;
+    }
+    setVoiceSteps(getVoiceStepsEnabled());
+  }, [voiceParam]);
 
   useEffect(() => {
     let cancelled = false;
@@ -110,6 +136,34 @@ function CookingPageContent() {
       setTimerRunning(false);
     }
   }, [step?.id, step?.timerSeconds]);
+
+  useEffect(() => {
+    if (!voiceSteps || !step?.instruction || session?.status === "completed") {
+      stopSpeaking();
+      return;
+    }
+    const parts = [step.instruction];
+    if (step.tip?.trim()) parts.push(`نکته: ${step.tip.trim()}`);
+    const timer = window.setTimeout(() => {
+      speakPersian(parts.join(". "));
+    }, 350);
+    return () => {
+      window.clearTimeout(timer);
+      stopSpeaking();
+    };
+  }, [
+    voiceSteps,
+    step?.id,
+    step?.instruction,
+    step?.tip,
+    session?.status,
+  ]);
+
+  useEffect(() => {
+    return () => {
+      stopSpeaking();
+    };
+  }, []);
 
   useEffect(() => {
     if (session?.status !== "completed") return;
@@ -309,7 +363,31 @@ function CookingPageContent() {
   return (
     <AppShell hideNav showBack title="پخت">
       <div className="relative flex min-h-[70vh] flex-col pb-28">
-        <div className="flex items-center justify-end">
+        <div className="flex items-center justify-between gap-2">
+          <button
+            type="button"
+            role="switch"
+            aria-checked={voiceSteps}
+            aria-label="پخش مراحل با صدا"
+            onClick={() => {
+              const next = !voiceSteps;
+              setVoiceSteps(next);
+              setVoiceStepsEnabled(next);
+              if (!next) stopSpeaking();
+            }}
+            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-caption font-semibold transition ${
+              voiceSteps
+                ? "bg-atlas-primary-soft text-atlas-primary"
+                : "text-atlas-ink-muted hover:bg-atlas-surface-muted"
+            }`}
+          >
+            {voiceSteps ? (
+              <VolumeHigh size={18} color="currentColor" variant="Bold" />
+            ) : (
+              <VolumeSlash size={18} color="currentColor" variant="Linear" />
+            )}
+            <span>{voiceSteps ? "صدا روشن" : "صدا خاموش"}</span>
+          </button>
           <button
             type="button"
             onClick={() => setPanel("abandon")}
