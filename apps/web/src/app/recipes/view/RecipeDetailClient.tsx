@@ -139,6 +139,15 @@ export default function RecipeDetailClient() {
               />
             </div>
 
+            <VoiceStepsToggle
+              checked={voiceSteps}
+              onChange={(next) => {
+                unlockSpeech();
+                setVoiceSteps(next);
+                setVoiceStepsEnabled(next);
+              }}
+            />
+
             {recipe.description?.trim() ? (
               <p className="text-[13px] leading-6 text-atlas-ink-muted">
                 {recipe.description.trim()}
@@ -217,16 +226,6 @@ export default function RecipeDetailClient() {
                 {toPersianDigits(recipe.ingredients.length)} مورد
               </span>
             </div>
-
-            <VoiceStepsToggle
-              className="mt-3 shrink-0"
-              checked={voiceSteps}
-              onChange={(next) => {
-                unlockSpeech();
-                setVoiceSteps(next);
-                setVoiceStepsEnabled(next);
-              }}
-            />
 
             <div className="atlas-scroll-y mt-3 min-h-0 flex-1 pe-1 pb-[5.75rem]">
               <ul className="space-y-2">

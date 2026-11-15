@@ -21,19 +21,13 @@ export function VoiceStepsToggle({
 }) {
   return (
     <div
-      className={`flex w-full items-center gap-2.5 ${
-        compact
-          ? "rounded-xl border border-atlas-border bg-atlas-surface px-2.5 py-2"
-          : "rounded-2xl border border-atlas-border bg-atlas-background px-3.5 py-3"
-      } ${checked ? "border-atlas-primary/25 bg-atlas-primary-soft/40" : ""} ${className}`}
+      className={`flex w-full items-center gap-2 ${
+        compact ? "py-0.5" : "py-1"
+      } ${className}`}
     >
       <span
-        className={`inline-flex shrink-0 items-center justify-center rounded-xl ${
-          compact ? "h-8 w-8" : "h-9 w-9"
-        } ${
-          checked
-            ? "bg-atlas-primary text-white"
-            : "bg-atlas-surface-muted text-atlas-ink-muted"
+        className={`inline-flex shrink-0 items-center justify-center ${
+          checked ? "text-atlas-primary" : "text-atlas-ink-muted"
         }`}
       >
         {checked ? (
@@ -51,20 +45,13 @@ export function VoiceStepsToggle({
         )}
       </span>
 
-      <div className="min-w-0 flex-1 text-right">
-        <p
-          className={`font-semibold text-atlas-ink ${
-            compact ? "text-[12px] leading-4" : "text-[13px] leading-5"
-          }`}
-        >
-          پخش مراحل با صدا
-        </p>
-        {!compact ? (
-          <p className="mt-0.5 text-[11px] font-medium leading-5 text-atlas-ink-muted">
-            متن هر مرحله هنگام پخت برایت خوانده می‌شود
-          </p>
-        ) : null}
-      </div>
+      <p
+        className={`min-w-0 flex-1 text-right font-medium text-atlas-ink ${
+          compact ? "text-[12px] leading-4" : "text-[13px] leading-5"
+        }`}
+      >
+        پخش مراحل با صدا
+      </p>
 
       {onRepeat ? (
         <button
@@ -74,7 +61,7 @@ export function VoiceStepsToggle({
             e.stopPropagation();
             onRepeat();
           }}
-          className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full border border-atlas-border bg-atlas-surface px-2 text-[11px] font-semibold text-atlas-ink transition hover:bg-atlas-surface-muted"
+          className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full px-2 text-[11px] font-semibold text-atlas-ink-muted transition hover:bg-atlas-surface-muted hover:text-atlas-ink"
         >
           <Refresh size={14} color="currentColor" variant="Bold" />
           <span>{speaking ? "…" : "تکرار"}</span>
