@@ -10,93 +10,96 @@ export function setVoiceStepsEnabled(enabled: boolean) {
   window.localStorage.setItem(VOICE_STEPS_KEY, enabled ? "1" : "0");
 }
 
-type SpeakHandle = {
-  cancel: () => void;
-};
+type SpeakHandle = { cancel: () => void };
 
 let active: SpeakHandle | null = null;
-let voicesReady: Promise<SpeechSynthesisVoice[]> | null = null;
-let chromeKeepAlive: number | null = null;
+let voicesCache: SpeechSynthesisVoice[] | null = null;
+let unlocked = false;
+let speakToken = 0;
 
-function clearChromeKeepAlive() {
-  if (chromeKeepAlive != null) {
-    window.clearInterval(chromeKeepAlive);
-    chromeKeepAlive = null;
-  }
+export function isSpeechSupported(): boolean {
+  return typeof window !== "undefined" && "speechSynthesis" in window;
 }
 
-/** Chrome often freezes mid-utterance unless resume() is poked. */
-function startChromeKeepAlive() {
-  clearChromeKeepAlive();
-  chromeKeepAlive = window.setInterval(() => {
-    if (!window.speechSynthesis?.speaking) {
-      clearChromeKeepAlive();
-      return;
-    }
-    try {
-      window.speechSynthesis.pause();
-      window.speechSynthesis.resume();
-    } catch {
-      /* ignore */
-    }
-  }, 8_000);
+export function buildStepSpeech(
+  instruction: string,
+  tip?: string | null,
+): string {
+  const parts = [instruction.trim()].filter(Boolean);
+  if (tip?.trim()) parts.push(`نکته: ${tip.trim()}`);
+  return parts.join(" . ");
 }
 
-function loadVoices(): Promise<SpeechSynthesisVoice[]> {
-  if (typeof window === "undefined" || !window.speechSynthesis) {
-    return Promise.resolve([]);
-  }
-  const existing = window.speechSynthesis.getVoices();
-  if (existing.length > 0) return Promise.resolve(existing);
-
-  if (!voicesReady) {
-    voicesReady = new Promise((resolve) => {
-      let settled = false;
-      const finish = () => {
-        if (settled) return;
-        settled = true;
-        window.speechSynthesis.removeEventListener("voiceschanged", onVoices);
-        resolve(window.speechSynthesis.getVoices());
-      };
-      const onVoices = () => finish();
-      window.speechSynthesis.addEventListener("voiceschanged", onVoices);
-      // Nudge engines that only populate after getVoices().
-      window.speechSynthesis.getVoices();
-      window.setTimeout(finish, 700);
-    });
-  }
-  return voicesReady;
+function refreshVoices(): SpeechSynthesisVoice[] {
+  if (typeof window === "undefined" || !window.speechSynthesis) return [];
+  const list = window.speechSynthesis.getVoices();
+  if (list.length > 0) voicesCache = list;
+  return voicesCache ?? list;
 }
 
-function scorePersianVoice(voice: SpeechSynthesisVoice): number {
-  const blob = `${voice.lang} ${voice.name}`.toLowerCase();
+export function preloadSpeechVoices() {
+  if (!isSpeechSupported()) return;
+  refreshVoices();
+  window.speechSynthesis.addEventListener("voiceschanged", () => {
+    refreshVoices();
+  });
+}
+
+function scoreVoice(voice: SpeechSynthesisVoice): number {
+  const lang = voice.lang.toLowerCase();
+  const blob = `${lang} ${voice.name}`.toLowerCase();
   let score = 0;
-  if (/^fa\b|fa-ir|fa_ir/.test(voice.lang.toLowerCase())) score += 100;
-  if (/persian|farsi|iran|فارسی/.test(blob)) score += 80;
-  if (/dilara|farid|microsoft.*fa/.test(blob)) score += 40;
-  if (voice.localService) score += 10;
-  // Arabic can approximate Persian script better than English/robot default.
-  if (/^ar\b/.test(voice.lang.toLowerCase())) score += 25;
+  if (lang.startsWith("fa")) score += 100;
+  if (/persian|farsi|iran|فارسی|dilara|farid/.test(blob)) score += 80;
+  if (voice.localService) score += 5;
   return score;
 }
 
-function pickVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | null {
+function pickPersianVoice(): SpeechSynthesisVoice | null {
+  const voices = refreshVoices();
   if (voices.length === 0) return null;
-  const ranked = [...voices].sort(
-    (a, b) => scorePersianVoice(b) - scorePersianVoice(a),
-  );
+  const ranked = [...voices].sort((a, b) => scoreVoice(b) - scoreVoice(a));
   const best = ranked[0];
-  return best && scorePersianVoice(best) > 0 ? best : null;
+  return best && scoreVoice(best) >= 80 ? best : null;
 }
 
-/** Split long instructions so engines don't garble / hiss on huge payloads. */
+export function hasPersianVoice(): boolean {
+  return pickPersianVoice() != null;
+}
+
+/** Must run inside a click/tap handler to unlock autoplay policies. */
+export function unlockSpeech(): void {
+  if (!isSpeechSupported() || unlocked) return;
+  try {
+    window.speechSynthesis.cancel();
+    const warm = new SpeechSynthesisUtterance(" ");
+    warm.volume = 0;
+    warm.rate = 2;
+    warm.lang = "fa-IR";
+    window.speechSynthesis.speak(warm);
+    window.speechSynthesis.cancel();
+    unlocked = true;
+  } catch {
+    /* ignore */
+  }
+}
+
+export function stopSpeaking() {
+  if (typeof window === "undefined") return;
+  speakToken += 1;
+  active?.cancel();
+  active = null;
+  try {
+    window.speechSynthesis?.cancel();
+  } catch {
+    /* ignore */
+  }
+}
+
 function chunkText(text: string): string[] {
-  const normalized = text
-    .replace(/\s+/g, " ")
-    .replace(/\u200c+/g, "\u200c")
-    .trim();
+  const normalized = text.replace(/\s+/g, " ").trim();
   if (!normalized) return [];
-  if (normalized.length <= 180) return [normalized];
+  if (normalized.length <= 160) return [normalized];
 
   const parts = normalized
     .split(/(?<=[.!؟?\n،؛])\s+/)
@@ -110,9 +113,8 @@ function chunkText(text: string): string[] {
       buf = part;
       continue;
     }
-    if (`${buf} ${part}`.length <= 180) {
-      buf = `${buf} ${part}`;
-    } else {
+    if (`${buf} ${part}`.length <= 160) buf = `${buf} ${part}`;
+    else {
       chunks.push(buf);
       buf = part;
     }
@@ -121,39 +123,70 @@ function chunkText(text: string): string[] {
   return chunks.length > 0 ? chunks : [normalized];
 }
 
-export function stopSpeaking() {
-  if (typeof window === "undefined") return;
-  active?.cancel();
-  active = null;
-  clearChromeKeepAlive();
-  try {
-    window.speechSynthesis?.cancel();
-  } catch {
-    /* ignore */
-  }
-}
+function speakOne(
+  text: string,
+  voice: SpeechSynthesisVoice | null,
+  token: number,
+): Promise<void> {
+  return new Promise((resolve) => {
+    if (token !== speakToken) {
+      resolve();
+      return;
+    }
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = "fa-IR";
+    utterance.rate = 0.92;
+    utterance.pitch = 1;
+    utterance.volume = 1;
+    // Only bind an explicit Persian voice — mismatched voices cause hiss/noise.
+    if (voice) utterance.voice = voice;
 
-export function buildStepSpeech(instruction: string, tip?: string | null): string {
-  const parts = [instruction.trim()].filter(Boolean);
-  if (tip?.trim()) parts.push(`نکته: ${tip.trim()}`);
-  return parts.join(" . ");
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      resolve();
+    };
+    utterance.onend = finish;
+    utterance.onerror = finish;
+
+    try {
+      window.speechSynthesis.resume();
+    } catch {
+      /* ignore */
+    }
+    window.speechSynthesis.speak(utterance);
+
+    window.setTimeout(
+      () => {
+        if (!done && !window.speechSynthesis.speaking) finish();
+      },
+      Math.max(6_000, text.length * 100),
+    );
+  });
 }
 
 /**
- * Read Persian cooking text aloud.
- * Returns a promise that settles when playback finishes or is cancelled.
+ * Read cooking text aloud.
+ * Call from a click handler when possible so mobile browsers allow audio.
  */
 export async function speakPersian(text: string): Promise<void> {
-  if (typeof window === "undefined") return;
-  if (!window.speechSynthesis || !text.trim()) return;
+  if (!isSpeechSupported() || !text.trim()) return;
 
-  stopSpeaking();
+  const token = ++speakToken;
+  try {
+    window.speechSynthesis.cancel();
+  } catch {
+    /* ignore */
+  }
 
-  // Brief pause after cancel so the audio device can reset (avoids hiss/static).
-  await new Promise((r) => window.setTimeout(r, 120));
+  // Tiny yield so cancel flushes without breaking a click-gesture chain.
+  await new Promise<void>((r) => {
+    window.setTimeout(r, 40);
+  });
+  if (token !== speakToken) return;
 
-  const voices = await loadVoices();
-  const voice = pickVoice(voices);
+  const voice = pickPersianVoice();
   const chunks = chunkText(text);
   if (chunks.length === 0) return;
 
@@ -161,7 +194,6 @@ export async function speakPersian(text: string): Promise<void> {
   const handle: SpeakHandle = {
     cancel: () => {
       cancelled = true;
-      clearChromeKeepAlive();
       try {
         window.speechSynthesis.cancel();
       } catch {
@@ -170,67 +202,13 @@ export async function speakPersian(text: string): Promise<void> {
     },
   };
   active = handle;
-  startChromeKeepAlive();
 
   try {
     for (const chunk of chunks) {
-      if (cancelled) return;
-      await speakChunk(chunk, voice);
+      if (cancelled || token !== speakToken) return;
+      await speakOne(chunk, voice, token);
     }
   } finally {
-    if (active === handle) {
-      active = null;
-      clearChromeKeepAlive();
-    }
+    if (active === handle) active = null;
   }
-}
-
-function speakChunk(
-  text: string,
-  voice: SpeechSynthesisVoice | null,
-): Promise<void> {
-  return new Promise((resolve, reject) => {
-    try {
-      // Unstick Chrome if a previous utterance left the engine paused.
-      try {
-        window.speechSynthesis.resume();
-      } catch {
-        /* ignore */
-      }
-
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = voice?.lang?.toLowerCase().startsWith("fa")
-        ? voice.lang
-        : "fa-IR";
-      utterance.rate = 0.9;
-      utterance.pitch = 1;
-      utterance.volume = 1;
-      if (voice) utterance.voice = voice;
-
-      let done = false;
-      const finish = () => {
-        if (done) return;
-        done = true;
-        resolve();
-      };
-
-      utterance.onend = finish;
-      utterance.onerror = () => finish();
-
-      window.speechSynthesis.speak(utterance);
-
-      // Safety: if engine silently dies, don't hang the queue forever.
-      window.setTimeout(() => {
-        if (!done && !window.speechSynthesis.speaking) finish();
-      }, Math.max(8_000, text.length * 120));
-    } catch (err) {
-      reject(err);
-    }
-  });
-}
-
-/** Warm the voice list early (call from cook page mount). */
-export function preloadSpeechVoices() {
-  if (typeof window === "undefined") return;
-  void loadVoices();
 }

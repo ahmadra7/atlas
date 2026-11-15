@@ -15,8 +15,6 @@ import {
   LogoutCurve,
   Send2,
   TickCircle,
-  VolumeHigh,
-  VolumeSlash,
 } from "iconsax-react";
 import { BrandMark } from "@/components/brand/BrandMark";
 import { AppShell } from "@/components/layout/AppShell";
@@ -24,6 +22,7 @@ import { BottomBar } from "@/components/ui/BottomBar";
 import { Button } from "@/components/ui/Button";
 import { CookSkeleton } from "@/components/ui/Skeleton";
 import { StateView } from "@/components/ui/StateView";
+import { VoiceStepsToggle } from "@/components/ui/VoiceStepsToggle";
 import { RecipeImage } from "@/components/recipe/RecipeImage";
 import { instantPush } from "@/components/navigation/InstantNav";
 import { atlasClient } from "@/lib/client";
@@ -34,6 +33,7 @@ import {
   setVoiceStepsEnabled,
   speakPersian,
   stopSpeaking,
+  unlockSpeech,
 } from "@/lib/speak";
 
 const sosIssues = [
@@ -144,30 +144,32 @@ function CookingPageContent() {
     }
   }, [step?.id, step?.timerSeconds]);
 
-  function speakCurrentStep() {
-    if (!step?.instruction) return;
-    const text = buildStepSpeech(step.instruction, step.tip);
+  function speakText(instruction: string, tip?: string | null) {
+    const text = buildStepSpeech(instruction, tip);
+    if (!text) return;
     setSpeaking(true);
     void speakPersian(text).finally(() => setSpeaking(false));
   }
 
+  function speakCurrentStep() {
+    if (!step?.instruction) return;
+    unlockSpeech();
+    speakText(step.instruction, step.tip);
+  }
+
+  // First step: try auto-read once session is ready (works after unlock on recipe page).
   useEffect(() => {
-    if (!voiceSteps || !step?.instruction || session?.status === "completed") {
-      stopSpeaking();
-      setSpeaking(false);
-      return;
-    }
-    const timer = window.setTimeout(() => {
-      speakCurrentStep();
-    }, 280);
-    return () => {
-      window.clearTimeout(timer);
-      stopSpeaking();
-      setSpeaking(false);
-    };
-    // Intentionally keyed by step identity + voice toggle.
+    if (!session || !voiceSteps || !step?.instruction) return;
+    if (session.status === "completed" || session.currentStepOrder !== 1) return;
+    const instruction = step.instruction;
+    const tip = step.tip;
+    const t = window.setTimeout(() => {
+      speakText(instruction, tip);
+    }, 200);
+    return () => window.clearTimeout(t);
+    // Only on first entry into step 1 with voice on.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [voiceSteps, step?.id, step?.instruction, step?.tip, session?.status]);
+  }, [session?.id, voiceSteps]);
 
   useEffect(() => {
     return () => {
@@ -191,14 +193,26 @@ function CookingPageContent() {
   async function goNext() {
     if (!session || !step) return;
     if (step.order >= session.totalSteps) {
+      stopSpeaking();
       setSession(await atlasClient.completeSession(session.id));
       return;
+    }
+    // Speak next step inside the click turn (mobile autoplay policy).
+    const nextStep = session.steps.find((s) => s.order === step.order + 1);
+    if (voiceSteps && nextStep?.instruction) {
+      unlockSpeech();
+      speakText(nextStep.instruction, nextStep.tip);
     }
     setSession(await atlasClient.completeStep(session.id, step.order));
   }
 
   async function goPrev() {
     if (!session || !step || step.order <= 1) return;
+    const prevStep = session.steps.find((s) => s.order === step.order - 1);
+    if (voiceSteps && prevStep?.instruction) {
+      unlockSpeech();
+      speakText(prevStep.instruction, prevStep.tip);
+    }
     setSession({
       ...session,
       currentStepOrder: step.order - 1,
@@ -373,59 +387,38 @@ function CookingPageContent() {
   return (
     <AppShell hideNav showBack title="پخت">
       <div className="relative flex min-h-[70vh] flex-col pb-28">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              role="switch"
-              aria-checked={voiceSteps}
-              aria-label="پخش مراحل با صدا"
-              onClick={() => {
-                const next = !voiceSteps;
-                setVoiceSteps(next);
-                setVoiceStepsEnabled(next);
-                if (!next) {
-                  stopSpeaking();
-                  setSpeaking(false);
-                }
-              }}
-              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-caption font-semibold transition ${
-                voiceSteps
-                  ? "bg-atlas-primary-soft text-atlas-primary"
-                  : "text-atlas-ink-muted hover:bg-atlas-surface-muted"
-              }`}
-            >
-              {voiceSteps ? (
-                <VolumeHigh size={18} color="currentColor" variant="Bold" />
-              ) : (
-                <VolumeSlash size={18} color="currentColor" variant="Linear" />
-              )}
-              <span>{voiceSteps ? "صدا روشن" : "صدا خاموش"}</span>
-            </button>
-            <button
-              type="button"
-              aria-label="تکرار خواندن مرحله"
-              disabled={!step?.instruction}
-              onClick={() => {
-                if (!voiceSteps) {
-                  setVoiceSteps(true);
-                  setVoiceStepsEnabled(true);
-                }
-                speakCurrentStep();
-              }}
-              className="inline-flex items-center gap-1 rounded-full border border-atlas-border bg-atlas-surface px-2.5 py-1.5 text-caption font-semibold text-atlas-ink transition hover:bg-atlas-surface-muted disabled:opacity-45"
-            >
-              <VolumeHigh size={16} color="currentColor" variant="Bold" />
-              <span>{speaking ? "تکرار دوباره" : "تکرار"}</span>
-            </button>
-          </div>
+        <div className="flex items-start justify-between gap-2">
+          <VoiceStepsToggle
+            compact
+            className="min-w-0 flex-1"
+            checked={voiceSteps}
+            speaking={speaking}
+            onChange={(next) => {
+              unlockSpeech();
+              setVoiceSteps(next);
+              setVoiceStepsEnabled(next);
+              if (!next) {
+                stopSpeaking();
+                setSpeaking(false);
+                return;
+              }
+              speakCurrentStep();
+            }}
+            onRepeat={() => {
+              if (!voiceSteps) {
+                setVoiceSteps(true);
+                setVoiceStepsEnabled(true);
+              }
+              speakCurrentStep();
+            }}
+          />
           <button
             type="button"
             onClick={() => setPanel("abandon")}
-            className="inline-flex items-center gap-1.5 rounded-full px-2 py-1.5 text-caption font-semibold text-atlas-ink hover:bg-atlas-surface-muted"
+            className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-2 text-caption font-semibold text-atlas-ink hover:bg-atlas-surface-muted"
           >
             <LogoutCurve size={18} color="#111111" />
-            <span>خروج از پخت</span>
+            <span>خروج</span>
           </button>
         </div>
 

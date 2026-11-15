@@ -27,9 +27,12 @@ import { appNavigateSoftOrHard } from "@/lib/navigate";
 import { recipePath } from "@/lib/recipe-path";
 import {
   getVoiceStepsEnabled,
+  preloadSpeechVoices,
   setVoiceStepsEnabled,
+  unlockSpeech,
 } from "@/lib/speak";
-import { Profile2User, Timer1, VolumeHigh, VolumeSlash } from "iconsax-react";
+import { VoiceStepsToggle } from "@/components/ui/VoiceStepsToggle";
+import { Profile2User, Timer1 } from "iconsax-react";
 
 export default function RecipeDetailClient() {
   const searchParams = useSearchParams();
@@ -46,6 +49,7 @@ export default function RecipeDetailClient() {
 
   useEffect(() => {
     setVoiceSteps(getVoiceStepsEnabled());
+    preloadSpeechVoices();
   }, []);
 
   useEffect(() => {
@@ -214,57 +218,15 @@ export default function RecipeDetailClient() {
               </span>
             </div>
 
-            <button
-              type="button"
-              role="switch"
-              aria-checked={voiceSteps}
-              onClick={() => {
-                const next = !voiceSteps;
+            <VoiceStepsToggle
+              className="mt-3 shrink-0"
+              checked={voiceSteps}
+              onChange={(next) => {
+                unlockSpeech();
                 setVoiceSteps(next);
                 setVoiceStepsEnabled(next);
               }}
-              className={`mt-3 flex w-full shrink-0 items-center justify-between gap-3 rounded-2xl border px-3.5 py-3 text-right transition ${
-                voiceSteps
-                  ? "border-atlas-primary/25 bg-atlas-primary-soft"
-                  : "border-atlas-border bg-atlas-background"
-              }`}
-            >
-              <span className="flex min-w-0 items-center gap-2.5">
-                <span
-                  className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
-                    voiceSteps
-                      ? "bg-atlas-primary text-white"
-                      : "bg-atlas-surface-muted text-atlas-ink-muted"
-                  }`}
-                >
-                  {voiceSteps ? (
-                    <VolumeHigh size={18} color="currentColor" variant="Bold" />
-                  ) : (
-                    <VolumeSlash size={18} color="currentColor" variant="Linear" />
-                  )}
-                </span>
-                <span className="min-w-0">
-                  <span className="block text-[13px] font-bold text-atlas-ink">
-                    پخش مراحل با صدا
-                  </span>
-                  <span className="mt-0.5 block text-[11px] font-medium leading-5 text-atlas-ink-muted">
-                    متن هر مرحله هنگام پخت برایت خوانده می‌شود
-                  </span>
-                </span>
-              </span>
-              <span
-                className={`relative h-6 w-11 shrink-0 rounded-full transition ${
-                  voiceSteps ? "bg-atlas-primary" : "bg-zinc-300 dark:bg-zinc-600"
-                }`}
-              >
-                <span
-                  className="absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-[inset-inline-start] duration-200"
-                  style={{
-                    insetInlineStart: voiceSteps ? "1.35rem" : "0.15rem",
-                  }}
-                />
-              </span>
-            </button>
+            />
 
             <div className="atlas-scroll-y mt-3 min-h-0 flex-1 pe-1 pb-[5.75rem]">
               <ul className="space-y-2">
