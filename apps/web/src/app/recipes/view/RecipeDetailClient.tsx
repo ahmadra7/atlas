@@ -148,12 +148,6 @@ export default function RecipeDetailClient() {
               }}
             />
 
-            {recipe.description?.trim() ? (
-              <p className="text-[13px] leading-6 text-atlas-ink-muted">
-                {recipe.description.trim()}
-              </p>
-            ) : null}
-
             <TagRow>
               <SoftTag
                 label={formatMinutesFa(recipe.totalMinutes)}
