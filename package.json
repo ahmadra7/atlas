@@ -18,7 +18,7 @@
     "db:seed": "npm run db:seed -w @atlas/api",
     "build": "npm run build -w @atlas/web",
     "build:web": "npm run build -w @atlas/web",
-    "publish:static": "npm run build -w @atlas/web && node scripts/copy-static-root.mjs",
+    "publish:static": "node scripts/publish-static.mjs",
     "build:api": "npm run build -w @atlas/api",
     "build:apk": "npm run build:apk -w @atlas/mobile",
     "build:dev-apk": "npm run build:dev -w @atlas/mobile",

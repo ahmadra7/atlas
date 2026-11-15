@@ -540,10 +540,12 @@ export default function HomePage() {
     if (selectedIds.has(item.id)) return;
     setAdding(true);
     setAddError(null);
+    // Close the suggest panel immediately; don't leave it open if the API fails.
+    setQuery("");
+    setSuggestions([]);
     try {
       await withApiSession(() => atlasClient.addInventoryItem(item.id));
       await reloadInventory();
-      setQuery("");
     } catch {
       setAddError("افزودن از لیست انجام نشد. اتصال به سرور را چک کنید.");
     } finally {
