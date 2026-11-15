@@ -28,7 +28,9 @@ import { RecipeImage } from "@/components/recipe/RecipeImage";
 import { instantPush } from "@/components/navigation/InstantNav";
 import { atlasClient } from "@/lib/client";
 import {
+  buildStepSpeech,
   getVoiceStepsEnabled,
+  preloadSpeechVoices,
   setVoiceStepsEnabled,
   speakPersian,
   stopSpeaking,
@@ -65,6 +67,11 @@ function CookingPageContent() {
   const [voiceSteps, setVoiceSteps] = useState(
     () => voiceParam === "1" || voiceParam === "true",
   );
+  const [speaking, setSpeaking] = useState(false);
+
+  useEffect(() => {
+    preloadSpeechVoices();
+  }, []);
 
   useEffect(() => {
     if (voiceParam === "1" || voiceParam === "true") {
@@ -137,27 +144,30 @@ function CookingPageContent() {
     }
   }, [step?.id, step?.timerSeconds]);
 
+  function speakCurrentStep() {
+    if (!step?.instruction) return;
+    const text = buildStepSpeech(step.instruction, step.tip);
+    setSpeaking(true);
+    void speakPersian(text).finally(() => setSpeaking(false));
+  }
+
   useEffect(() => {
     if (!voiceSteps || !step?.instruction || session?.status === "completed") {
       stopSpeaking();
+      setSpeaking(false);
       return;
     }
-    const parts = [step.instruction];
-    if (step.tip?.trim()) parts.push(`نکته: ${step.tip.trim()}`);
     const timer = window.setTimeout(() => {
-      speakPersian(parts.join(". "));
-    }, 350);
+      speakCurrentStep();
+    }, 280);
     return () => {
       window.clearTimeout(timer);
       stopSpeaking();
+      setSpeaking(false);
     };
-  }, [
-    voiceSteps,
-    step?.id,
-    step?.instruction,
-    step?.tip,
-    session?.status,
-  ]);
+    // Intentionally keyed by step identity + voice toggle.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [voiceSteps, step?.id, step?.instruction, step?.tip, session?.status]);
 
   useEffect(() => {
     return () => {
@@ -364,30 +374,51 @@ function CookingPageContent() {
     <AppShell hideNav showBack title="پخت">
       <div className="relative flex min-h-[70vh] flex-col pb-28">
         <div className="flex items-center justify-between gap-2">
-          <button
-            type="button"
-            role="switch"
-            aria-checked={voiceSteps}
-            aria-label="پخش مراحل با صدا"
-            onClick={() => {
-              const next = !voiceSteps;
-              setVoiceSteps(next);
-              setVoiceStepsEnabled(next);
-              if (!next) stopSpeaking();
-            }}
-            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-caption font-semibold transition ${
-              voiceSteps
-                ? "bg-atlas-primary-soft text-atlas-primary"
-                : "text-atlas-ink-muted hover:bg-atlas-surface-muted"
-            }`}
-          >
-            {voiceSteps ? (
-              <VolumeHigh size={18} color="currentColor" variant="Bold" />
-            ) : (
-              <VolumeSlash size={18} color="currentColor" variant="Linear" />
-            )}
-            <span>{voiceSteps ? "صدا روشن" : "صدا خاموش"}</span>
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              role="switch"
+              aria-checked={voiceSteps}
+              aria-label="پخش مراحل با صدا"
+              onClick={() => {
+                const next = !voiceSteps;
+                setVoiceSteps(next);
+                setVoiceStepsEnabled(next);
+                if (!next) {
+                  stopSpeaking();
+                  setSpeaking(false);
+                }
+              }}
+              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-caption font-semibold transition ${
+                voiceSteps
+                  ? "bg-atlas-primary-soft text-atlas-primary"
+                  : "text-atlas-ink-muted hover:bg-atlas-surface-muted"
+              }`}
+            >
+              {voiceSteps ? (
+                <VolumeHigh size={18} color="currentColor" variant="Bold" />
+              ) : (
+                <VolumeSlash size={18} color="currentColor" variant="Linear" />
+              )}
+              <span>{voiceSteps ? "صدا روشن" : "صدا خاموش"}</span>
+            </button>
+            <button
+              type="button"
+              aria-label="تکرار خواندن مرحله"
+              disabled={!step?.instruction}
+              onClick={() => {
+                if (!voiceSteps) {
+                  setVoiceSteps(true);
+                  setVoiceStepsEnabled(true);
+                }
+                speakCurrentStep();
+              }}
+              className="inline-flex items-center gap-1 rounded-full border border-atlas-border bg-atlas-surface px-2.5 py-1.5 text-caption font-semibold text-atlas-ink transition hover:bg-atlas-surface-muted disabled:opacity-45"
+            >
+              <VolumeHigh size={16} color="currentColor" variant="Bold" />
+              <span>{speaking ? "تکرار دوباره" : "تکرار"}</span>
+            </button>
+          </div>
           <button
             type="button"
             onClick={() => setPanel("abandon")}
