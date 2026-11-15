@@ -1,7 +1,7 @@
 [build]
-  # Export Next to apps/web/out, then mirror into repo-root static files Netlify serves.
-  command = "npm run publish:static"
-  publish = "."
+  # Proven path: Next static export; serve apps/web/out (includes public/_redirects).
+  command = "npm run build -w @atlas/web"
+  publish = "apps/web/out"
 
 [build.environment]
   NODE_VERSION = "20"
