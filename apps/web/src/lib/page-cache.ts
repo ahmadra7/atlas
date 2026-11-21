@@ -19,6 +19,33 @@ export const pageCache = {
   recipes: {} as Record<string, Recipe>,
 };
 
+/** Drop warm SPA cache so the next load hits the server. */
+export function clearPageCache() {
+  pageCache.inventory = null;
+  pageCache.popular = null;
+  pageCache.favorites = null;
+  pageCache.profile = null;
+  pageCache.recommendations = null;
+  pageCache.recommendationKey = "";
+  pageCache.recipes = {};
+}
+
+function navigationType(): string {
+  if (typeof performance === "undefined") return "";
+  const entry = performance.getEntriesByType?.(
+    "navigation",
+  )?.[0] as PerformanceNavigationTiming | undefined;
+  return entry?.type ?? "";
+}
+
+/** Hard refresh / back-forward cache restore → force fresh server data. */
+export function clearPageCacheIfHardNav() {
+  const type = navigationType();
+  if (type === "reload" || type === "back_forward") {
+    clearPageCache();
+  }
+}
+
 export function recommendationCacheKey(filters: RecommendationFilters): string {
   const inventorySig = (pageCache.inventory ?? [])
     .map((item) => item.ingredientId)

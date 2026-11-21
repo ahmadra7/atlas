@@ -54,10 +54,13 @@ async function httpRequest<T>(
     headers.Authorization = `Bearer ${options.token}`;
   }
 
+  const method = options.method ?? "GET";
   const res = await fetch(url, {
-    method: options.method ?? "GET",
+    method,
     headers,
     body: options.body === undefined ? undefined : JSON.stringify(options.body),
+    // Catalog/recipe reads must reflect admin DB edits after a page refresh.
+    cache: method === "GET" ? "no-store" : "default",
   });
 
   if (!res.ok) {

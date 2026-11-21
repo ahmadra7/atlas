@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { ApiSessionBootstrap } from "@/components/auth/ApiSessionBootstrap";
 import { AuthProvider } from "@/components/auth/AuthProvider";
+import { PageCacheLifecycle } from "@/components/cache/PageCacheLifecycle";
 import { InstantNav } from "@/components/navigation/InstantNav";
 import { MobileHardNav } from "@/components/navigation/MobileHardNav";
 import { RegisterServiceWorker } from "@/components/pwa/RegisterServiceWorker";
@@ -91,6 +92,7 @@ export default function RootLayout({
         <ThemeProvider>
           <AuthProvider>
             <ApiSessionBootstrap />
+            <PageCacheLifecycle />
             <RegisterServiceWorker />
             <MobileHardNav />
             <InstantNav>{children}</InstantNav>

@@ -51,7 +51,37 @@ export function PageSkeleton({ children }: { children: ReactNode }) {
   );
 }
 
-/** Matches fridge card + a couple popular rows (minimal). */
+/** Banner carousel placeholder — stronger sweep so the load state reads clearly. */
+export function BannerSkeleton({ className = "" }: { className?: string }) {
+  return (
+    <div
+      className={cx(
+        "relative h-[8.75rem] w-full overflow-hidden rounded-atlas",
+        "bg-[#d8dee8] dark:bg-white/[0.08]",
+        className,
+      )}
+      aria-hidden
+    >
+      {/* Soft layout hints so the block reads as a banner, not an empty strip */}
+      <div className="absolute inset-0 flex flex-col justify-between p-4">
+        <div className="space-y-2.5 pt-1">
+          <div className="h-3.5 w-[42%] rounded-md bg-white/55 dark:bg-white/15" />
+          <div className="h-2.5 w-[28%] rounded-md bg-white/40 dark:bg-white/10" />
+        </div>
+        <div className="flex items-center justify-center gap-1.5 pb-0.5">
+          <div className="h-1.5 w-1.5 rounded-full bg-white/70 dark:bg-white/25" />
+          <div className="h-1.5 w-1.5 rounded-full bg-white/35 dark:bg-white/12" />
+        </div>
+      </div>
+      {/* Full-bleed sweep with a tight bright band so motion reads on the wide banner */}
+      <div
+        className="pointer-events-none absolute inset-0 -translate-x-full animate-[skeletonShine_1.35s_ease-in-out_infinite] bg-[linear-gradient(90deg,transparent_0%,transparent_38%,rgba(255,255,255,0.78)_50%,transparent_62%,transparent_100%)] dark:bg-[linear-gradient(90deg,transparent_0%,transparent_38%,rgba(255,255,255,0.22)_50%,transparent_62%,transparent_100%)]"
+      />
+    </div>
+  );
+}
+
+/** Matches fridge card + banner + a couple popular rows (minimal). */
 export function HomeSkeleton() {
   return (
     <PageSkeleton>
@@ -72,7 +102,7 @@ export function HomeSkeleton() {
         </div>
       </div>
 
-      <Skeleton className="h-[8.75rem] w-full rounded-atlas" />
+      <BannerSkeleton />
 
       <div className="space-y-3">
         <Skeleton className="h-5 w-28" />

@@ -15,9 +15,22 @@
   [headers.values]
     Cross-Origin-Opener-Policy = "same-origin-allow-popups"
 
+# Live API pointer — must not be cached across tunnel reconnects.
+[[headers]]
+  for = "/atlas-runtime-config.json"
+  [headers.values]
+    Cache-Control = "no-store, max-age=0, must-revalidate"
+
 # Google TTS proxy for cooking-step narration on the static site.
 [[redirects]]
   from = "/api/tts"
   to = "/.netlify/functions/tts"
+  status = 200
+  force = true
+
+# Optional live API proxy (set ATLAS_API_ORIGIN to the tunnel base URL).
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/atlas-proxy/:splat"
   status = 200
   force = true

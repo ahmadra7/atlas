@@ -28,6 +28,7 @@ function StartCookContent() {
         if (!cancelled) {
           const params = new URLSearchParams({
             id: session.id,
+            recipeId,
           });
           if (voiceOn) params.set("voice", "1");
           instantReplace(router, `/cook/session?${params.toString()}`);

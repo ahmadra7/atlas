@@ -297,10 +297,9 @@ export default function HomePage() {
 
         if (pageCache.popular !== null && pageCache.popular.length > 0) {
           setPopular(pageCache.popular);
-          return;
         }
 
-        // Catalog strip — not pantry recommendations (those need inventory + auth).
+        // Always revalidate from server (stale-while-revalidate).
         const recipes = await atlasClient.searchRecipes("", 4);
         if (cancelled) return;
         const cards: RecommendationCard[] = recipes.map((recipe) => ({

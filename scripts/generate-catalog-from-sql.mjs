@@ -579,6 +579,53 @@ for (const c of rawCook) {
 
 console.log(`Total transformed recipes: ${allRecipes.length}`);
 
+function recipeQualityScore(r) {
+  const steps = Array.isArray(r.steps) ? r.steps.length : 0;
+  const ings = Array.isArray(r.ingredients) ? r.ingredients.length : 0;
+  const desc = String(r.description ?? "");
+  const boilerplate = /لذیذ و خانگی/.test(desc);
+  let score = steps * 12 + ings * 4 + Math.min(desc.length, 240);
+  if (!boilerplate) score += 50;
+  if (steps >= 3) score += 25;
+  if (ings >= 5) score += 12;
+  return score;
+}
+
+function cleanRecipes(recipes) {
+  const usable = recipes.filter((r) => {
+    const steps = Array.isArray(r.steps) ? r.steps.length : 0;
+    const ings = Array.isArray(r.ingredients) ? r.ingredients.length : 0;
+    if (steps < 1 || ings < 2) return false;
+    const desc = String(r.description ?? "");
+    if (/لذیذ و خانگی/.test(desc) && steps <= 1 && ings <= 3) return false;
+    return true;
+  });
+  const bestByTitle = new Map();
+  for (const recipe of usable) {
+    const key = normalizePersian(recipe.title);
+    if (!key) continue;
+    const prev = bestByTitle.get(key);
+    if (!prev || recipeQualityScore(recipe) > recipeQualityScore(prev)) {
+      bestByTitle.set(key, recipe);
+    }
+  }
+  const winnerIds = new Set([...bestByTitle.values()].map((r) => r.id));
+  const cleaned = [];
+  const seen = new Set();
+  for (const recipe of usable) {
+    const key = normalizePersian(recipe.title);
+    if (!winnerIds.has(recipe.id) || seen.has(key)) continue;
+    seen.add(key);
+    cleaned.push(recipe);
+  }
+  return cleaned;
+}
+
+const cleanedRecipes = cleanRecipes(allRecipes);
+console.log(
+  `Cleaned catalog: ${cleanedRecipes.length} (from ${allRecipes.length})`,
+);
+
 // Generate ingredients catalog
 const allIngredientNames = new Set([
   ...ingMap.values(),
@@ -622,7 +669,7 @@ const ingredientsTsPath = path.resolve(apiCatalogDir, "ingredients.ts");
 const sharedFoodNamesPath = path.resolve(rootDir, "packages/shared/src/foodIngredients.ts");
 
 console.log("Writing recipesData.json...");
-fs.writeFileSync(recipesJsonPath, JSON.stringify(allRecipes), "utf8");
+fs.writeFileSync(recipesJsonPath, JSON.stringify(cleanedRecipes), "utf8");
 
 console.log("Writing persianRecipes.ts...");
 const persianRecipesContent = `import type { Recipe } from "@atlas/contracts";
@@ -768,6 +815,10 @@ fs.writeFileSync(sharedFoodNamesPath, foodIngredientsFileContent, "utf8");
 // Also create apps/api/data/food-catalog.json for backend
 const apiDataDir = path.resolve(rootDir, "apps/api/data");
 if (!fs.existsSync(apiDataDir)) fs.mkdirSync(apiDataDir, { recursive: true });
-fs.writeFileSync(path.resolve(apiDataDir, "food-catalog.json"), JSON.stringify(allRecipes), "utf8");
+fs.writeFileSync(
+  path.resolve(apiDataDir, "food-catalog.json"),
+  JSON.stringify(cleanedRecipes),
+  "utf8",
+);
 
 console.log("SUCCESS! All catalogs generated from food.sql.");

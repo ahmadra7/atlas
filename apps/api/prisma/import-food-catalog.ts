@@ -1,19 +1,77 @@
 /**
  * Food catalog importer for PostgreSQL / Prisma using the imported database.
  */
+import { createHash } from "node:crypto";
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { PrismaClient } from "@prisma/client";
 import { normalizePersian } from "@atlas/shared";
 import type { Recipe } from "@atlas/contracts";
 
+function ingredientIdFromNormalized(normalizedName: string): string {
+  const hash = createHash("sha1").update(normalizedName).digest("hex").slice(0, 12);
+  return `ing-${hash}`;
+}
+
 const prisma = new PrismaClient();
+
+const BOILERPLATE_RE = /لذیذ و خانگی/;
+
+function recipeQualityScore(recipe: Recipe): number {
+  const steps = recipe.steps?.length ?? 0;
+  const ings = recipe.ingredients?.length ?? 0;
+  const desc = recipe.description ?? "";
+  const boilerplate = BOILERPLATE_RE.test(desc);
+  let score = steps * 12 + ings * 4 + Math.min(desc.length, 240);
+  if (!boilerplate) score += 50;
+  if (steps >= 3) score += 25;
+  if (ings >= 5) score += 12;
+  return score;
+}
+
+function isUsableCatalogRecipe(recipe: Recipe): boolean {
+  const steps = recipe.steps?.length ?? 0;
+  const ings = recipe.ingredients?.length ?? 0;
+  if (steps < 1 || ings < 2) return false;
+  const desc = recipe.description ?? "";
+  if (BOILERPLATE_RE.test(desc) && steps <= 1 && ings <= 3) return false;
+  return true;
+}
+
+/** Drop thin stubs and keep one row per normalized title (richest wins). */
+export function cleanFoodCatalog(recipes: Recipe[]): Recipe[] {
+  const usable = recipes.filter(isUsableCatalogRecipe);
+  const bestByTitle = new Map<string, Recipe>();
+  for (const recipe of usable) {
+    const key = normalizePersian(recipe.title);
+    if (!key) continue;
+    const prev = bestByTitle.get(key);
+    if (!prev || recipeQualityScore(recipe) > recipeQualityScore(prev)) {
+      bestByTitle.set(key, recipe);
+    }
+  }
+  const winnerIds = new Set(
+    [...bestByTitle.values()].map((recipe) => recipe.id),
+  );
+  const cleaned: Recipe[] = [];
+  const seenTitles = new Set<string>();
+  for (const recipe of usable) {
+    const key = normalizePersian(recipe.title);
+    if (!winnerIds.has(recipe.id) || seenTitles.has(key)) continue;
+    seenTitles.add(key);
+    cleaned.push(recipe);
+  }
+  return cleaned;
+}
 
 export function loadFoodCatalog(): Recipe[] {
   const candidates = [
     resolve(__dirname, "../data/food-catalog.json"),
+    resolve(__dirname, "../../../packages/api-client/src/catalog/recipesData.json"),
+    resolve(process.cwd(), "data/food-catalog.json"),
     resolve(process.cwd(), "apps/api/data/food-catalog.json"),
     resolve(process.cwd(), "packages/api-client/src/catalog/recipesData.json"),
+    resolve(process.cwd(), "../packages/api-client/src/catalog/recipesData.json"),
   ];
 
   const found = candidates.find((p) => existsSync(p));
@@ -21,7 +79,8 @@ export function loadFoodCatalog(): Recipe[] {
     throw new Error(`Catalog JSON not found. Checked:\n${candidates.join("\n")}`);
   }
 
-  return JSON.parse(readFileSync(found, "utf8")) as Recipe[];
+  const raw = JSON.parse(readFileSync(found, "utf8")) as Recipe[];
+  return cleanFoodCatalog(raw);
 }
 
 export async function wipeCatalog() {
@@ -57,14 +116,19 @@ export async function importFoodCatalog(
     }
   }
 
-  const ingredientRows = [...ingMap.entries()].map(([normalizedName, data]) => ({
-    id: data.name,
-    name: data.name,
-    normalizedName,
-    category: "عمومی",
-    popularity: Math.min(99, Math.max(1, data.popularity)),
-    isCustom: false,
-  }));
+  const ingredientIdByNormalized = new Map<string, string>();
+  const ingredientRows = [...ingMap.entries()].map(([normalizedName, data]) => {
+    const id = ingredientIdFromNormalized(normalizedName);
+    ingredientIdByNormalized.set(normalizedName, id);
+    return {
+      id,
+      name: data.name,
+      normalizedName,
+      category: "عمومی",
+      popularity: Math.min(99, Math.max(1, data.popularity)),
+      isCustom: false,
+    };
+  });
 
   // Chunked insert ingredients
   for (let i = 0; i < ingredientRows.length; i += 1000) {
@@ -144,10 +208,14 @@ export async function importFoodCatalog(
   for (const r of recipes) {
     let order = 1;
     for (const ing of r.ingredients) {
+      const name = ing.name.trim();
+      if (!name) continue;
+      const ingredientId = ingredientIdByNormalized.get(normalizePersian(name));
+      if (!ingredientId) continue;
       recipeIngRows.push({
         recipeVersionId: r.versionId,
-        ingredientId: ing.name, // matched with id in ingredient table
-        name: ing.name,
+        ingredientId,
+        name,
         quantity: ing.quantity ?? null,
         unit: ing.unit ?? null,
         optional: ing.optional ?? false,

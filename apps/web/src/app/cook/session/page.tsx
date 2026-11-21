@@ -49,6 +49,7 @@ type Panel = "none" | "ask" | "abandon";
 function CookingPageContent() {
   const searchParams = useSearchParams();
   const sessionId = searchParams.get("id")?.trim() ?? "";
+  const recipeIdParam = searchParams.get("recipeId")?.trim() ?? "";
   const voiceParam = searchParams.get("voice");
   const router = useRouter();
   const [session, setSession] = useState<CookingSession | null>(null);
@@ -99,7 +100,11 @@ function CookingPageContent() {
         const data = await atlasClient.getCookingSession(sessionId);
         if (!cancelled) {
           setSession(data);
-          if (!data) setError("نشست پخت پیدا نشد.");
+          if (!data) {
+            setError(
+              "این نشست پخت دیگر در سرور نیست (مثلاً بعد از به‌روزرسانی دیتابیس پاک شده). از دستور دوباره شروع کنید.",
+            );
+          }
         }
       } catch {
         if (!cancelled) setError("بارگذاری نشست ناموفق بود.");
@@ -240,14 +245,25 @@ function CookingPageContent() {
   }
 
   if (error || !session || !step) {
+    const canRestart = Boolean(recipeIdParam);
     return (
       <AppShell hideNav showBack backHref="/home" title="پخت">
         <StateView
           tone="danger"
           title="نشست پخت در دسترس نیست"
           description={error ?? undefined}
-          actionLabel="رفتن به خانه"
-          onAction={() => instantPush(router, "/home")}
+          actionLabel={canRestart ? "شروع دوباره پخت" : "رفتن به خانه"}
+          onAction={() => {
+            if (canRestart) {
+              const params = new URLSearchParams({ recipeId: recipeIdParam });
+              if (voiceParam === "1" || voiceParam === "true") {
+                params.set("voice", "1");
+              }
+              instantPush(router, `/cook/start?${params.toString()}`);
+              return;
+            }
+            instantPush(router, "/home");
+          }}
         />
       </AppShell>
     );
