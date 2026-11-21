@@ -139,10 +139,22 @@ function createHttpClient(baseUrl: string, getAccessToken?: AtlasClientOptions["
         token: await token(),
         body: { recipeId },
       }),
-    getCookingSession: async (id: string) =>
-      httpRequest<CookingSession>(baseUrl, `api/cooking/sessions/${id}`, {
-        token: await token(),
-      }),
+    getCookingSession: async (id: string) => {
+      try {
+        return await httpRequest<CookingSession>(
+          baseUrl,
+          `api/cooking/sessions/${id}`,
+          { token: await token() },
+        );
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        // Missing/expired session after DB reset or refresh — treat as null.
+        if (/\bAPI 404\b/.test(msg) || /\bSESSION_NOT_FOUND\b/.test(msg)) {
+          return null;
+        }
+        throw err;
+      }
+    },
     completeStep: async (id: string, stepOrder: number) =>
       httpRequest<CookingSession>(
         baseUrl,

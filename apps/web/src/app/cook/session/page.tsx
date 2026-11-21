@@ -24,7 +24,7 @@ import { CookSkeleton } from "@/components/ui/Skeleton";
 import { StateView } from "@/components/ui/StateView";
 import { VoiceStepsToggle } from "@/components/ui/VoiceStepsToggle";
 import { RecipeImage } from "@/components/recipe/RecipeImage";
-import { instantPush } from "@/components/navigation/InstantNav";
+import { instantPush, instantReplace } from "@/components/navigation/InstantNav";
 import { atlasClient } from "@/lib/client";
 import {
   buildStepSpeech,
@@ -90,33 +90,71 @@ function CookingPageContent() {
 
   useEffect(() => {
     let cancelled = false;
+
+    function cookStartHref(recipeId: string) {
+      const params = new URLSearchParams({ recipeId });
+      if (voiceParam === "1" || voiceParam === "true" || voiceSteps) {
+        params.set("voice", "1");
+      }
+      return `/cook/start?${params.toString()}`;
+    }
+
     async function load() {
+      const restart = (recipeId: string | null | undefined) => {
+        if (cancelled) return true;
+        if (recipeId) {
+          // Refresh / dead session → fresh session with latest recipe from DB.
+          instantReplace(router, cookStartHref(recipeId));
+          return true;
+        }
+        instantReplace(router, "/home");
+        return true;
+      };
+
       if (!sessionId) {
-        setError("نشست پخت پیدا نشد.");
-        setLoading(false);
+        restart(recipeIdParam);
         return;
       }
+
       try {
         const data = await atlasClient.getCookingSession(sessionId);
-        if (!cancelled) {
-          setSession(data);
-          if (!data) {
-            setError(
-              "این نشست پخت دیگر در سرور نیست (مثلاً بعد از به‌روزرسانی دیتابیس پاک شده). از دستور دوباره شروع کنید.",
-            );
-          }
+        if (cancelled) return;
+
+        if (!data) {
+          restart(recipeIdParam);
+          return;
         }
+
+        // Admin may have saved a newer published version — reload so steps match dashboard.
+        try {
+          const recipe = await atlasClient.getRecipeBySlug(data.recipeSlug);
+          if (
+            recipe?.versionId &&
+            recipe.versionId !== data.recipeVersionId
+          ) {
+            restart(data.recipeId || recipeIdParam);
+            return;
+          }
+        } catch {
+          /* keep existing session if recipe lookup fails */
+        }
+
+        setSession(data);
+        setError(null);
       } catch {
-        if (!cancelled) setError("بارگذاری نشست ناموفق بود.");
+        if (cancelled) return;
+        restart(recipeIdParam);
+        return;
       } finally {
         if (!cancelled) setLoading(false);
       }
     }
+
     void load();
     return () => {
       cancelled = true;
     };
-  }, [sessionId]);
+  }, [sessionId, recipeIdParam, router, voiceParam, voiceSteps]);
 
   const step = useMemo(() => {
     if (!session) return null;

@@ -1,4 +1,5 @@
 import type { Ingredient, Recipe, RecipeStep } from "@atlas/contracts";
+import { normalizeRecipeContent } from "@atlas/shared";
 
 export function asStringArray(value: unknown): string[] {
   if (Array.isArray(value)) {
@@ -84,7 +85,7 @@ export function mapRecipe(row: RecipeFull): Recipe {
     throw new Error(`Recipe ${row.id} has no versions`);
   }
 
-  const steps: RecipeStep[] = [...version.steps]
+  const rawSteps: RecipeStep[] = [...version.steps]
     .sort((a, b) => a.order - b.order)
     .map((s) => ({
       id: s.id,
@@ -94,6 +95,22 @@ export function mapRecipe(row: RecipeFull): Recipe {
       timerSeconds: s.timerSeconds,
       imageUrl: s.imageUrl,
     }));
+
+  const rawIngredients = [...version.ingredients]
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .map((i) => ({
+      ingredientId: i.ingredientId,
+      name: i.name,
+      quantity: i.quantity,
+      unit: i.unit,
+      optional: i.optional,
+    }));
+
+  const { ingredients, steps } = normalizeRecipeContent({
+    title: row.title,
+    ingredients: rawIngredients,
+    steps: rawSteps,
+  });
 
   return {
     id: row.id,
@@ -115,15 +132,7 @@ export function mapRecipe(row: RecipeFull): Recipe {
     cookingMethod: row.cookingMethod ?? null,
     dietaryTags: asStringArray(row.dietaryTags),
     budgetFriendly: row.budgetFriendly,
-    ingredients: [...version.ingredients]
-      .sort((a, b) => a.sortOrder - b.sortOrder)
-      .map((i) => ({
-        ingredientId: i.ingredientId,
-        name: i.name,
-        quantity: i.quantity,
-        unit: i.unit,
-        optional: i.optional,
-      })),
+    ingredients,
     steps,
     versionId: version.id,
   };

@@ -5,7 +5,7 @@ import { createHash } from "node:crypto";
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { PrismaClient } from "@prisma/client";
-import { normalizePersian } from "@atlas/shared";
+import { normalizePersian, normalizeRecipeContent } from "@atlas/shared";
 import type { Recipe } from "@atlas/contracts";
 
 function ingredientIdFromNormalized(normalizedName: string): string {
@@ -32,15 +32,25 @@ function recipeQualityScore(recipe: Recipe): number {
 function isUsableCatalogRecipe(recipe: Recipe): boolean {
   const steps = recipe.steps?.length ?? 0;
   const ings = recipe.ingredients?.length ?? 0;
-  if (steps < 1 || ings < 2) return false;
+  // Article lists may become ingredient-only (no cook steps).
+  if (steps < 1 && ings < 2) return false;
+  if (ings < 1 && steps < 3) return false;
   const desc = recipe.description ?? "";
   if (BOILERPLATE_RE.test(desc) && steps <= 1 && ings <= 3) return false;
   return true;
 }
 
-/** Drop thin stubs and keep one row per normalized title (richest wins). */
+/** Drop thin stubs, reclassify article lists → ingredients, dedupe titles. */
 export function cleanFoodCatalog(recipes: Recipe[]): Recipe[] {
-  const usable = recipes.filter(isUsableCatalogRecipe);
+  const sanitized = recipes.map((recipe) => {
+    const { ingredients, steps } = normalizeRecipeContent({
+      title: recipe.title,
+      ingredients: recipe.ingredients ?? [],
+      steps: recipe.steps ?? [],
+    });
+    return { ...recipe, ingredients, steps };
+  });
+  const usable = sanitized.filter(isUsableCatalogRecipe);
   const bestByTitle = new Map<string, Recipe>();
   for (const recipe of usable) {
     const key = normalizePersian(recipe.title);

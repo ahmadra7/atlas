@@ -2,6 +2,7 @@ import { createAtlasClient, type AtlasClient } from "@atlas/api-client";
 import {
   getRuntimeConfigSync,
   loadRuntimeConfig,
+  resetRuntimeConfigCache,
   type AtlasRuntimeConfig,
 } from "@/lib/runtime-config";
 
@@ -32,19 +33,38 @@ function buildClient(config: AtlasRuntimeConfig): AtlasClient {
   });
 }
 
-let impl: AtlasClient = buildClient(getRuntimeConfigSync());
-let ready: Promise<void> | null = null;
-
-function installClient(next: AtlasClient) {
-  impl = next;
+function configKey(config: AtlasRuntimeConfig) {
+  return `${config.apiMode}|${config.apiUrl ?? ""}`;
 }
 
-/** Apply runtime config (and rebuild HTTP/mock client) before first data fetch. */
-export async function initAtlasClient(): Promise<void> {
-  if (ready) return ready;
+let impl: AtlasClient = buildClient(getRuntimeConfigSync());
+let installedKey = configKey(getRuntimeConfigSync());
+let ready: Promise<void> | null = null;
+
+function installClient(next: AtlasClient, key: string) {
+  impl = next;
+  installedKey = key;
+}
+
+/** Apply runtime config (and rebuild HTTP/mock client) before data fetch. */
+export async function initAtlasClient(force = false): Promise<void> {
+  if (force) {
+    resetRuntimeConfigCache();
+    ready = null;
+  }
+  if (ready) {
+    await ready;
+    // If config changed after first init (e.g. live JSON arrived), rebuild.
+    const config = getRuntimeConfigSync();
+    const key = configKey(config);
+    if (key !== installedKey) {
+      installClient(buildClient(config), key);
+    }
+    return;
+  }
   ready = (async () => {
     const config = await loadRuntimeConfig();
-    installClient(buildClient(config));
+    installClient(buildClient(config), configKey(config));
   })();
   return ready;
 }
@@ -65,7 +85,7 @@ export const atlasClient: AtlasClient = new Proxy({} as AtlasClient, {
 
 /** HTTP calls run with the stored user token; guests stay unauthenticated. */
 export async function ensureApiSession(_force = false): Promise<void> {
-  await initAtlasClient();
+  await initAtlasClient(_force);
 }
 
 export async function withApiSession<T>(fn: () => Promise<T>): Promise<T> {

@@ -155,7 +155,7 @@ function toPayload(draft: AdminRecipeDetail) {
 
   return {
     title: draft.title.trim(),
-    slug: draft.slug.trim() || undefined,
+    // Slug is system-managed: create from title, keep stable on update.
     description: draft.description.trim(),
     category: draft.category.trim(),
     subcategory: draft.subcategory?.trim() || undefined,
@@ -1425,7 +1425,6 @@ export function RecipeAdminDashboard() {
                     <div className="space-y-5">
                       <SectionCard
                         title="هویت دستور"
-                        hint="عنوان، اسلاگ و توضیح برای اپ و جستجو"
                         icon={
                           <DocumentText
                             size={18}
@@ -1440,15 +1439,6 @@ export function RecipeAdminDashboard() {
                               className="admin-field"
                               value={draft.title}
                               onChange={(e) => patch({ title: e.target.value })}
-                            />
-                          </Field>
-                          <Field label="اسلاگ">
-                            <input
-                              className="admin-field"
-                              value={draft.slug}
-                              onChange={(e) => patch({ slug: e.target.value })}
-                              placeholder="خودکار از عنوان"
-                              dir="ltr"
                             />
                           </Field>
                           <Field label="دسته‌بندی">

@@ -16,7 +16,20 @@ export function getRuntimeConfigSync(): AtlasRuntimeConfig {
   return cached ?? DEFAULT_CONFIG;
 }
 
-/** Loads `/atlas-runtime-config.json` once (Netlify can point at a live API without rebuild). */
+/** Clear so the next loadRuntimeConfig() re-reads the JSON / env. */
+export function resetRuntimeConfigCache() {
+  cached = null;
+  loading = null;
+}
+
+/**
+ * Loads `/atlas-runtime-config.json` once.
+ *
+ * Rules:
+ * - JSON with `apiMode: "http"` + apiUrl → live (Netlify tunnel / prod override)
+ * - Otherwise keep build-time env (local `.env.local` http → DB)
+ * - Never let a committed mock JSON silently override local http env
+ */
 export async function loadRuntimeConfig(): Promise<AtlasRuntimeConfig> {
   if (cached) return cached;
   if (loading) return loading;
@@ -35,12 +48,19 @@ export async function loadRuntimeConfig(): Promise<AtlasRuntimeConfig> {
         return cached;
       }
       const data = (await res.json()) as Partial<AtlasRuntimeConfig>;
-      const apiMode = data.apiMode === "http" ? "http" : "mock";
-      const apiUrl =
+      const fileMode = data.apiMode === "http" ? "http" : "mock";
+      const fileUrl =
         typeof data.apiUrl === "string" && data.apiUrl.trim()
           ? data.apiUrl.trim().replace(/\/$/, "")
-          : DEFAULT_CONFIG.apiUrl;
-      cached = { apiMode, apiUrl };
+          : "";
+
+      if (fileMode === "http" && fileUrl) {
+        cached = { apiMode: "http", apiUrl: fileUrl };
+        return cached;
+      }
+
+      // Mock JSON must not win over local/dev http env.
+      cached = DEFAULT_CONFIG;
       return cached;
     } catch {
       cached = DEFAULT_CONFIG;
