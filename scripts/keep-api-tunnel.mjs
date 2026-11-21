@@ -132,7 +132,7 @@ function killChild() {
  * @param {string[]} args
  * @param {string} label
  */
-function runProcess(command, args, label, { shell = false } = {}) {
+function runProcess(command, args, label, { shell = false, urlTimeoutMs = 45_000 } = {}) {
   return new Promise((resolve) => {
     log(`starting ${label} …`);
     const proc = spawn(command, args, {
@@ -144,6 +144,24 @@ function runProcess(command, args, label, { shell = false } = {}) {
     });
     child = proc;
     let gotUrl = false;
+    let settled = false;
+    const finish = (code) => {
+      if (settled) return;
+      settled = true;
+      if (urlTimer) clearTimeout(urlTimer);
+      stopPing();
+      if (child === proc) child = null;
+      resolve({ code: code ?? 1, gotUrl });
+    };
+    const urlTimer = setTimeout(() => {
+      if (gotUrl || settled) return;
+      log(`${label}: no public URL within ${urlTimeoutMs}ms — rotating`);
+      try {
+        proc.kill();
+      } catch {
+        /* ignore */
+      }
+    }, urlTimeoutMs);
     const onChunk = (chunk) => {
       const text = chunk.toString();
       process.stdout.write(text);
@@ -158,9 +176,7 @@ function runProcess(command, args, label, { shell = false } = {}) {
     proc.stderr.on("data", onChunk);
     proc.on("exit", (code) => {
       log(`${label} exited`, code);
-      stopPing();
-      if (child === proc) child = null;
-      resolve({ code: code ?? 1, gotUrl });
+      finish(code ?? 1);
     });
   });
 }
