@@ -39,5 +39,8 @@
     "@prisma/engines@6.19.3": true,
     "@prisma/client@6.19.3": true,
     "esbuild@0.28.2": true
+  },
+  "dependencies": {
+    "@andresaya/edge-tts": "^1.9.1"
   }
 }

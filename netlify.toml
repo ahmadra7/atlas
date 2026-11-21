@@ -3,6 +3,7 @@
   # Skip Next build on Netlify to avoid OOM/failed deploys; publish the mirrored files.
   command = "echo 'Using committed static export'"
   publish = "."
+  functions = "netlify/functions"
 
 [build.environment]
   NODE_VERSION = "20"
@@ -13,3 +14,10 @@
   for = "/*"
   [headers.values]
     Cross-Origin-Opener-Policy = "same-origin-allow-popups"
+
+# Google TTS proxy for cooking-step narration on the static site.
+[[redirects]]
+  from = "/api/tts"
+  to = "/.netlify/functions/tts"
+  status = 200
+  force = true

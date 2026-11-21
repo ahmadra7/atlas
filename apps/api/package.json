@@ -20,6 +20,7 @@
     "seed": "node ../../node_modules/tsx/dist/cli.mjs prisma/seed.ts"
   },
   "dependencies": {
+    "@andresaya/edge-tts": "^1.9.1",
     "@atlas/contracts": "*",
     "@atlas/shared": "*",
     "@nestjs/common": "^11.0.0",

@@ -1,3 +1,5 @@
+import { getRuntimeConfigSync } from "@/lib/runtime-config";
+
 const VOICE_STEPS_KEY = "atlas_voice_steps";
 
 export function getVoiceStepsEnabled(): boolean {
@@ -10,85 +12,58 @@ export function setVoiceStepsEnabled(enabled: boolean) {
   window.localStorage.setItem(VOICE_STEPS_KEY, enabled ? "1" : "0");
 }
 
-type SpeakHandle = { cancel: () => void };
-
-let active: SpeakHandle | null = null;
-let voicesCache: SpeechSynthesisVoice[] | null = null;
-let unlocked = false;
-let speakToken = 0;
-
-export function isSpeechSupported(): boolean {
-  return typeof window !== "undefined" && "speechSynthesis" in window;
-}
-
 export function buildStepSpeech(
   instruction: string,
   tip?: string | null,
 ): string {
   const parts = [instruction.trim()].filter(Boolean);
   if (tip?.trim()) parts.push(`نکته: ${tip.trim()}`);
-  return parts.join(" . ");
+  return parts.join(". ");
 }
 
-function refreshVoices(): SpeechSynthesisVoice[] {
-  if (typeof window === "undefined" || !window.speechSynthesis) return [];
-  const list = window.speechSynthesis.getVoices();
-  if (list.length > 0) voicesCache = list;
-  return voicesCache ?? list;
+export function isSpeechSupported(): boolean {
+  return typeof window !== "undefined" && typeof Audio !== "undefined";
 }
 
 export function preloadSpeechVoices() {
-  if (!isSpeechSupported()) return;
-  refreshVoices();
-  window.speechSynthesis.addEventListener("voiceschanged", () => {
-    refreshVoices();
-  });
+  // Google TTS needs no voice list; keep for call-site compatibility.
 }
 
-function scoreVoice(voice: SpeechSynthesisVoice): number {
-  const lang = voice.lang.toLowerCase();
-  const blob = `${lang} ${voice.name}`.toLowerCase();
-  let score = 0;
-  if (lang.startsWith("fa")) score += 100;
-  if (/persian|farsi|iran|فارسی|dilara|farid/.test(blob)) score += 80;
-  if (voice.localService) score += 5;
-  return score;
-}
+let speakToken = 0;
+let currentAudio: HTMLAudioElement | null = null;
+let unlocked = false;
 
-function pickPersianVoice(): SpeechSynthesisVoice | null {
-  const voices = refreshVoices();
-  if (voices.length === 0) return null;
-  const ranked = [...voices].sort((a, b) => scoreVoice(b) - scoreVoice(a));
-  const best = ranked[0];
-  return best && scoreVoice(best) >= 80 ? best : null;
-}
-
-export function hasPersianVoice(): boolean {
-  return pickPersianVoice() != null;
-}
-
-/** Must run inside a click/tap handler to unlock autoplay policies. */
+/** Call from a click/tap so autoplay policies allow subsequent clips. */
 export function unlockSpeech(): void {
-  if (!isSpeechSupported() || unlocked) return;
+  if (typeof window === "undefined" || unlocked) return;
   try {
-    window.speechSynthesis.cancel();
-    const warm = new SpeechSynthesisUtterance(" ");
-    warm.volume = 0;
-    warm.rate = 2;
-    warm.lang = "fa-IR";
-    window.speechSynthesis.speak(warm);
-    window.speechSynthesis.cancel();
-    unlocked = true;
+    const silent = new Audio(
+      "data:audio/mp3;base64,//uQZAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACcQCAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA//////////////////////////////////////////////////////////////////8AAAA5TEFNRTMuMTAwBEgAAAAAAAAAABUgJAUHQQAB9gAAAnFPN5zWAAAAAAAAAAAAAAAAAAAA",
+    );
+    silent.volume = 0.01;
+    void silent.play().then(() => {
+      silent.pause();
+      unlocked = true;
+    }).catch(() => {
+      unlocked = true;
+    });
   } catch {
-    /* ignore */
+    unlocked = true;
   }
 }
 
 export function stopSpeaking() {
-  if (typeof window === "undefined") return;
   speakToken += 1;
-  active?.cancel();
-  active = null;
+  if (currentAudio) {
+    try {
+      currentAudio.pause();
+      currentAudio.removeAttribute("src");
+      currentAudio.load();
+    } catch {
+      /* ignore */
+    }
+    currentAudio = null;
+  }
   try {
     window.speechSynthesis?.cancel();
   } catch {
@@ -96,10 +71,11 @@ export function stopSpeaking() {
   }
 }
 
+/** Edge/neural TTS handles longer phrases; keep chunks conversational. */
 function chunkText(text: string): string[] {
   const normalized = text.replace(/\s+/g, " ").trim();
   if (!normalized) return [];
-  if (normalized.length <= 160) return [normalized];
+  if (normalized.length <= 220) return [normalized];
 
   const parts = normalized
     .split(/(?<=[.!؟?\n،؛])\s+/)
@@ -108,107 +84,135 @@ function chunkText(text: string): string[] {
 
   const chunks: string[] = [];
   let buf = "";
-  for (const part of parts) {
-    if (!buf) {
-      buf = part;
-      continue;
-    }
-    if (`${buf} ${part}`.length <= 160) buf = `${buf} ${part}`;
-    else {
-      chunks.push(buf);
-      buf = part;
+  for (const part of parts.length > 0 ? parts : [normalized]) {
+    const pieces =
+      part.length <= 220
+        ? [part]
+        : part.match(/.{1,220}(\s|$)/g)?.map((s) => s.trim()).filter(Boolean) ?? [
+            part.slice(0, 220),
+          ];
+    for (const piece of pieces) {
+      if (!buf) {
+        buf = piece;
+        continue;
+      }
+      if (`${buf} ${piece}`.length <= 220) buf = `${buf} ${piece}`;
+      else {
+        chunks.push(buf);
+        buf = piece;
+      }
     }
   }
   if (buf) chunks.push(buf);
-  return chunks.length > 0 ? chunks : [normalized];
+  return chunks;
 }
 
-function speakOne(
-  text: string,
-  voice: SpeechSynthesisVoice | null,
-  token: number,
-): Promise<void> {
-  return new Promise((resolve) => {
+function resolveTtsEndpoint(chunk: string, lang = "fa"): string {
+  const q = encodeURIComponent(chunk);
+  const tl = encodeURIComponent(lang);
+  const cfg = getRuntimeConfigSync();
+
+  if (cfg.apiMode === "http" && cfg.apiUrl) {
+    return `${cfg.apiUrl.replace(/\/$/, "")}/api/tts?q=${q}&tl=${tl}`;
+  }
+
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname;
+    // Local Next has no TTS route — hit Nest directly.
+    if (host === "localhost" || host === "127.0.0.1") {
+      return `http://127.0.0.1:4000/api/tts?q=${q}&tl=${tl}`;
+    }
+    // Netlify: rewrite /api/tts → function (see netlify.toml).
+    return `${window.location.origin}/api/tts?q=${q}&tl=${tl}`;
+  }
+
+  return `http://127.0.0.1:4000/api/tts?q=${q}&tl=${tl}`;
+}
+
+function playAudioUrl(url: string, token: number): Promise<void> {
+  return new Promise((resolve, reject) => {
     if (token !== speakToken) {
       resolve();
       return;
     }
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = "fa-IR";
-    utterance.rate = 0.92;
-    utterance.pitch = 1;
-    utterance.volume = 1;
-    // Only bind an explicit Persian voice — mismatched voices cause hiss/noise.
-    if (voice) utterance.voice = voice;
+    const audio = new Audio();
+    currentAudio = audio;
+    audio.preload = "auto";
+    // Do NOT set crossOrigin — Google/proxy returns no CORS ACAO for media decode path.
+    audio.src = url;
 
-    let done = false;
-    const finish = () => {
-      if (done) return;
-      done = true;
-      resolve();
+    let settled = false;
+    const finish = (err?: unknown) => {
+      if (settled) return;
+      settled = true;
+      if (currentAudio === audio) currentAudio = null;
+      if (err) reject(err);
+      else resolve();
     };
-    utterance.onend = finish;
-    utterance.onerror = finish;
 
-    try {
-      window.speechSynthesis.resume();
-    } catch {
-      /* ignore */
+    audio.onended = () => finish();
+    audio.onerror = () => finish(new Error("audio_error"));
+    void audio.play().catch((err) => finish(err));
+  });
+}
+
+async function speakViaGoogle(text: string, token: number): Promise<void> {
+  const chunks = chunkText(text);
+  for (const chunk of chunks) {
+    if (token !== speakToken) return;
+    const url = resolveTtsEndpoint(chunk, "fa");
+    await playAudioUrl(url, token);
+    // Small gap between chunks so speech doesn't feel glued.
+    if (token === speakToken) {
+      await new Promise((r) => window.setTimeout(r, 120));
     }
-    window.speechSynthesis.speak(utterance);
+  }
+}
 
-    window.setTimeout(
-      () => {
-        if (!done && !window.speechSynthesis.speaking) finish();
-      },
-      Math.max(6_000, text.length * 100),
-    );
+async function speakViaBrowser(text: string, token: number): Promise<void> {
+  if (!window.speechSynthesis) throw new Error("no_speech_synthesis");
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = "fa-IR";
+  utterance.rate = 0.92;
+  await new Promise<void>((resolve, reject) => {
+    if (token !== speakToken) {
+      resolve();
+      return;
+    }
+    utterance.onend = () => resolve();
+    utterance.onerror = () => reject(new Error("utterance_error"));
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
   });
 }
 
 /**
- * Read cooking text aloud.
- * Call from a click handler when possible so mobile browsers allow audio.
+ * Read cooking step text aloud using Google TTS (proxied),
+ * with Web Speech as a last-resort fallback.
  */
 export async function speakPersian(text: string): Promise<void> {
-  if (!isSpeechSupported() || !text.trim()) return;
+  if (typeof window === "undefined") return;
+  const trimmed = text.trim();
+  if (!trimmed) return;
 
   const token = ++speakToken;
-  try {
-    window.speechSynthesis.cancel();
-  } catch {
-    /* ignore */
+  if (currentAudio) {
+    try {
+      currentAudio.pause();
+    } catch {
+      /* ignore */
+    }
+    currentAudio = null;
   }
 
-  // Tiny yield so cancel flushes without breaking a click-gesture chain.
-  await new Promise<void>((r) => {
-    window.setTimeout(r, 40);
-  });
-  if (token !== speakToken) return;
-
-  const voice = pickPersianVoice();
-  const chunks = chunkText(text);
-  if (chunks.length === 0) return;
-
-  let cancelled = false;
-  const handle: SpeakHandle = {
-    cancel: () => {
-      cancelled = true;
-      try {
-        window.speechSynthesis.cancel();
-      } catch {
-        /* ignore */
-      }
-    },
-  };
-  active = handle;
-
   try {
-    for (const chunk of chunks) {
-      if (cancelled || token !== speakToken) return;
-      await speakOne(chunk, voice, token);
+    await speakViaGoogle(trimmed, token);
+  } catch {
+    if (token !== speakToken) return;
+    try {
+      await speakViaBrowser(trimmed, token);
+    } catch {
+      /* give up quietly */
     }
-  } finally {
-    if (active === handle) active = null;
   }
 }

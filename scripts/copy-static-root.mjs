@@ -17,6 +17,7 @@ const reserved = new Set([
   "apps",
   "docs",
   "netlify.toml",
+  "netlify",
   "node_modules",
   "package-lock.json",
   "package.json",

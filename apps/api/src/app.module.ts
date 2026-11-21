@@ -12,6 +12,7 @@ import { FavoritesModule } from "./favorites/favorites.module";
 import { HistoryModule } from "./history/history.module";
 import { AdminModule } from "./admin/admin.module";
 import { HealthController } from "./health.controller";
+import { TtsController } from "./tts.controller";
 
 @Module({
   imports: [
@@ -28,6 +29,6 @@ import { HealthController } from "./health.controller";
     HistoryModule,
     AdminModule,
   ],
-  controllers: [HealthController],
+  controllers: [HealthController, TtsController],
 })
 export class AppModule {}
