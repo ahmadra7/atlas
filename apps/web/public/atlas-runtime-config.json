@@ -1,4 +1,4 @@
 {
-  "apiMode": "mock",
-  "apiUrl": ""
+  "apiMode": "http",
+  "apiUrl": "https://warm-mirrors-attend.loca.lt"
 }
